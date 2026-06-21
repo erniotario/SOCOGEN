@@ -1,0 +1,5 @@
+SQLAlchemy
+PySide6>=6.6.0
+reportlab>=4.0
+openpyxl>=3.0.10
+customtkinter>=5.0.0

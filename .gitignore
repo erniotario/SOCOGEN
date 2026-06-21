@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build artifacts
+build/
+dist/
+installer/
+
+# Logs
+*.log
+
+# Database files (runtime data, not source)
+*.db
+
+# Misc junk
+*.vsix
+.vs/
+.vscode/
+
+# Local tool config
+.claude/settings.local.json
+
+# Flutter
+flutter_app/.dart_tool/
+flutter_app/.flutter-plugins-dependencies
+flutter_app/.pub-cache/
+flutter_app/.pub/
