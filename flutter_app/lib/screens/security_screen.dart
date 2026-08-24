@@ -11,6 +11,8 @@ import '../services/sync/sync_client.dart';
 import '../services/sync/sync_server.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_breakpoints.dart';
+import '../theme/app_spacing.dart';
 import '../widgets/page_header.dart';
 import '../widgets/section_card.dart';
 
@@ -274,7 +276,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: AppSpacing.pagePadding(context.windowSize),
             children: [
               SectionCard(
                 icon: Icons.admin_panel_settings_outlined,
@@ -471,61 +473,96 @@ class _UserRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final identity = Row(
+      children: [
+        const Icon(Icons.person_outline, size: 18, color: AppColors.textMuted),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                user.username,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              if (isSelf)
+                const Text('Vous', style: AppTextStyles.captionMuted),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    final roleField = DropdownButtonFormField<String>(
+      initialValue: user.role,
+      isExpanded: true,
+      decoration: const InputDecoration(isDense: true),
+      items: const [
+        DropdownMenuItem(value: 'admin', child: Text('Administrateur')),
+        DropdownMenuItem(value: 'magasinier', child: Text('Magasinier')),
+      ],
+      onChanged: isSelf
+          ? null
+          : (value) {
+              if (value != null) onRoleChanged(value);
+            },
+    );
+
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.lock_reset, size: 18),
+          color: AppColors.textSecondary,
+          tooltip: 'Réinitialiser le mot de passe',
+          onPressed: onResetPassword,
+        ),
+        IconButton(
+          icon: const Icon(Icons.delete_outline, size: 18),
+          color: isSelf ? AppColors.textMuted : AppColors.error,
+          tooltip: isSelf
+              ? 'Vous ne pouvez pas supprimer votre propre compte'
+              : 'Supprimer',
+          onPressed: isSelf ? null : onDelete,
+        ),
+      ],
+    );
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.person_outline, size: 18, color: AppColors.textMuted),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // On a phone the role selector gets its own line rather than
+          // competing with the name and the two action buttons.
+          if (constraints.maxWidth < 460) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  user.username,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                ),
-                if (isSelf) const Text('Vous', style: AppTextStyles.bodyMuted),
+                Row(children: [Expanded(child: identity), actions]),
+                const SizedBox(height: AppSpacing.sm),
+                roleField,
               ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          SizedBox(
-            width: 180,
-            child: DropdownButtonFormField<String>(
-              initialValue: user.role,
-              isExpanded: true,
-              decoration: const InputDecoration(isDense: true),
-              items: const [
-                DropdownMenuItem(value: 'admin', child: Text('Administrateur')),
-                DropdownMenuItem(value: 'magasinier', child: Text('Magasinier')),
-              ],
-              onChanged: isSelf
-                  ? null
-                  : (value) {
-                      if (value != null) onRoleChanged(value);
-                    },
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.lock_reset, size: 18),
-            color: AppColors.textSecondary,
-            tooltip: 'Réinitialiser le mot de passe',
-            onPressed: onResetPassword,
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 18),
-            color: isSelf ? AppColors.textMuted : AppColors.error,
-            tooltip: isSelf ? 'Vous ne pouvez pas supprimer votre propre compte' : 'Supprimer',
-            onPressed: isSelf ? null : onDelete,
-          ),
-        ],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: identity),
+              const SizedBox(width: AppSpacing.md),
+              SizedBox(width: 180, child: roleField),
+              const SizedBox(width: AppSpacing.sm),
+              actions,
+            ],
+          );
+        },
       ),
     );
   }

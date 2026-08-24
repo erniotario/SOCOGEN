@@ -7,7 +7,11 @@ import '../data/models/company_settings.dart';
 import '../data/repositories/settings_repository.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_breakpoints.dart';
+import '../theme/app_spacing.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/page_header.dart';
+import '../widgets/responsive_row.dart';
 import '../widgets/section_card.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -124,6 +128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final padding = AppSpacing.pagePadding(context.windowSize);
     return Column(
       children: [
         const PageHeader(
@@ -138,45 +143,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Erreur de chargement : ${snapshot.error}',
-                    style: const TextStyle(color: AppColors.error),
-                  ),
-                );
+                return AppErrorState(message: '${snapshot.error}');
               }
               return ListView(
-                padding: const EdgeInsets.all(24),
+                padding: padding,
                 children: [
                   SectionCard(
                     icon: Icons.apartment_outlined,
                     title: 'IDENTITÉ DE LA SOCIÉTÉ',
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
+                      ResponsiveRow(
+                        items: [
+                          RowItem(
                             flex: 3,
-                            child: _LabeledField(
+            child:                             _LabeledField(
                               label: 'Nom de la société',
                               required: true,
                               controller: _nameController,
                               hintText: 'Ex : SOCOGEN SARL',
                             ),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
+                          RowItem(
                             flex: 2,
-                            child: _LabeledField(
+            child:                             _LabeledField(
                               label: 'N° Contribuable',
                               controller: _taxIdController,
                               hintText: 'Ex : M123456789',
                             ),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
+                          RowItem(
                             flex: 2,
-                            child: _LabeledField(
+            child:                             _LabeledField(
                               label: 'RCCM',
                               controller: _rccmController,
                               hintText: 'Ex : RC/YAO/2020/B/1234',
@@ -184,22 +181,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 14),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
+                      const SizedBox(height: AppSpacing.md),
+                      ResponsiveRow(
+                        items: [
+                          RowItem(
                             flex: 3,
-                            child: _LabeledField(
+            child:                             _LabeledField(
                               label: 'Adresse',
                               controller: _addressController,
                               hintText: 'Ex : BP 1234, Rue des Palmiers',
                             ),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
+                          RowItem(
                             flex: 2,
-                            child: _LabeledField(
+            child:                             _LabeledField(
                               label: 'Ville / Pays',
                               controller: _cityController,
                               hintText: 'Ex : Yaoundé, Cameroun',
@@ -209,31 +204,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   SectionCard(
                     icon: Icons.contact_phone_outlined,
                     title: 'COORDONNÉES',
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
+                      ResponsiveRow(
+                        items: [
+                          RowItem(
                             child: _LabeledField(
                               label: 'Téléphone',
                               controller: _phoneController,
                               hintText: 'Ex : +237 6XX XXX XXX',
                             ),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
+                          RowItem(
                             child: _LabeledField(
                               label: 'Email',
                               controller: _emailController,
                               hintText: 'Ex : contact@socogen.cm',
                             ),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
+                          RowItem(
                             child: _LabeledField(
                               label: 'Site web',
                               controller: _websiteController,
@@ -244,52 +236,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   SectionCard(
                     icon: Icons.image_outlined,
                     title: 'LOGO DE LA SOCIÉTÉ',
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _LogoPreview(path: _logoPath),
-                          const SizedBox(width: 20),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: 180,
-                                child: ElevatedButton.icon(
-                                  onPressed: _pickLogo,
-                                  icon: const Icon(Icons.upload_file, size: 18),
-                                  label: const Text('Choisir un fichier'),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                width: 180,
-                                child: OutlinedButton.icon(
-                                  onPressed: _clearLogo,
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.error,
-                                    side: const BorderSide(color: AppColors.border),
-                                  ),
-                                  icon: const Icon(Icons.delete_outline, size: 18),
-                                  label: const Text('Supprimer'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 20),
-                          const Expanded(
-                            child: Column(
+                      ResponsiveRow(
+                        stackBelow: 620,
+                        items: [
+                          RowItem(
+                            flex: 2,
+            child:                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('· Formats acceptés : PNG, JPG, BMP', style: AppTextStyles.bodyMuted),
-                                SizedBox(height: 4),
-                                Text('· Taille recommandée : 200 × 80 px', style: AppTextStyles.bodyMuted),
-                                SizedBox(height: 4),
-                                Text('· Fond transparent recommandé', style: AppTextStyles.bodyMuted),
+                                _LogoPreview(path: _logoPath),
+                                const SizedBox(width: AppSpacing.lg),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ElevatedButton.icon(
+                                        onPressed: _pickLogo,
+                                        icon: const Icon(
+                                          Icons.upload_file,
+                                          size: 18,
+                                        ),
+                                        label: const Text('Choisir un fichier'),
+                                      ),
+                                      const SizedBox(height: AppSpacing.sm),
+                                      OutlinedButton.icon(
+                                        onPressed: _clearLogo,
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: AppColors.error,
+                                        ),
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 18,
+                                        ),
+                                        label: const Text('Supprimer'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const RowItem(
+                            flex: 2,
+            child:                             Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '· Formats acceptés : PNG, JPG, BMP',
+                                  style: AppTextStyles.bodyMuted,
+                                ),
+                                SizedBox(height: AppSpacing.xs),
+                                Text(
+                                  '· Taille recommandée : 200 × 80 px',
+                                  style: AppTextStyles.bodyMuted,
+                                ),
+                                SizedBox(height: AppSpacing.xs),
+                                Text(
+                                  '· Fond transparent recommandé',
+                                  style: AppTextStyles.bodyMuted,
+                                ),
                               ],
                             ),
                           ),
@@ -297,43 +309,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.elevated,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _statusMessage ?? '',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: _statusIsError ? AppColors.error : AppColors.success,
-                            ),
-                          ),
-                        ),
-                        OutlinedButton(
-                          onPressed: _reset,
-                          child: const Text('Réinitialiser'),
-                        ),
-                        const SizedBox(width: 12),
-                        FilledButton.icon(
-                          onPressed: _saving ? null : _save,
-                          icon: _saving
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.save_outlined, size: 18),
-                          label: const Text('Enregistrer les paramètres'),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _SaveBar(
+                    statusMessage: _statusMessage,
+                    statusIsError: _statusIsError,
+                    saving: _saving,
+                    onReset: _reset,
+                    onSave: _save,
                   ),
                 ],
               );
@@ -341,6 +323,83 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Footer holding the save/reset actions and the last status message.
+class _SaveBar extends StatelessWidget {
+  final String? statusMessage;
+  final bool statusIsError;
+  final bool saving;
+  final VoidCallback onReset;
+  final VoidCallback onSave;
+
+  const _SaveBar({
+    required this.statusMessage,
+    required this.statusIsError,
+    required this.saving,
+    required this.onReset,
+    required this.onSave,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final status = Text(
+      statusMessage ?? '',
+      style: TextStyle(
+        fontSize: 12,
+        color: statusIsError ? AppColors.error : AppColors.success,
+      ),
+    );
+    final saveButton = FilledButton.icon(
+      onPressed: saving ? null : onSave,
+      icon: saving
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.save_outlined, size: 18),
+      label: const Text('Enregistrer les paramètres'),
+    );
+    final resetButton = OutlinedButton(
+      onPressed: onReset,
+      child: const Text('Réinitialiser'),
+    );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl,
+        vertical: AppSpacing.md,
+      ),
+      decoration: appSurfaceDecoration(),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 520) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (statusMessage != null && statusMessage!.isNotEmpty) ...[
+                  status,
+                  const SizedBox(height: AppSpacing.md),
+                ],
+                saveButton,
+                const SizedBox(height: AppSpacing.sm),
+                resetButton,
+              ],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: status),
+              resetButton,
+              const SizedBox(width: AppSpacing.md),
+              saveButton,
+            ],
+          );
+        },
+      ),
     );
   }
 }

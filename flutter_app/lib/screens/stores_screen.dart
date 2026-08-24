@@ -4,9 +4,15 @@ import '../data/models/store.dart';
 import '../data/models/view_models.dart';
 import '../data/repositories/store_repository.dart';
 import '../services/data_refresh_bus.dart';
+import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/adaptive_table.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/page_header.dart';
+import '../widgets/row_actions.dart';
+import '../widgets/skeleton.dart';
 
 class StoresScreen extends StatefulWidget {
   const StoresScreen({super.key});
@@ -120,6 +126,7 @@ class _StoresScreenState extends State<StoresScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = context.windowSize;
     return Column(
       children: [
         PageHeader(
@@ -137,50 +144,48 @@ class _StoresScreenState extends State<StoresScreen> {
           child: FutureBuilder<List<StoreOverview>>(
             future: _future,
             builder: (context, snapshot) {
+              final padding = AppSpacing.pagePadding(size);
               if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
+                return Padding(
+                  padding: padding,
+                  child: const SkeletonList(),
+                );
               }
               if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Erreur de chargement : ${snapshot.error}',
-                    style: const TextStyle(color: AppColors.error),
-                  ),
+                return AppErrorState(
+                  message: '${snapshot.error}',
+                  onRetry: _refresh,
                 );
               }
               final stores = snapshot.data!;
               return RefreshIndicator(
                 onRefresh: _refresh,
+                color: AppColors.accentLight,
+                backgroundColor: AppColors.surface,
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: padding,
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final table = _StoreTable(
-                        rows: stores,
-                        selectedStoreId: _selectedStoreId,
-                        onSelect: (overview) => _selectStore(overview.store.id),
-                        onEdit: (overview) => _openEditDialog(overview.store),
-                        onDelete: (overview) => _deleteStore(overview.store),
-                      );
-                      final details = _DetailsPanel(detailsFuture: _detailsFuture);
+                      final table = _table(stores);
+                      final details =
+                          _DetailsPanel(detailsFuture: _detailsFuture);
 
-                      // On narrow phone screens there isn't enough width for the
-                      // table and the details sidebar side by side, so stack them
-                      // vertically instead.
+                      // The details sidebar only earns its place when the
+                      // table still has room to breathe beside it.
                       if (constraints.maxWidth >= _detailsBreakpoint) {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(flex: 3, child: table),
-                            const SizedBox(width: 16),
-                            SizedBox(width: 240, child: details),
+                            const SizedBox(width: AppSpacing.lg),
+                            SizedBox(width: 260, child: details),
                           ],
                         );
                       }
                       return Column(
                         children: [
                           Expanded(child: table),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSpacing.lg),
                           details,
                         ],
                       );
@@ -194,232 +199,74 @@ class _StoresScreenState extends State<StoresScreen> {
       ],
     );
   }
+
+  Widget _table(List<StoreOverview> rows) {
+    return AdaptiveTable(
+      actionsColumn: 4,
+      titleColumn: 1,
+      subtitleColumn: null,
+      minTableWidth: 560,
+      columns: const [
+        AppColumn('ID', flex: 8, align: Alignment.center),
+        AppColumn('NOM DU MAGASIN', flex: 35),
+        AppColumn('PRODUITS', flex: 15, align: Alignment.center),
+        AppColumn.number('STOCK TOTAL', flex: 20),
+        AppColumn.actions(flex: 14),
+      ],
+      empty: AppEmptyState(
+        icon: Icons.store_outlined,
+        title: 'Aucun magasin',
+        message: 'Créez un magasin pour commencer à y affecter du stock.',
+        action: ElevatedButton.icon(
+          onPressed: _openAddDialog,
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Nouveau magasin'),
+        ),
+      ),
+      rows: [
+        for (final overview in rows)
+          AppRow(
+            selected: overview.store.id == _selectedStoreId,
+            onTap: () => _selectStore(overview.store.id),
+            cells: [
+              Cells.muted('${overview.store.id}'),
+              Cells.identifier(overview.store.name),
+              Cells.number(overview.productCount),
+              Cells.number(
+                overview.totalStock,
+                strong: true,
+                size: 14,
+                color: overview.totalStock > 0
+                    ? AppColors.success
+                    : (overview.totalStock < 0
+                        ? AppColors.error
+                        : AppColors.textSecondary),
+              ),
+              RowActions(
+                actions: [
+                  RowAction(
+                    icon: Icons.edit_outlined,
+                    tooltip: 'Modifier',
+                    onPressed: () => _openEditDialog(overview.store),
+                  ),
+                  RowAction(
+                    icon: Icons.delete_outline,
+                    tooltip: 'Supprimer',
+                    destructive: true,
+                    onPressed: () => _deleteStore(overview.store),
+                  ),
+                ],
+              ),
+            ],
+          ),
+      ],
+    );
+  }
 }
 
 // Below this content width, the details sidebar moves below the table
 // instead of sitting beside it.
-const double _detailsBreakpoint = 700;
-
-// Relative flex weights for the stores table columns. Using a flexible Row
-// instead of fixed pixel widths means the table always fits the available
-// width, even on narrow phone screens in portrait mode.
-const int _colId = 8;
-const int _colName = 35;
-const int _colProducts = 15;
-const int _colStock = 20;
-const int _colActions = 14;
-const double _cellPadding = 10;
-
-class _StoreTable extends StatelessWidget {
-  final List<StoreOverview> rows;
-  final int? selectedStoreId;
-  final void Function(StoreOverview) onSelect;
-  final void Function(StoreOverview) onEdit;
-  final void Function(StoreOverview) onDelete;
-
-  const _StoreTable({
-    required this.rows,
-    required this.selectedStoreId,
-    required this.onSelect,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          const _TableHeaderRow(),
-          Expanded(
-            child: rows.isEmpty
-                ? const Center(child: Text('Aucun magasin', style: AppTextStyles.bodyMuted))
-                : ListView.builder(
-                    itemCount: rows.length,
-                    itemBuilder: (context, index) => _StoreRow(
-                      overview: rows[index],
-                      alternate: index.isOdd,
-                      selected: rows[index].store.id == selectedStoreId,
-                      onSelect: onSelect,
-                      onEdit: onEdit,
-                      onDelete: onDelete,
-                    ),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TableHeaderRow extends StatelessWidget {
-  const _TableHeaderRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: const BoxDecoration(
-        color: AppColors.elevated,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: const [
-          Expanded(
-            flex: _colId,
-            child: Text(
-              'ID',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colName,
-            child: Text('NOM DU MAGASIN', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colProducts,
-            child: Text(
-              'PRODUITS',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colStock,
-            child: Text(
-              'STOCK TOTAL',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colActions,
-            child: Text(
-              'ACTIONS',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StoreRow extends StatelessWidget {
-  final StoreOverview overview;
-  final bool alternate;
-  final bool selected;
-  final void Function(StoreOverview) onSelect;
-  final void Function(StoreOverview) onEdit;
-  final void Function(StoreOverview) onDelete;
-
-  const _StoreRow({
-    required this.overview,
-    required this.alternate,
-    required this.selected,
-    required this.onSelect,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final stock = overview.totalStock;
-    final stockColor = stock > 0
-        ? AppColors.success
-        : (stock < 0 ? AppColors.error : AppColors.textSecondary);
-
-    return InkWell(
-      onTap: () => onSelect(overview),
-      child: Container(
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.accent.withValues(alpha: 0.18)
-              : (alternate ? AppColors.bg : AppColors.surface),
-          border: const Border(bottom: BorderSide(color: AppColors.border)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              flex: _colId,
-              child: Text(
-                '${overview.store.id}',
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodyMuted,
-              ),
-            ),
-            Expanded(
-              flex: _colName,
-              child: Text(
-                overview.store.name,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.accentLight),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Expanded(
-              flex: _colProducts,
-              child: Text(
-                '${overview.productCount}',
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.tableCell,
-              ),
-            ),
-            Expanded(
-              flex: _colStock,
-              child: Text(
-                '$stock',
-                textAlign: TextAlign.right,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: stockColor),
-              ),
-            ),
-            Expanded(
-              flex: _colActions,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    color: AppColors.textSecondary,
-                    tooltip: 'Modifier',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    onPressed: () => onEdit(overview),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    color: AppColors.error,
-                    tooltip: 'Supprimer',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    onPressed: () => onDelete(overview),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+const double _detailsBreakpoint = 760;
 
 class _DetailsPanel extends StatelessWidget {
   final Future<StoreDetails>? detailsFuture;

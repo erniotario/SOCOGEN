@@ -6,10 +6,15 @@ import '../data/repositories/stock_entry_repository.dart';
 import '../data/repositories/stock_output_repository.dart';
 import '../data/repositories/store_repository.dart';
 import '../services/data_refresh_bus.dart';
+import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/adaptive_table.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/kpi_card.dart';
 import '../widgets/page_header.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/status_badge.dart';
 
 class _DashboardData {
@@ -39,12 +44,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final _entryRepo = StockEntryRepository();
   final _outputRepo = StockOutputRepository();
 
-  late Future<_DashboardData> _future;
+  // Holding the resolved data (rather than a Future) keeps the previous
+  // contents on screen while a refresh runs, so nothing flashes.
+  _DashboardData? _data;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _refresh();
     DataRefreshBus.instance.addListener(_refresh);
   }
 
@@ -68,294 +76,158 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _refresh() async {
-    final data = await _load();
-    if (!mounted) return;
-    setState(() {
-      _future = Future.value(data);
-    });
+    try {
+      final data = await _load();
+      if (!mounted) return;
+      setState(() {
+        _data = data;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final size = context.windowSize;
+    final padding = AppSpacing.pagePadding(size);
+
     return Column(
       children: [
-        const PageHeader(
+        PageHeader(
           title: 'Tableau de bord',
           subtitle: "Vue d'ensemble du stock",
+          actions: [
+            if (!size.isCompact)
+              IconButton(
+                tooltip: 'Actualiser',
+                onPressed: _refresh,
+                icon: const Icon(Icons.refresh, size: 18),
+              ),
+          ],
         ),
-        Expanded(
-          child: FutureBuilder<_DashboardData>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Erreur de chargement: ${snapshot.error}',
-                    style: const TextStyle(color: AppColors.error),
-                  ),
-                );
-              }
-              final data = snapshot.data!;
-              return RefreshIndicator(
-                onRefresh: _refresh,
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      KpiRow(cards: [
-                        KpiCard(
-                          icon: Icons.inventory_2_outlined,
-                          label: 'Produits',
-                          value: '${data.products.length}',
-                          color: AppColors.accentLight,
-                        ),
-                        KpiCard(
-                          icon: Icons.call_received,
-                          label: 'Entrées totales',
-                          value: '${data.totalEntries}',
-                          color: AppColors.success,
-                        ),
-                        KpiCard(
-                          icon: Icons.call_made,
-                          label: 'Sorties totales',
-                          value: '${data.totalOutputs}',
-                          color: AppColors.error,
-                        ),
-                        KpiCard(
-                          icon: Icons.store_outlined,
-                          label: 'Magasins',
-                          value: '${data.storeCount}',
-                          color: AppColors.warning,
-                        ),
-                      ]),
-                      const SizedBox(height: 20),
-                      const Text('STOCK ACTUEL PAR PRODUIT', style: AppTextStyles.sectionLabel),
-                      const SizedBox(height: 10),
-                      Expanded(child: _ProductTable(rows: data.products)),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+        Expanded(child: _buildBody(padding)),
       ],
     );
   }
-}
 
-// Relative flex weights for the dashboard product table columns. Using a
-// flexible Row instead of fixed pixel widths means the table always fits
-// the available width, even on narrow phone screens in portrait mode.
-const int _colReference = 12;
-const int _colDesignation = 22;
-const int _colUnit = 7;
-const int _colInitial = 11;
-const int _colEntries = 10;
-const int _colOutputs = 10;
-const int _colCurrent = 11;
-const double _cellPadding = 10;
+  Widget _buildBody(EdgeInsets padding) {
+    if (_error != null) {
+      return AppErrorState(message: _error!, onRetry: _refresh);
+    }
 
-class _ProductTable extends StatelessWidget {
-  final List<ProductOverview> rows;
+    final data = _data;
+    if (data == null) {
+      return Padding(
+        padding: padding,
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SkeletonKpiRow(),
+            SizedBox(height: AppSpacing.xl),
+            Expanded(child: SkeletonList()),
+          ],
+        ),
+      );
+    }
 
-  const _ProductTable({required this.rows});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          const _TableHeaderRow(),
-          Expanded(
-            child: rows.isEmpty
-                ? const Center(
-                    child: Text('Aucun produit', style: AppTextStyles.bodyMuted),
-                  )
-                : ListView.builder(
-                    itemCount: rows.length,
-                    itemBuilder: (context, index) => _ProductRow(
-                      overview: rows[index],
-                      alternate: index.isOdd,
-                    ),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TableHeaderRow extends StatelessWidget {
-  const _TableHeaderRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: const BoxDecoration(
-        color: AppColors.elevated,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: const [
-          Expanded(
-            flex: _colReference,
-            child: Text('RÉFÉRENCE', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colDesignation,
-            child: Text('DÉSIGNATION', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colUnit,
-            child: Text('UNITÉ', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colInitial,
-            child: Text(
-              'STOCK INITIAL',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colEntries,
-            child: Text(
-              'ENTRÉES',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colOutputs,
-            child: Text(
-              'SORTIES',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colCurrent,
-            child: Text(
-              'STOCK ACTUEL',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProductRow extends StatelessWidget {
-  final ProductOverview overview;
-  final bool alternate;
-
-  const _ProductRow({required this.overview, required this.alternate});
-
-  @override
-  Widget build(BuildContext context) {
-    final product = overview.product;
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: BoxDecoration(
-        color: alternate ? AppColors.bg : AppColors.surface,
-        border: const Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: _colReference,
-            child: Text(
-              product.reference,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppColors.accentLight,
+      backgroundColor: AppColors.surface,
+      child: Padding(
+        padding: padding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            KpiRow(cards: [
+              KpiCard(
+                icon: Icons.inventory_2_outlined,
+                label: 'Produits',
+                value: '${data.products.length}',
                 color: AppColors.accentLight,
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colDesignation,
-            child: Text(
-              product.designation,
-              style: AppTextStyles.tableCell,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colUnit,
-            child: Text(product.unit, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colInitial,
-            child: Text(
-              '${overview.initialStock}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-          ),
-          Expanded(
-            flex: _colEntries,
-            child: Text(
-              '+ ${overview.entriesTotal}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+              KpiCard(
+                icon: Icons.call_received,
+                label: 'Entrées totales',
+                value: '${data.totalEntries}',
                 color: AppColors.success,
               ),
-            ),
-          ),
-          Expanded(
-            flex: _colOutputs,
-            child: Text(
-              '− ${overview.outputsTotal}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+              KpiCard(
+                icon: Icons.call_made,
+                label: 'Sorties totales',
+                value: '${data.totalOutputs}',
                 color: AppColors.error,
               ),
-            ),
-          ),
-          Expanded(
-            flex: _colCurrent,
-            child: Text(
-              '${overview.currentStock}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: overview.status.color,
+              KpiCard(
+                icon: Icons.store_outlined,
+                label: 'Magasins',
+                value: '${data.storeCount}',
+                color: AppColors.warning,
               ),
+            ]),
+            const SizedBox(height: AppSpacing.xl),
+            const Text(
+              'STOCK ACTUEL PAR PRODUIT',
+              style: AppTextStyles.sectionLabel,
             ),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.md),
+            Expanded(child: _productTable(data.products)),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _productTable(List<ProductOverview> rows) {
+    return AdaptiveTable(
+      columns: const [
+        AppColumn('RÉFÉRENCE', flex: 12),
+        AppColumn('DÉSIGNATION', flex: 22),
+        AppColumn('UNITÉ', flex: 7),
+        AppColumn.number('STOCK INITIAL', flex: 11),
+        AppColumn.number('ENTRÉES', flex: 10),
+        AppColumn.number('SORTIES', flex: 10),
+        AppColumn.number('STOCK ACTUEL', flex: 11),
+      ],
+      empty: const AppEmptyState(
+        icon: Icons.inventory_2_outlined,
+        title: 'Aucun produit',
+        message: 'Ajoutez des produits depuis la page Produits pour voir '
+            'leur stock apparaître ici.',
+      ),
+      rows: [
+        for (final overview in rows)
+          AppRow(
+            cells: [
+              Cells.identifier(overview.product.reference),
+              Cells.text(overview.product.designation),
+              Cells.muted(overview.product.unit),
+              Cells.number(
+                overview.initialStock,
+                color: AppColors.textSecondary,
+              ),
+              Cells.number(
+                '+ ${overview.entriesTotal}',
+                color: AppColors.success,
+                strong: true,
+              ),
+              Cells.number(
+                '− ${overview.outputsTotal}',
+                color: AppColors.error,
+                strong: true,
+              ),
+              Cells.number(
+                overview.currentStock,
+                color: overview.status.color,
+                strong: true,
+                size: 14,
+              ),
+            ],
+          ),
+      ],
     );
   }
 }

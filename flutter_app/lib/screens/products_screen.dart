@@ -12,9 +12,16 @@ import '../data/models/view_models.dart';
 import '../data/repositories/product_repository.dart';
 import '../data/repositories/store_repository.dart';
 import '../services/data_refresh_bus.dart';
+import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/adaptive_table.dart';
+import '../widgets/dialog_body.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/page_header.dart';
+import '../widgets/row_actions.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/status_badge.dart';
 
 class ProductsScreen extends StatefulWidget {
@@ -82,9 +89,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Future<void> _refresh() => _load();
 
   void _onSearchChanged(String value) {
-    _search = value;
+    setState(() => _search = value);
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 250), _load);
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _onSearchChanged('');
   }
 
   /// Imports products from an Excel file (.xlsx/.xls/.xlsm), mirroring the
@@ -257,7 +269,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = context.windowSize;
+    final gutter = AppSpacing.pageGutter(size);
     final data = _data;
+
     return Column(
       children: [
         PageHeader(
@@ -275,7 +290,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   : const Icon(Icons.upload_file_outlined, size: 18),
               label: const Text('Importer Excel'),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             ElevatedButton.icon(
               onPressed: data == null ? null : _openAddDialog,
               icon: const Icon(Icons.add, size: 18),
@@ -284,259 +299,131 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ],
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+          padding: EdgeInsets.fromLTRB(
+            gutter,
+            AppSpacing.md,
+            gutter,
+            AppSpacing.md,
+          ),
           child: TextField(
             controller: _searchController,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search, size: 20),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search, size: 20),
               hintText: 'Rechercher par référence ou désignation…',
-              isDense: true,
+              suffixIcon: _search.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      tooltip: 'Effacer',
+                      onPressed: _clearSearch,
+                    ),
             ),
             onChanged: _onSearchChanged,
           ),
         ),
-        Expanded(
-          child: _error != null
-              ? Center(
-                  child: Text(
-                    'Erreur de chargement : $_error',
-                    style: const TextStyle(color: AppColors.error),
-                  ),
-                )
-              : data == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : RefreshIndicator(
-                      onRefresh: _refresh,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                        child: _ProductTable(
-                          rows: data.products,
-                          onEdit: _openEditDialog,
-                          onDelete: _deleteProduct,
-                        ),
-                      ),
-                    ),
-        ),
+        Expanded(child: _buildBody(gutter)),
       ],
     );
   }
-}
 
-// Relative flex weights for the products table columns. Using a flexible
-// Row instead of fixed pixel widths means the table always fits the
-// available width, even on narrow phone screens in portrait mode.
-const int _colReference = 11;
-const int _colDesignation = 20;
-const int _colUnit = 7;
-const int _colStores = 13;
-const int _colInitial = 10;
-const int _colCurrent = 10;
-const int _colActions = 11;
-const double _cellPadding = 10;
+  Widget _buildBody(double gutter) {
+    if (_error != null) {
+      return AppErrorState(message: _error!, onRetry: _refresh);
+    }
 
-class _ProductTable extends StatelessWidget {
-  final List<ProductOverview> rows;
-  final void Function(ProductOverview) onEdit;
-  final void Function(ProductOverview) onDelete;
+    final data = _data;
+    if (data == null) {
+      return Padding(
+        padding: EdgeInsets.fromLTRB(gutter, 0, gutter, gutter),
+        child: const SkeletonList(),
+      );
+    }
 
-  const _ProductTable({required this.rows, required this.onEdit, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          const _TableHeaderRow(),
-          Expanded(
-            child: rows.isEmpty
-                ? const Center(
-                    child: Text('Aucun produit', style: AppTextStyles.bodyMuted),
-                  )
-                : ListView.builder(
-                    itemCount: rows.length,
-                    itemBuilder: (context, index) => _ProductRow(
-                      overview: rows[index],
-                      alternate: index.isOdd,
-                      onEdit: onEdit,
-                      onDelete: onDelete,
-                    ),
-                  ),
-          ),
-        ],
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppColors.accentLight,
+      backgroundColor: AppColors.surface,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(gutter, 0, gutter, gutter),
+        child: _table(data.products),
       ),
     );
   }
-}
 
-class _TableHeaderRow extends StatelessWidget {
-  const _TableHeaderRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: const BoxDecoration(
-        color: AppColors.elevated,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: const [
-          Expanded(
-            flex: _colReference,
-            child: Text('RÉFÉRENCE', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colDesignation,
-            child: Text('DÉSIGNATION', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colUnit,
-            child: Text('UNITÉ', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colStores,
-            child: Text('MAGASINS', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colInitial,
-            child: Text(
-              'STOCK INITIAL',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colCurrent,
-            child: Text(
-              'STOCK ACTUEL',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colActions,
-            child: Text(
-              'ACTIONS',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProductRow extends StatelessWidget {
-  final ProductOverview overview;
-  final bool alternate;
-  final void Function(ProductOverview) onEdit;
-  final void Function(ProductOverview) onDelete;
-
-  const _ProductRow({
-    required this.overview,
-    required this.alternate,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final product = overview.product;
-    final isLow = overview.status == StockStatus.rupture;
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: BoxDecoration(
-        color: isLow
-            ? AppColors.errorBg.withValues(alpha: 0.45)
-            : (alternate ? AppColors.bg : AppColors.surface),
-        border: const Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: _colReference,
-            child: Text(
-              product.reference,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.accentLight,
+  Widget _table(List<ProductOverview> rows) {
+    return AdaptiveTable(
+      actionsColumn: 6,
+      columns: const [
+        AppColumn('RÉFÉRENCE', flex: 11),
+        AppColumn('DÉSIGNATION', flex: 20),
+        AppColumn('UNITÉ', flex: 7),
+        AppColumn('MAGASINS', flex: 13),
+        AppColumn.number('STOCK INITIAL', flex: 10),
+        AppColumn.number('STOCK ACTUEL', flex: 10),
+        AppColumn.actions(flex: 11),
+      ],
+      empty: AppEmptyState(
+        icon: _search.isEmpty
+            ? Icons.inventory_2_outlined
+            : Icons.search_off_outlined,
+        title: _search.isEmpty ? 'Aucun produit' : 'Aucun résultat',
+        message: _search.isEmpty
+            ? 'Créez votre premier produit ou importez un catalogue Excel.'
+            : 'Aucun produit ne correspond à « $_search ».',
+        action: _search.isEmpty
+            ? ElevatedButton.icon(
+                onPressed: _openAddDialog,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Nouveau produit'),
+              )
+            : OutlinedButton.icon(
+                onPressed: _clearSearch,
+                icon: const Icon(Icons.close, size: 16),
+                label: const Text('Effacer la recherche'),
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colDesignation,
-            child: Text(product.designation, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colUnit,
-            child: Text(product.unit, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colStores,
-            child: Text(
-              overview.storeNames.isEmpty ? '—' : overview.storeNames,
-              style: AppTextStyles.bodyMuted,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colInitial,
-            child: Text(
-              '${overview.initialStock}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-          ),
-          Expanded(
-            flex: _colCurrent,
-            child: Text(
-              '${overview.currentStock}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: overview.status.color),
-            ),
-          ),
-          Expanded(
-            flex: _colActions,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  color: AppColors.textSecondary,
-                  tooltip: 'Modifier',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: () => onEdit(overview),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  color: AppColors.error,
-                  tooltip: 'Supprimer',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: () => onDelete(overview),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
+      rows: [
+        for (final overview in rows)
+          AppRow(
+            onTap: () => _openEditDialog(overview),
+            accent: overview.status == StockStatus.rupture
+                ? AppColors.error
+                : null,
+            cells: [
+              Cells.identifier(overview.product.reference),
+              Cells.text(overview.product.designation),
+              Cells.muted(overview.product.unit),
+              overview.storeNames.isEmpty
+                  ? Cells.blank
+                  : Cells.muted(overview.storeNames),
+              Cells.number(
+                overview.initialStock,
+                color: AppColors.textSecondary,
+              ),
+              Cells.number(
+                overview.currentStock,
+                color: overview.status.color,
+                strong: true,
+                size: 14,
+              ),
+              RowActions(
+                actions: [
+                  RowAction(
+                    icon: Icons.edit_outlined,
+                    tooltip: 'Modifier',
+                    onPressed: () => _openEditDialog(overview),
+                  ),
+                  RowAction(
+                    icon: Icons.delete_outline,
+                    tooltip: 'Supprimer',
+                    destructive: true,
+                    onPressed: () => _deleteProduct(overview),
+                  ),
+                ],
+              ),
+            ],
+          ),
+      ],
     );
   }
 }
@@ -720,115 +607,113 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(_isEdit ? 'Modifier le produit' : 'Nouveau produit'),
-      content: SizedBox(
-        width: 420,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      content: DialogBody(
+        maxWidth: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _refController,
+              decoration: const InputDecoration(labelText: 'Référence *', hintText: 'REF-001'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _desController,
+              decoration: const InputDecoration(labelText: 'Désignation *', hintText: 'Ex : Ciment Portland'),
+            ),
+            const SizedBox(height: 12),
+            if (_isEdit) ...[
               TextField(
-                controller: _refController,
-                decoration: const InputDecoration(labelText: 'Référence *', hintText: 'REF-001'),
+                controller: _unitController,
+                decoration: const InputDecoration(labelText: 'Unité', hintText: 'Ex : sac, kg, litre'),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _desController,
-                decoration: const InputDecoration(labelText: 'Désignation *', hintText: 'Ex : Ciment Portland'),
-              ),
-              const SizedBox(height: 12),
-              if (_isEdit) ...[
-                TextField(
-                  controller: _unitController,
-                  decoration: const InputDecoration(labelText: 'Unité', hintText: 'Ex : sac, kg, litre'),
-                ),
-                const SizedBox(height: 16),
-                const Text('Stock par magasin', style: AppTextStyles.sectionLabel),
-                const SizedBox(height: 8),
-                for (final row in _rows)
-                  Padding(
-                    key: ValueKey(row),
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: row.storeId,
-                            isExpanded: true,
-                            isDense: true,
-                            decoration: const InputDecoration(labelText: 'Magasin *'),
-                            items: widget.stores
-                                .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name, overflow: TextOverflow.ellipsis)))
-                                .toList(),
-                            onChanged: (value) => setState(() => row.storeId = value),
-                          ),
+              const SizedBox(height: 16),
+              const Text('Stock par magasin', style: AppTextStyles.sectionLabel),
+              const SizedBox(height: 8),
+              for (final row in _rows)
+                Padding(
+                  key: ValueKey(row),
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          initialValue: row.storeId,
+                          isExpanded: true,
+                          isDense: true,
+                          decoration: const InputDecoration(labelText: 'Magasin *'),
+                          items: widget.stores
+                              .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name, overflow: TextOverflow.ellipsis)))
+                              .toList(),
+                          onChanged: (value) => setState(() => row.storeId = value),
                         ),
-                        const SizedBox(width: 12),
-                        SizedBox(
-                          width: 100,
-                          child: TextField(
-                            controller: row.controller,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                            decoration: const InputDecoration(labelText: 'Stock initial', isDense: true),
-                          ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 100,
+                        child: TextField(
+                          controller: row.controller,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          decoration: const InputDecoration(labelText: 'Stock initial', isDense: true),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, size: 18),
-                          color: AppColors.error,
-                          tooltip: 'Retirer ce magasin',
-                          onPressed: _rows.length > 1 ? () => _removeStockRow(row) : null,
-                        ),
-                      ],
-                    ),
-                  ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _rows.length >= widget.stores.length ? null : _addStockRow,
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Ajouter un magasin'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        color: AppColors.error,
+                        tooltip: 'Retirer ce magasin',
+                        onPressed: _rows.length > 1 ? () => _removeStockRow(row) : null,
+                      ),
+                    ],
                   ),
                 ),
-              ] else ...[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _unitController,
-                        decoration: const InputDecoration(labelText: 'Unité', hintText: 'Ex : sac, kg, litre'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _initialController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        decoration: const InputDecoration(labelText: 'Stock initial'),
-                      ),
-                    ),
-                  ],
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _rows.length >= widget.stores.length ? null : _addStockRow,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Ajouter un magasin'),
                 ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<int>(
-                  initialValue: _storeId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Magasin *'),
-                  items: widget.stores
-                      .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name, overflow: TextOverflow.ellipsis)))
-                      .toList(),
-                  onChanged: (value) => setState(() => _storeId = value),
-                ),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
-              ],
+              ),
+            ] else ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _unitController,
+                      decoration: const InputDecoration(labelText: 'Unité', hintText: 'Ex : sac, kg, litre'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _initialController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: const InputDecoration(labelText: 'Stock initial'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                initialValue: _storeId,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Magasin *'),
+                items: widget.stores
+                    .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name, overflow: TextOverflow.ellipsis)))
+                    .toList(),
+                onChanged: (value) => setState(() => _storeId = value),
+              ),
             ],
-          ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+            ],
+          ],
         ),
       ),
       actions: [

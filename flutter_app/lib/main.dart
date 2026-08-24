@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,10 +6,27 @@ import 'app.dart';
 import 'auth/auth_provider.dart';
 import 'data/db/database_service.dart';
 import 'theme/app_colors.dart';
+import 'theme/app_spacing.dart';
+import 'theme/app_text_styles.dart';
 import 'theme/app_theme.dart';
+import 'widgets/logo_mark.dart';
 
 void main() {
   runApp(const SocogenApp());
+}
+
+/// Lets desktop users drag-scroll long tables with the mouse, which the
+/// default Material behaviour restricts to touch devices.
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  const _AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
 }
 
 class SocogenApp extends StatelessWidget {
@@ -19,9 +37,10 @@ class SocogenApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => AuthProvider(),
       child: MaterialApp(
-        title: 'SOCOGEN',
+        title: 'SOCOGEN — Gestion de Stock',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
+        scrollBehavior: const _AppScrollBehavior(),
         home: const _SplashGate(),
       ),
     );
@@ -59,13 +78,21 @@ class _SplashGateState extends State<_SplashGate> {
     return FutureBuilder<void>(
       future: _bootFuture,
       builder: (context, snapshot) {
+        final Widget child;
         if (snapshot.connectionState != ConnectionState.done) {
-          return const _SplashScreen();
+          child = const _SplashScreen();
+        } else if (snapshot.hasError) {
+          child = _SplashScreen(error: snapshot.error.toString());
+        } else {
+          child = const AuthGate();
         }
-        if (snapshot.hasError) {
-          return _SplashScreen(error: snapshot.error.toString());
-        }
-        return const AuthGate();
+        // Cross-fade from the splash into the app so startup reads as one
+        // continuous motion rather than a jump between two screens.
+        return AnimatedSwitcher(
+          duration: AppDurations.slow,
+          switchInCurve: AppCurves.enter,
+          child: child,
+        );
       },
     );
   }
@@ -81,41 +108,62 @@ class _SplashScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'SOCOGEN',
-              style: TextStyle(
-                fontSize: 42,
-                fontWeight: FontWeight.w800,
-                color: AppColors.accentLight,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Gestion de Stock',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 24),
-            if (error == null)
-              const SizedBox(
-                width: 200,
-                child: LinearProgressIndicator(
-                  color: AppColors.accent,
-                  backgroundColor: AppColors.surface,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const LogoLockup(markSize: 64, titleSize: 34),
+              const SizedBox(height: AppSpacing.xxxl),
+              if (error == null)
+                const SizedBox(
+                  width: 180,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(AppRadius.pill),
+                    ),
+                    child: LinearProgressIndicator(minHeight: 3),
+                  ),
+                )
+              else
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.errorBg,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: AppColors.error,
+                        size: 22,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const Text(
+                        'Impossible d\'ouvrir la base de données',
+                        style: AppTextStyles.bodyStrong,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        error!,
+                        style: const TextStyle(
+                          color: AppColors.error,
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  error!,
-                  style: const TextStyle(color: AppColors.error, fontSize: 12),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

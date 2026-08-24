@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../auth/auth_provider.dart';
 import '../theme/app_colors.dart';
+import 'dialog_body.dart';
 
 /// Lets the currently signed-in user change their own password, available
 /// from the sidebar regardless of role (unlike the Paramètres page, which
@@ -66,8 +67,8 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Changer le mot de passe'),
-      content: SizedBox(
-        width: 380,
+      content: DialogBody(
+        maxWidth: 380,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

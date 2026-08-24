@@ -17,10 +17,18 @@ import '../data/repositories/store_repository.dart';
 import '../data/repositories/transaction_repository.dart';
 import '../services/data_refresh_bus.dart';
 import '../services/transactions_pdf_service.dart';
+import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import '../utils/formatters.dart';
+import '../widgets/adaptive_table.dart';
+import '../widgets/dialog_body.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/kpi_card.dart';
 import '../widgets/page_header.dart';
+import '../widgets/row_actions.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/status_badge.dart';
 
 class TransactionsScreen extends StatefulWidget {
@@ -238,7 +246,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = context.windowSize;
+    final padding = AppSpacing.pagePadding(size);
     final data = _data;
+
     if (_error != null) {
       return Column(
         children: [
@@ -246,28 +257,24 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             title: 'Transactions',
             subtitle: 'Historique des entrées et sorties',
           ),
-          Expanded(
-            child: Center(
-              child: Text(
-                'Erreur de chargement : $_error',
-                style: const TextStyle(color: AppColors.error),
-              ),
-            ),
-          ),
+          Expanded(child: AppErrorState(message: _error!, onRetry: _refresh)),
         ],
       );
     }
     if (data == null) {
-      return const Column(
+      return Column(
         children: [
-          PageHeader(
+          const PageHeader(
             title: 'Transactions',
             subtitle: 'Historique des entrées et sorties',
           ),
-          Expanded(child: Center(child: CircularProgressIndicator())),
+          Expanded(
+            child: Padding(padding: padding, child: const SkeletonList()),
+          ),
         ],
       );
     }
+
     final overview = _selectedOverview(data.products);
     return Column(
       children: [
@@ -280,9 +287,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
               label: const Text('Rapport PDF (tout)'),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             ElevatedButton.icon(
-              onPressed: _reference != null && data.rows.isNotEmpty ? () => _exportPdf(data) : null,
+              onPressed: _reference != null && data.rows.isNotEmpty
+                  ? () => _exportPdf(data)
+                  : null,
               icon: const Icon(Icons.picture_as_pdf, size: 18),
               label: const Text('Rapport PDF'),
             ),
@@ -291,11 +300,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: _refresh,
+            color: AppColors.accentLight,
+            backgroundColor: AppColors.surface,
             child: ListView(
-              padding: const EdgeInsets.all(24),
+              padding: padding,
               children: [
-                _InfoCard(overview: overview, storeAvailability: data.storeAvailability, rows: data.rows),
-                const SizedBox(height: 16),
+                _InfoCard(
+                  overview: overview,
+                  storeAvailability: data.storeAvailability,
+                  rows: data.rows,
+                ),
+                const SizedBox(height: AppSpacing.lg),
                 _FiltersPanel(
                   products: data.products,
                   stores: data.stores,
@@ -328,17 +343,102 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   onSearchChanged: _onSearchChanged,
                   onReset: _resetFilters,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 _StatsRow(rows: data.rows),
-                const SizedBox(height: 16),
-                _TransactionsTable(
-                  rows: data.rows,
-                  onEdit: (row) => _openEditDialog(row, data.stores),
-                  onDelete: _deleteTransaction,
-                ),
+                const SizedBox(height: AppSpacing.lg),
+                _table(data),
               ],
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _table(_TransactionsData data) {
+    return AdaptiveTable(
+      shrinkWrap: true,
+      titleColumn: 2,
+      subtitleColumn: 3,
+      actionsColumn: 10,
+      minTableWidth: 1000,
+      columns: const [
+        AppColumn('DATE', flex: 9),
+        AppColumn('TYPE', flex: 7, align: Alignment.center),
+        AppColumn('RÉFÉRENCE', flex: 10),
+        AppColumn('DÉSIGNATION', flex: 20),
+        AppColumn('MAGASIN', flex: 10),
+        AppColumn('PARTENAIRE', flex: 14),
+        AppColumn('N° FACTURE', flex: 9),
+        AppColumn.number('ENTRÉE', flex: 8),
+        AppColumn.number('SORTIE', flex: 8),
+        AppColumn.number('SOLDE', flex: 8),
+        AppColumn.actions(flex: 9),
+      ],
+      empty: const AppEmptyState(
+        icon: Icons.swap_horiz,
+        title: 'Aucune transaction',
+        message: 'Aucun mouvement ne correspond aux filtres sélectionnés.',
+      ),
+      rows: [
+        for (final row in data.rows) _transactionRow(row, data),
+      ],
+    );
+  }
+
+  AppRow _transactionRow(TransactionRow row, _TransactionsData data) {
+    final isEntry = row.type == TransactionType.entry;
+    final typeColor = isEntry ? AppColors.success : AppColors.error;
+
+    return AppRow(
+      accent: typeColor,
+      onTap: () => _openEditDialog(row, data.stores),
+      cells: [
+        Cells.muted(formatDisplayDate(row.date)),
+        Text(
+          isEntry ? 'Entrée' : 'Sortie',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: typeColor,
+          ),
+        ),
+        Cells.identifier(row.reference),
+        Cells.text(row.designation),
+        Cells.muted(row.storeName),
+        row.partner.isEmpty ? Cells.blank : Cells.muted(row.partner),
+        row.invoiceNumber.isEmpty
+            ? Cells.blank
+            : Cells.muted(row.invoiceNumber),
+        row.inQty > 0
+            ? Cells.number('+ ${row.inQty}',
+                color: AppColors.success, strong: true)
+            : Cells.blank,
+        row.outQty > 0
+            ? Cells.number('− ${row.outQty}',
+                color: AppColors.error, strong: true)
+            : Cells.blank,
+        Cells.number(
+          row.balance,
+          strong: true,
+          color: StockStatus.fromCurrent(row.balance).color,
+        ),
+        RowActions(
+          actions: [
+            RowAction(
+              icon: Icons.edit_outlined,
+              tooltip: 'Modifier',
+              onPressed: () => _openEditDialog(row, data.stores),
+            ),
+            RowAction(
+              icon: Icons.delete_outline,
+              tooltip: 'Supprimer',
+              destructive: true,
+              onPressed: () => _deleteTransaction(row),
+            ),
+          ],
         ),
       ],
     );
@@ -465,7 +565,11 @@ class _FiltersPanel extends StatelessWidget {
     required this.onReset,
   });
 
-  Future<void> _pickDate(BuildContext context, DateTime initial, ValueChanged<DateTime> onPicked) async {
+  Future<void> _pickDate(
+    BuildContext context,
+    DateTime initial,
+    ValueChanged<DateTime> onPicked,
+  ) async {
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -475,106 +579,166 @@ class _FiltersPanel extends StatelessWidget {
     if (picked != null) onPicked(picked);
   }
 
+  Widget _dateField(
+    BuildContext context,
+    String label,
+    DateTime value,
+    ValueChanged<DateTime> onChanged,
+  ) {
+    return InkWell(
+      borderRadius: AppRadius.fieldRadius,
+      onTap: () => _pickDate(context, value, onChanged),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          suffixIcon: const Icon(Icons.calendar_today_outlined, size: 16),
+        ),
+        child: Text(DateFormat('dd/MM/yyyy').format(value)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.elevated,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Wrap(
-        spacing: 14,
-        runSpacing: 14,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          SizedBox(
-            width: 240,
-            child: DropdownButtonFormField<String?>(
-              initialValue: reference,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Produit'),
-              items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('Tous les produits')),
-                ...products.map((o) => DropdownMenuItem<String?>(
-                      value: o.product.reference,
-                      child: Text(
-                        '${o.product.reference} — ${o.product.designation}',
-                        overflow: TextOverflow.ellipsis,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: appSurfaceDecoration(radius: AppRadius.lg),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Below this width the controls are given the full row rather
+          // than being squeezed side by side.
+          final stacked = constraints.maxWidth < 620;
+          final full = constraints.maxWidth;
+          double w(double wide) => stacked ? full : wide;
+
+          return Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: w(240),
+                child: DropdownButtonFormField<String?>(
+                  initialValue: reference,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Produit'),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Tous les produits'),
+                    ),
+                    ...products.map(
+                      (o) => DropdownMenuItem<String?>(
+                        value: o.product.reference,
+                        child: Text(
+                          '${o.product.reference} — ${o.product.designation}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    )),
-              ],
-              onChanged: onReferenceChanged,
-            ),
-          ),
-          SizedBox(
-            width: 260,
-            child: TextField(
-              controller: searchController,
-              decoration: const InputDecoration(
-                labelText: 'Rechercher',
-                prefixIcon: Icon(Icons.search, size: 20),
-                hintText: 'Référence, désignation, fournisseur…',
-                isDense: true,
+                    ),
+                  ],
+                  onChanged: onReferenceChanged,
+                ),
               ),
-              onChanged: onSearchChanged,
-            ),
-          ),
-          SizedBox(
-            width: 180,
-            child: DropdownButtonFormField<int?>(
-              initialValue: storeId,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Magasin'),
-              items: [
-                const DropdownMenuItem<int?>(value: null, child: Text('Tous les magasins')),
-                ...stores.map((s) => DropdownMenuItem<int?>(value: s.id, child: Text(s.name, overflow: TextOverflow.ellipsis))),
-              ],
-              onChanged: onStoreChanged,
-            ),
-          ),
-          SizedBox(
-            width: 140,
-            child: DropdownButtonFormField<TransactionType?>(
-              initialValue: type,
-              decoration: const InputDecoration(labelText: 'Type'),
-              items: const [
-                DropdownMenuItem<TransactionType?>(value: null, child: Text('Tous')),
-                DropdownMenuItem<TransactionType?>(value: TransactionType.entry, child: Text('Entrée')),
-                DropdownMenuItem<TransactionType?>(value: TransactionType.output, child: Text('Sortie')),
-              ],
-              onChanged: onTypeChanged,
-            ),
-          ),
-          SizedBox(
-            width: 140,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => _pickDate(context, dateFrom, onDateFromChanged),
-              child: InputDecorator(
-                decoration: const InputDecoration(labelText: 'Du'),
-                child: Text(DateFormat('dd/MM/yyyy').format(dateFrom)),
+              SizedBox(
+                width: w(260),
+                child: TextField(
+                  controller: searchController,
+                  decoration: const InputDecoration(
+                    labelText: 'Rechercher',
+                    prefixIcon: Icon(Icons.search, size: 20),
+                    hintText: 'Référence, désignation, fournisseur…',
+                  ),
+                  onChanged: onSearchChanged,
+                ),
               ),
-            ),
-          ),
-          SizedBox(
-            width: 140,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => _pickDate(context, dateTo, onDateToChanged),
-              child: InputDecorator(
-                decoration: const InputDecoration(labelText: 'Au'),
-                child: Text(DateFormat('dd/MM/yyyy').format(dateTo)),
+              SizedBox(
+                width: w(180),
+                child: DropdownButtonFormField<int?>(
+                  initialValue: storeId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Magasin'),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Tous les magasins'),
+                    ),
+                    ...stores.map(
+                      (s) => DropdownMenuItem<int?>(
+                        value: s.id,
+                        child: Text(s.name, overflow: TextOverflow.ellipsis),
+                      ),
+                    ),
+                  ],
+                  onChanged: onStoreChanged,
+                ),
               ),
-            ),
-          ),
-          OutlinedButton.icon(
-            onPressed: onReset,
-            icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('Réinitialiser'),
-          ),
-        ],
+              SizedBox(
+                width: w(150),
+                child: DropdownButtonFormField<TransactionType?>(
+                  initialValue: type,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Type'),
+                  items: const [
+                    DropdownMenuItem<TransactionType?>(
+                      value: null,
+                      child: Text('Tous'),
+                    ),
+                    DropdownMenuItem<TransactionType?>(
+                      value: TransactionType.entry,
+                      child: Text('Entrée'),
+                    ),
+                    DropdownMenuItem<TransactionType?>(
+                      value: TransactionType.output,
+                      child: Text('Sortie'),
+                    ),
+                  ],
+                  onChanged: onTypeChanged,
+                ),
+              ),
+              // The two dates always stay on one line: side by side when
+              // stacked, so the period reads as a single range control.
+              if (stacked)
+                SizedBox(
+                  width: full,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _dateField(
+                          context,
+                          'Du',
+                          dateFrom,
+                          onDateFromChanged,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: _dateField(context, 'Au', dateTo, onDateToChanged),
+                      ),
+                    ],
+                  ),
+                )
+              else ...[
+                SizedBox(
+                  width: 150,
+                  child: _dateField(context, 'Du', dateFrom, onDateFromChanged),
+                ),
+                SizedBox(
+                  width: 150,
+                  child: _dateField(context, 'Au', dateTo, onDateToChanged),
+                ),
+              ],
+              SizedBox(
+                width: stacked ? full : null,
+                child: OutlinedButton.icon(
+                  onPressed: onReset,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Réinitialiser'),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -623,295 +787,6 @@ class _StatChip extends StatelessWidget {
           Text(value, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w700)),
           const SizedBox(width: 6),
           Text(label, style: AppTextStyles.bodyMuted),
-        ],
-      ),
-    );
-  }
-}
-
-// Relative flex weights for the transactions table columns. Using a
-// flexible Row instead of fixed pixel widths means the table always fits
-// the available width (no horizontal scrollbar cutting off the ACTIONS
-// column).
-const int _colDate = 9;
-const int _colType = 7;
-const int _colReference = 10;
-const int _colDesignation = 20;
-const int _colStore = 10;
-const int _colPartner = 14;
-const int _colInvoice = 9;
-const int _colInOut = 8;
-const int _colBalance = 8;
-const int _colActions = 9;
-const double _cellPadding = 10;
-
-class _TransactionsTable extends StatelessWidget {
-  final List<TransactionRow> rows;
-  final void Function(TransactionRow) onEdit;
-  final void Function(TransactionRow) onDelete;
-
-  const _TransactionsTable({required this.rows, required this.onEdit, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          const _TableHeaderRow(),
-          rows.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32),
-                  child: Center(child: Text('Aucune transaction', style: AppTextStyles.bodyMuted)),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: rows.length,
-                  itemBuilder: (context, index) => _TransactionRowWidget(
-                    row: rows[index],
-                    onEdit: onEdit,
-                    onDelete: onDelete,
-                  ),
-                ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TableHeaderRow extends StatelessWidget {
-  const _TableHeaderRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: const BoxDecoration(
-        color: AppColors.elevated,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: const Row(
-        children: [
-          Expanded(
-            flex: _colDate,
-            child: Text('DATE', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colType,
-            child: Text(
-              'TYPE',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colReference,
-            child: Text('RÉFÉRENCE', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colDesignation,
-            child: Text('DÉSIGNATION', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colStore,
-            child: Text('MAGASIN', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colPartner,
-            child: Text(
-              'FOURNISSEUR / DESTINATION',
-              style: AppTextStyles.tableHeader,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colInvoice,
-            child: Text('N° FACTURE', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colInOut,
-            child: Text(
-              'ENTRÉE (+)',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colInOut,
-            child: Text(
-              'SORTIE (−)',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colBalance,
-            child: Text(
-              'SOLDE',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colActions,
-            child: Text(
-              'ACTIONS',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TransactionRowWidget extends StatelessWidget {
-  final TransactionRow row;
-  final void Function(TransactionRow) onEdit;
-  final void Function(TransactionRow) onDelete;
-
-  const _TransactionRowWidget({required this.row, required this.onEdit, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    final isEntry = row.type == TransactionType.entry;
-    var displayDate = row.date;
-    try {
-      displayDate = DateFormat('dd/MM/yyyy').format(DateTime.parse(row.date));
-    } catch (_) {}
-
-    final tint = isEntry ? AppColors.successBg : AppColors.errorBg;
-
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: BoxDecoration(
-        color: tint.withValues(alpha: 0.35),
-        border: const Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: _colDate,
-            child: Text(
-              displayDate,
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colType,
-            child: Text(
-              isEntry ? 'Entrée' : 'Sortie',
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: isEntry ? AppColors.success : AppColors.error,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: _colReference,
-            child: Text(
-              row.reference,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.accentLight),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colDesignation,
-            child: Text(row.designation, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colStore,
-            child: Text(row.storeName, style: AppTextStyles.bodyMuted, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colPartner,
-            child: Text(
-              row.partner.isEmpty ? '—' : row.partner,
-              style: AppTextStyles.bodyMuted,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colInvoice,
-            child: Text(
-              row.invoiceNumber.isEmpty ? '—' : row.invoiceNumber,
-              style: AppTextStyles.bodyMuted,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colInOut,
-            child: Text(
-              row.inQty > 0 ? '+ ${row.inQty}' : '—',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.success),
-            ),
-          ),
-          Expanded(
-            flex: _colInOut,
-            child: Text(
-              row.outQty > 0 ? '− ${row.outQty}' : '—',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error),
-            ),
-          ),
-          Expanded(
-            flex: _colBalance,
-            child: Text(
-              '${row.balance}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: StockStatus.fromCurrent(row.balance).color,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: _colActions,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  color: AppColors.textSecondary,
-                  tooltip: 'Modifier',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: () => onEdit(row),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  color: AppColors.error,
-                  tooltip: 'Supprimer',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: () => onDelete(row),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -1044,8 +919,8 @@ class _TransactionFormDialogState extends State<_TransactionFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text('Modifier la transaction · ${widget.row.reference}'),
-      content: SizedBox(
-        width: 480,
+      content: DialogBody(
+        maxWidth: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

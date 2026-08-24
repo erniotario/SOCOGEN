@@ -7,10 +7,16 @@ import '../data/models/view_models.dart';
 import '../data/repositories/report_repository.dart';
 import '../data/repositories/store_repository.dart';
 import '../services/data_refresh_bus.dart';
+import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/adaptive_table.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/filter_bar.dart';
 import '../widgets/kpi_card.dart';
 import '../widgets/page_header.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/status_badge.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -27,7 +33,11 @@ class _ReportsData {
   final List<Store> stores;
   final _StatusCounts counts;
 
-  const _ReportsData({required this.rows, required this.stores, required this.counts});
+  const _ReportsData({
+    required this.rows,
+    required this.stores,
+    required this.counts,
+  });
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
@@ -42,6 +52,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
   int? _storeId;
   StockStatus? _status;
   Timer? _searchDebounce;
+
+  bool get _hasFilters =>
+      _search.isNotEmpty || _storeId != null || _status != null;
 
   @override
   void initState() {
@@ -83,385 +96,259 @@ class _ReportsScreenState extends State<ReportsScreen> {
   void _reapply() => _load();
 
   void _onSearchChanged(String value) {
-    _search = value;
+    setState(() => _search = value);
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 250), _load);
   }
 
+  void _clearFilters() {
+    _searchController.clear();
+    setState(() {
+      _search = '';
+      _storeId = null;
+      _status = null;
+    });
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final data = _data;
+    final size = context.windowSize;
     return Column(
       children: [
-        const PageHeader(
+        PageHeader(
           title: 'Rapport des Produits',
           subtitle: 'État des stocks par produit et par magasin',
+          actions: [
+            if (!size.isCompact)
+              IconButton(
+                tooltip: 'Actualiser',
+                onPressed: _refresh,
+                icon: const Icon(Icons.refresh, size: 18),
+              ),
+          ],
         ),
-        Expanded(
-          child: _error != null
-              ? Center(
-                  child: Text(
-                    'Erreur de chargement : $_error',
-                    style: const TextStyle(color: AppColors.error),
-                  ),
-                )
-              : data == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : RefreshIndicator(
-                      onRefresh: _refresh,
-                      child: ListView(
-                        padding: const EdgeInsets.all(24),
-                        children: [
-                          KpiRow(cards: [
-                            KpiCard(
-                              icon: Icons.inventory_2_outlined,
-                              label: 'Produits total',
-                              value: '${data.counts.total}',
-                              color: AppColors.accentLight,
-                            ),
-                            KpiCard(
-                              icon: Icons.check_circle_outline,
-                              label: 'En stock',
-                              value: '${data.counts.enStock}',
-                              color: AppColors.success,
-                            ),
-                            KpiCard(
-                              icon: Icons.warning_amber_outlined,
-                              label: 'Stock faible',
-                              value: '${data.counts.stockFaible}',
-                              color: AppColors.warning,
-                            ),
-                            KpiCard(
-                              icon: Icons.error_outline,
-                              label: 'Rupture de stock',
-                              value: '${data.counts.rupture}',
-                              color: AppColors.error,
-                            ),
-                          ]),
-                          const SizedBox(height: 16),
-                          _FiltersPanel(
-                            searchController: _searchController,
-                            stores: data.stores,
-                            storeId: _storeId,
-                            status: _status,
-                            onSearchChanged: _onSearchChanged,
-                            onStoreChanged: (value) {
-                              setState(() => _storeId = value);
-                              _reapply();
-                            },
-                            onStatusChanged: (value) {
-                              setState(() => _status = value);
-                              _reapply();
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              const Text('DÉTAIL PAR PRODUIT', style: AppTextStyles.sectionLabel),
-                              const Spacer(),
-                              Text('${data.rows.length} produit(s) affiché(s)', style: AppTextStyles.bodyMuted),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          _ReportTable(rows: data.rows),
-                        ],
-                      ),
-                    ),
+        Expanded(child: _buildBody(size)),
+      ],
+    );
+  }
+
+  Widget _buildBody(WindowSize size) {
+    final padding = AppSpacing.pagePadding(size);
+
+    if (_error != null) {
+      return AppErrorState(message: _error!, onRetry: _refresh);
+    }
+
+    final data = _data;
+    if (data == null) {
+      return Padding(
+        padding: padding,
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SkeletonKpiRow(),
+            SizedBox(height: AppSpacing.lg),
+            Expanded(child: SkeletonList()),
+          ],
+        ),
+      );
+    }
+
+    final header = <Widget>[
+      KpiRow(cards: [
+        KpiCard(
+          icon: Icons.inventory_2_outlined,
+          label: 'Produits total',
+          value: '${data.counts.total}',
+          color: AppColors.accentLight,
+        ),
+        KpiCard(
+          icon: Icons.check_circle_outline,
+          label: 'En stock',
+          value: '${data.counts.enStock}',
+          color: AppColors.success,
+        ),
+        KpiCard(
+          icon: Icons.warning_amber_outlined,
+          label: 'Stock faible',
+          value: '${data.counts.stockFaible}',
+          color: AppColors.warning,
+        ),
+        KpiCard(
+          icon: Icons.error_outline,
+          label: 'Rupture de stock',
+          value: '${data.counts.rupture}',
+          color: AppColors.error,
+        ),
+      ]),
+      const SizedBox(height: AppSpacing.lg),
+      _buildFilters(data.stores),
+      const SizedBox(height: AppSpacing.lg),
+      Row(
+        children: [
+          const Text('DÉTAIL PAR PRODUIT', style: AppTextStyles.sectionLabel),
+          const Spacer(),
+          Text(
+            '${data.rows.length} produit(s)',
+            style: AppTextStyles.captionMuted,
+          ),
+        ],
+      ),
+      const SizedBox(height: AppSpacing.sm),
+    ];
+
+    // On a phone the whole page scrolls as one column; on wider windows
+    // the summary and filters stay put while the table scrolls under its
+    // own sticky header.
+    if (size.isCompact) {
+      return RefreshIndicator(
+        onRefresh: _refresh,
+        color: AppColors.accentLight,
+        backgroundColor: AppColors.surface,
+        child: ListView(
+          padding: padding,
+          children: [...header, _table(data.rows, shrinkWrap: true)],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: padding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ...header,
+          Expanded(child: _table(data.rows, shrinkWrap: false)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilters(List<Store> stores) {
+    return FilterBar(
+      onClear: _hasFilters ? _clearFilters : null,
+      fields: [
+        FilterField(
+          flex: 3,
+          child: TextField(
+            controller: _searchController,
+            decoration: const InputDecoration(
+              labelText: 'Rechercher',
+              prefixIcon: Icon(Icons.search, size: 20),
+              hintText: 'Référence, désignation…',
+            ),
+            onChanged: _onSearchChanged,
+          ),
+        ),
+        FilterField(
+          flex: 2,
+          child: DropdownButtonFormField<int?>(
+            initialValue: _storeId,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Magasin'),
+            items: [
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text('Tous les magasins'),
+              ),
+              ...stores.map(
+                (s) => DropdownMenuItem<int?>(
+                  value: s.id,
+                  child: Text(s.name, overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            ],
+            onChanged: (value) {
+              setState(() => _storeId = value);
+              _reapply();
+            },
+          ),
+        ),
+        FilterField(
+          flex: 2,
+          child: DropdownButtonFormField<StockStatus?>(
+            initialValue: _status,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Statut'),
+            items: const [
+              DropdownMenuItem<StockStatus?>(value: null, child: Text('Tous')),
+              DropdownMenuItem<StockStatus?>(
+                value: StockStatus.enStock,
+                child: Text('En stock'),
+              ),
+              DropdownMenuItem<StockStatus?>(
+                value: StockStatus.stockFaible,
+                child: Text('Stock faible'),
+              ),
+              DropdownMenuItem<StockStatus?>(
+                value: StockStatus.rupture,
+                child: Text('Rupture'),
+              ),
+            ],
+            onChanged: (value) {
+              setState(() => _status = value);
+              _reapply();
+            },
+          ),
         ),
       ],
     );
   }
-}
 
-class _FiltersPanel extends StatelessWidget {
-  final TextEditingController searchController;
-  final List<Store> stores;
-  final int? storeId;
-  final StockStatus? status;
-  final ValueChanged<String> onSearchChanged;
-  final ValueChanged<int?> onStoreChanged;
-  final ValueChanged<StockStatus?> onStatusChanged;
-
-  const _FiltersPanel({
-    required this.searchController,
-    required this.stores,
-    required this.storeId,
-    required this.status,
-    required this.onSearchChanged,
-    required this.onStoreChanged,
-    required this.onStatusChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.elevated,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+  Widget _table(List<ReportRow> rows, {required bool shrinkWrap}) {
+    return AdaptiveTable(
+      shrinkWrap: shrinkWrap,
+      minTableWidth: 820,
+      columns: const [
+        AppColumn('RÉFÉRENCE', flex: 11),
+        AppColumn('DÉSIGNATION', flex: 22),
+        AppColumn('UNITÉ', flex: 7),
+        AppColumn('MAGASIN', flex: 13),
+        AppColumn.number('STOCK INITIAL', flex: 11),
+        AppColumn.number('ENTRÉES', flex: 9),
+        AppColumn.number('SORTIES', flex: 9),
+        AppColumn.number('STOCK ACTUEL', flex: 11),
+        AppColumn('STATUT', flex: 12, align: Alignment.center),
+      ],
+      empty: AppEmptyState(
+        icon: _hasFilters ? Icons.filter_alt_off_outlined : Icons.bar_chart,
+        title: _hasFilters ? 'Aucun résultat' : 'Aucun produit',
+        message: _hasFilters
+            ? 'Aucun produit ne correspond aux filtres appliqués.'
+            : 'Le rapport se remplira dès que des produits seront créés.',
+        action: _hasFilters
+            ? OutlinedButton.icon(
+                onPressed: _clearFilters,
+                icon: const Icon(Icons.close, size: 16),
+                label: const Text('Effacer les filtres'),
+              )
+            : null,
       ),
-      child: Wrap(
-        spacing: 14,
-        runSpacing: 14,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          SizedBox(
-            width: 260,
-            child: TextField(
-              controller: searchController,
-              decoration: const InputDecoration(
-                labelText: 'Rechercher',
-                prefixIcon: Icon(Icons.search, size: 20),
-                hintText: 'Référence, désignation…',
-                isDense: true,
+      rows: [
+        for (final row in rows)
+          AppRow(
+            accent: row.status == StockStatus.rupture ? AppColors.error : null,
+            cells: [
+              Cells.identifier(row.reference),
+              Cells.text(row.designation),
+              Cells.muted(row.unit),
+              Cells.muted(row.storeName),
+              Cells.number(row.initialStock, color: AppColors.textSecondary),
+              Cells.number('+ ${row.entries}',
+                  color: AppColors.success, strong: true),
+              Cells.number('− ${row.outputs}',
+                  color: AppColors.error, strong: true),
+              Cells.number(
+                row.current,
+                color: row.status.color,
+                strong: true,
+                size: 14,
               ),
-              onChanged: onSearchChanged,
-            ),
+              StatusBadge(status: row.status),
+            ],
           ),
-          SizedBox(
-            width: 180,
-            child: DropdownButtonFormField<int?>(
-              initialValue: storeId,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Magasin'),
-              items: [
-                const DropdownMenuItem<int?>(value: null, child: Text('Tous les magasins')),
-                ...stores.map((s) => DropdownMenuItem<int?>(value: s.id, child: Text(s.name, overflow: TextOverflow.ellipsis))),
-              ],
-              onChanged: onStoreChanged,
-            ),
-          ),
-          SizedBox(
-            width: 170,
-            child: DropdownButtonFormField<StockStatus?>(
-              initialValue: status,
-              decoration: const InputDecoration(labelText: 'Statut'),
-              items: const [
-                DropdownMenuItem<StockStatus?>(value: null, child: Text('Tous')),
-                DropdownMenuItem<StockStatus?>(value: StockStatus.enStock, child: Text('En stock')),
-                DropdownMenuItem<StockStatus?>(value: StockStatus.stockFaible, child: Text('Stock faible')),
-                DropdownMenuItem<StockStatus?>(value: StockStatus.rupture, child: Text('Rupture')),
-              ],
-              onChanged: onStatusChanged,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Relative flex weights for the report table columns. Using a flexible
-// Row instead of fixed pixel widths means the table always fits the
-// available width (no horizontal scrollbar cutting off the STATUT column).
-const int _colReference = 11;
-const int _colDesignation = 22;
-const int _colUnit = 7;
-const int _colStore = 13;
-const int _colInitial = 11;
-const int _colMove = 9;
-const int _colCurrent = 11;
-const int _colStatus = 12;
-const double _cellPadding = 10;
-
-class _ReportTable extends StatelessWidget {
-  final List<ReportRow> rows;
-
-  const _ReportTable({required this.rows});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          const _TableHeaderRow(),
-          rows.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32),
-                  child: Center(child: Text('Aucun produit', style: AppTextStyles.bodyMuted)),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: rows.length,
-                  itemBuilder: (context, index) => _ReportRowWidget(row: rows[index], alternate: index.isOdd),
-                ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TableHeaderRow extends StatelessWidget {
-  const _TableHeaderRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: const BoxDecoration(
-        color: AppColors.elevated,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: const Row(
-        children: [
-          Expanded(
-            flex: _colReference,
-            child: Text('RÉFÉRENCE', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colDesignation,
-            child: Text('DÉSIGNATION', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colUnit,
-            child: Text('UNITÉ', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colStore,
-            child: Text('MAGASIN', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colInitial,
-            child: Text(
-              'STOCK INITIAL',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colMove,
-            child: Text(
-              'ENTRÉES',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colMove,
-            child: Text(
-              'SORTIES',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colCurrent,
-            child: Text(
-              'STOCK ACTUEL',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colStatus,
-            child: Text(
-              'STATUT',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReportRowWidget extends StatelessWidget {
-  final ReportRow row;
-  final bool alternate;
-
-  const _ReportRowWidget({required this.row, required this.alternate});
-
-  @override
-  Widget build(BuildContext context) {
-    final isRupture = row.status == StockStatus.rupture;
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: BoxDecoration(
-        color: isRupture
-            ? AppColors.errorBg.withValues(alpha: 0.45)
-            : (alternate ? AppColors.bg : AppColors.surface),
-        border: const Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: _colReference,
-            child: Text(
-              row.reference,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.accentLight),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colDesignation,
-            child: Text(row.designation, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colUnit,
-            child: Text(row.unit, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colStore,
-            child: Text(row.storeName, style: AppTextStyles.bodyMuted, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colInitial,
-            child: Text(
-              '${row.initialStock}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-          ),
-          Expanded(
-            flex: _colMove,
-            child: Text(
-              '+ ${row.entries}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.success),
-            ),
-          ),
-          Expanded(
-            flex: _colMove,
-            child: Text(
-              '− ${row.outputs}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error),
-            ),
-          ),
-          Expanded(
-            flex: _colCurrent,
-            child: Text(
-              '${row.current}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: row.status.color),
-            ),
-          ),
-          Expanded(
-            flex: _colStatus,
-            child: Center(child: StatusBadge(status: row.status)),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }

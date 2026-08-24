@@ -9,10 +9,18 @@ import '../data/repositories/product_repository.dart';
 import '../data/repositories/stock_entry_repository.dart';
 import '../data/repositories/store_repository.dart';
 import '../services/data_refresh_bus.dart';
+import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import '../utils/formatters.dart';
+import '../widgets/adaptive_table.dart';
+import '../widgets/dialog_body.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/page_header.dart';
 import '../widgets/product_autocomplete.dart';
+import '../widgets/row_actions.dart';
+import '../widgets/skeleton.dart';
 
 class EntriesScreen extends StatefulWidget {
   const EntriesScreen({super.key});
@@ -102,6 +110,7 @@ class _EntriesScreenState extends State<EntriesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = context.windowSize;
     return Column(
       children: [
         const PageHeader(
@@ -112,38 +121,111 @@ class _EntriesScreenState extends State<EntriesScreen> {
           child: FutureBuilder<_EntriesData>(
             future: _future,
             builder: (context, snapshot) {
+              final padding = AppSpacing.pagePadding(size);
               if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
+                return Padding(padding: padding, child: const SkeletonList());
               }
               if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Erreur de chargement : ${snapshot.error}',
-                    style: const TextStyle(color: AppColors.error),
-                  ),
+                return AppErrorState(
+                  message: '${snapshot.error}',
+                  onRetry: _refresh,
                 );
               }
               final data = snapshot.data!;
               return RefreshIndicator(
                 onRefresh: _refresh,
+                color: AppColors.accentLight,
+                backgroundColor: AppColors.surface,
                 child: ListView(
-                  padding: const EdgeInsets.all(24),
+                  padding: padding,
                   children: [
-                    _EntryFormCard(products: data.products, stores: data.stores, onSaved: _onChanged),
-                    const SizedBox(height: 20),
-                    const Text('HISTORIQUE DES ENTRÉES', style: AppTextStyles.sectionLabel),
-                    const SizedBox(height: 10),
-                    _EntriesTable(
-                      rows: data.entries,
-                      onEdit: (row) => _openEditDialog(row, data),
-                      onDelete: (row) => _deleteEntry(row.entry),
+                    _EntryFormCard(
+                      products: data.products,
+                      stores: data.stores,
+                      onSaved: _onChanged,
                     ),
+                    const SizedBox(height: AppSpacing.xl),
+                    Row(
+                      children: [
+                        const Text(
+                          'HISTORIQUE DES ENTRÉES',
+                          style: AppTextStyles.sectionLabel,
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${data.entries.length} entrée(s)',
+                          style: AppTextStyles.captionMuted,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _table(data),
                   ],
                 ),
               );
             },
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _table(_EntriesData data) {
+    return AdaptiveTable(
+      shrinkWrap: true,
+      titleColumn: 2,
+      subtitleColumn: 3,
+      actionsColumn: 6,
+      minTableWidth: 760,
+      columns: const [
+        AppColumn('DATE', flex: 10),
+        AppColumn('FOURNISSEUR', flex: 15),
+        AppColumn('RÉFÉRENCE', flex: 13),
+        AppColumn('DÉSIGNATION', flex: 20),
+        AppColumn('MAGASIN', flex: 14),
+        AppColumn.number('QUANTITÉ', flex: 10),
+        AppColumn.actions(flex: 11),
+      ],
+      empty: const AppEmptyState(
+        icon: Icons.call_received,
+        title: 'Aucune entrée',
+        message: 'Enregistrez une réception avec le formulaire ci-dessus '
+            'pour la voir apparaître ici.',
+      ),
+      rows: [
+        for (final row in data.entries)
+          AppRow(
+            onTap: () => _openEditDialog(row, data),
+            cells: [
+              Cells.text(formatDisplayDate(row.entry.date)),
+              row.entry.supplier.isEmpty
+                  ? Cells.blank
+                  : Cells.muted(row.entry.supplier),
+              Cells.identifier(row.entry.reference),
+              Cells.text(row.entry.designation),
+              Cells.muted(row.storeName),
+              Cells.number(
+                '+ ${row.entry.quantity}',
+                color: AppColors.success,
+                strong: true,
+              ),
+              RowActions(
+                actions: [
+                  RowAction(
+                    icon: Icons.edit_outlined,
+                    tooltip: 'Modifier',
+                    onPressed: () => _openEditDialog(row, data),
+                  ),
+                  RowAction(
+                    icon: Icons.delete_outline,
+                    tooltip: 'Supprimer',
+                    destructive: true,
+                    onPressed: () => _deleteEntry(row.entry),
+                  ),
+                ],
+              ),
+            ],
+          ),
       ],
     );
   }
@@ -347,209 +429,6 @@ class _EntryFormCardState extends State<_EntryFormCard> {
   }
 }
 
-// Relative flex weights for the entries table columns. Using a flexible Row
-// instead of fixed pixel widths means the table always fits the available
-// width, even on narrow phone screens in portrait mode.
-const int _colDate = 10;
-const int _colSupplier = 15;
-const int _colReference = 13;
-const int _colDesignation = 20;
-const int _colStore = 14;
-const int _colQty = 10;
-const int _colActions = 11;
-const double _cellPadding = 10;
-
-class _EntriesTable extends StatelessWidget {
-  final List<StockEntryWithStore> rows;
-  final void Function(StockEntryWithStore) onEdit;
-  final void Function(StockEntryWithStore) onDelete;
-
-  const _EntriesTable({required this.rows, required this.onEdit, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          const _TableHeaderRow(),
-          rows.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32),
-                  child: Center(child: Text('Aucune entrée', style: AppTextStyles.bodyMuted)),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: rows.length,
-                  itemBuilder: (context, index) => _EntryRow(
-                    row: rows[index],
-                    alternate: index.isOdd,
-                    onEdit: onEdit,
-                    onDelete: onDelete,
-                  ),
-                ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TableHeaderRow extends StatelessWidget {
-  const _TableHeaderRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: const BoxDecoration(
-        color: AppColors.elevated,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: const [
-          Expanded(
-            flex: _colDate,
-            child: Text('DATE', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colSupplier,
-            child: Text('FOURNISSEUR', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colReference,
-            child: Text('RÉFÉRENCE', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colDesignation,
-            child: Text('DÉSIGNATION', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colStore,
-            child: Text('MAGASIN', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colQty,
-            child: Text(
-              'QUANTITÉ',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colActions,
-            child: Text(
-              'ACTIONS',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EntryRow extends StatelessWidget {
-  final StockEntryWithStore row;
-  final bool alternate;
-  final void Function(StockEntryWithStore) onEdit;
-  final void Function(StockEntryWithStore) onDelete;
-
-  const _EntryRow({required this.row, required this.alternate, required this.onEdit, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    final entry = row.entry;
-    var displayDate = entry.date;
-    try {
-      displayDate = DateFormat('dd/MM/yyyy').format(DateTime.parse(entry.date));
-    } catch (_) {}
-
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: BoxDecoration(
-        color: alternate ? AppColors.bg : AppColors.surface,
-        border: const Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: _colDate,
-            child: Text(displayDate, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colSupplier,
-            child: Text(
-              entry.supplier.isEmpty ? '—' : entry.supplier,
-              style: AppTextStyles.bodyMuted,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colReference,
-            child: Text(
-              entry.reference,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.accentLight),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colDesignation,
-            child: Text(entry.designation, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colStore,
-            child: Text(row.storeName, style: AppTextStyles.bodyMuted, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colQty,
-            child: Text(
-              '+ ${entry.quantity}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.success),
-            ),
-          ),
-          Expanded(
-            flex: _colActions,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  color: AppColors.textSecondary,
-                  tooltip: 'Modifier',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: () => onEdit(row),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  color: AppColors.error,
-                  tooltip: 'Supprimer',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: () => onDelete(row),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _EntryFormDialog extends StatefulWidget {
   final StockEntry entry;
   final List<ProductOverview> products;
@@ -661,8 +540,8 @@ class _EntryFormDialogState extends State<_EntryFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text("Modifier l'entrée"),
-      content: SizedBox(
-        width: 420,
+      content: DialogBody(
+        maxWidth: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

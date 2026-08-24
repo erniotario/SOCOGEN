@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
 /// Card with an icon+title header and a divider, used to group related
@@ -10,30 +12,45 @@ class SectionCard extends StatelessWidget {
   final String title;
   final List<Widget> children;
 
-  const SectionCard({super.key, required this.icon, required this.title, required this.children});
+  /// Optional control shown at the right of the header row (a button, a
+  /// status chip, …).
+  final Widget? trailing;
+
+  const SectionCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.children,
+    this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final padding = context.isCompact ? AppSpacing.lg : AppSpacing.xl;
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.elevated,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
-      ),
+      padding: EdgeInsets.all(padding),
+      decoration: appSurfaceDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Icon(icon, size: 16, color: AppColors.accentLight),
-              const SizedBox(width: 8),
-              Text(title, style: AppTextStyles.sectionLabel),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTextStyles.sectionLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              ?trailing,
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           const Divider(color: AppColors.border, height: 1),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           ...children,
         ],
       ),

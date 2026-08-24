@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'auth/auth_provider.dart';
 import 'screens/login_screen.dart';
 import 'theme/app_colors.dart';
+import 'theme/app_spacing.dart';
+import 'widgets/logo_mark.dart';
 import 'widgets/nav_shell.dart';
 
 /// Decides which screen to show based on [AuthProvider.status]:
@@ -29,10 +31,22 @@ class _AuthGateState extends State<AuthGate> {
     final status = context.watch<AuthProvider>().status;
     switch (status) {
       case AuthStatus.unknown:
+        // Same lockup as the splash, so the hand-off between boot and
+        // auth is invisible to the user.
         return const Scaffold(
           backgroundColor: AppColors.bg,
           body: Center(
-            child: CircularProgressIndicator(color: AppColors.accent),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LogoLockup(markSize: 64, titleSize: 34),
+                SizedBox(height: AppSpacing.xxxl),
+                SizedBox(
+                  width: 180,
+                  child: LinearProgressIndicator(minHeight: 3),
+                ),
+              ],
+            ),
           ),
         );
       case AuthStatus.setupRequired:

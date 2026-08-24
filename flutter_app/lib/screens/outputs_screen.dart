@@ -9,10 +9,18 @@ import '../data/repositories/product_repository.dart';
 import '../data/repositories/stock_output_repository.dart';
 import '../data/repositories/store_repository.dart';
 import '../services/data_refresh_bus.dart';
+import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import '../utils/formatters.dart';
+import '../widgets/adaptive_table.dart';
+import '../widgets/dialog_body.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/page_header.dart';
 import '../widgets/product_autocomplete.dart';
+import '../widgets/row_actions.dart';
+import '../widgets/skeleton.dart';
 
 class OutputsScreen extends StatefulWidget {
   const OutputsScreen({super.key});
@@ -102,6 +110,7 @@ class _OutputsScreenState extends State<OutputsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = context.windowSize;
     return Column(
       children: [
         const PageHeader(
@@ -112,38 +121,115 @@ class _OutputsScreenState extends State<OutputsScreen> {
           child: FutureBuilder<_OutputsData>(
             future: _future,
             builder: (context, snapshot) {
+              final padding = AppSpacing.pagePadding(size);
               if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
+                return Padding(padding: padding, child: const SkeletonList());
               }
               if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Erreur de chargement : ${snapshot.error}',
-                    style: const TextStyle(color: AppColors.error),
-                  ),
+                return AppErrorState(
+                  message: '${snapshot.error}',
+                  onRetry: _refresh,
                 );
               }
               final data = snapshot.data!;
               return RefreshIndicator(
                 onRefresh: _refresh,
+                color: AppColors.accentLight,
+                backgroundColor: AppColors.surface,
                 child: ListView(
-                  padding: const EdgeInsets.all(24),
+                  padding: padding,
                   children: [
-                    _OutputFormCard(products: data.products, stores: data.stores, onSaved: _onChanged),
-                    const SizedBox(height: 20),
-                    const Text('HISTORIQUE DES SORTIES', style: AppTextStyles.sectionLabel),
-                    const SizedBox(height: 10),
-                    _OutputsTable(
-                      rows: data.outputs,
-                      onEdit: (row) => _openEditDialog(row, data),
-                      onDelete: (row) => _deleteOutput(row.output),
+                    _OutputFormCard(
+                      products: data.products,
+                      stores: data.stores,
+                      onSaved: _onChanged,
                     ),
+                    const SizedBox(height: AppSpacing.xl),
+                    Row(
+                      children: [
+                        const Text(
+                          'HISTORIQUE DES SORTIES',
+                          style: AppTextStyles.sectionLabel,
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${data.outputs.length} sortie(s)',
+                          style: AppTextStyles.captionMuted,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _table(data),
                   ],
                 ),
               );
             },
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _table(_OutputsData data) {
+    return AdaptiveTable(
+      shrinkWrap: true,
+      titleColumn: 1,
+      subtitleColumn: 2,
+      actionsColumn: 7,
+      minTableWidth: 860,
+      columns: const [
+        AppColumn('DATE', flex: 9),
+        AppColumn('RÉFÉRENCE', flex: 12),
+        AppColumn('DÉSIGNATION', flex: 18),
+        AppColumn('N° FACTURE', flex: 11),
+        AppColumn('MAGASIN', flex: 13),
+        AppColumn('DESTINATION', flex: 14),
+        AppColumn.number('QUANTITÉ', flex: 10),
+        AppColumn.actions(flex: 11),
+      ],
+      empty: const AppEmptyState(
+        icon: Icons.call_made,
+        title: 'Aucune sortie',
+        message: 'Enregistrez une cession avec le formulaire ci-dessus '
+            'pour la voir apparaître ici.',
+      ),
+      rows: [
+        for (final row in data.outputs)
+          AppRow(
+            onTap: () => _openEditDialog(row, data),
+            cells: [
+              Cells.text(formatDisplayDate(row.output.date)),
+              Cells.identifier(row.output.reference),
+              Cells.text(row.output.designation),
+              row.output.invoiceNumber.isEmpty
+                  ? Cells.blank
+                  : Cells.muted(row.output.invoiceNumber),
+              Cells.muted(row.storeName),
+              row.output.destination.isEmpty
+                  ? Cells.blank
+                  : Cells.muted(row.output.destination),
+              Cells.number(
+                '− ${row.output.quantity}',
+                color: AppColors.error,
+                strong: true,
+              ),
+              RowActions(
+                actions: [
+                  RowAction(
+                    icon: Icons.edit_outlined,
+                    tooltip: 'Modifier',
+                    onPressed: () => _openEditDialog(row, data),
+                  ),
+                  RowAction(
+                    icon: Icons.delete_outline,
+                    tooltip: 'Supprimer',
+                    destructive: true,
+                    onPressed: () => _deleteOutput(row.output),
+                  ),
+                ],
+              ),
+            ],
+          ),
       ],
     );
   }
@@ -447,222 +533,6 @@ class _OutputFormCardState extends State<_OutputFormCard> {
   }
 }
 
-// Relative flex weights for the outputs table columns. Using a flexible Row
-// instead of fixed pixel widths means the table always fits the available
-// width, even on narrow phone screens in portrait mode.
-const int _colDate = 9;
-const int _colReference = 12;
-const int _colDesignation = 18;
-const int _colInvoice = 11;
-const int _colStore = 13;
-const int _colDestination = 14;
-const int _colQty = 10;
-const int _colActions = 11;
-const double _cellPadding = 10;
-
-class _OutputsTable extends StatelessWidget {
-  final List<StockOutputWithStore> rows;
-  final void Function(StockOutputWithStore) onEdit;
-  final void Function(StockOutputWithStore) onDelete;
-
-  const _OutputsTable({required this.rows, required this.onEdit, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          const _TableHeaderRow(),
-          rows.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32),
-                  child: Center(child: Text('Aucune sortie', style: AppTextStyles.bodyMuted)),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: rows.length,
-                  itemBuilder: (context, index) => _OutputRow(
-                    row: rows[index],
-                    alternate: index.isOdd,
-                    onEdit: onEdit,
-                    onDelete: onDelete,
-                  ),
-                ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TableHeaderRow extends StatelessWidget {
-  const _TableHeaderRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: const BoxDecoration(
-        color: AppColors.elevated,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: const [
-          Expanded(
-            flex: _colDate,
-            child: Text('DATE', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colReference,
-            child: Text('RÉFÉRENCE', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colDesignation,
-            child: Text('DÉSIGNATION', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colInvoice,
-            child: Text('N° FACTURE', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colStore,
-            child: Text('MAGASIN', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colDestination,
-            child: Text('DESTINATION', style: AppTextStyles.tableHeader, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colQty,
-            child: Text(
-              'QUANTITÉ',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colActions,
-            child: Text(
-              'ACTIONS',
-              style: AppTextStyles.tableHeader,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OutputRow extends StatelessWidget {
-  final StockOutputWithStore row;
-  final bool alternate;
-  final void Function(StockOutputWithStore) onEdit;
-  final void Function(StockOutputWithStore) onDelete;
-
-  const _OutputRow({required this.row, required this.alternate, required this.onEdit, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    final output = row.output;
-    var displayDate = output.date;
-    try {
-      displayDate = DateFormat('dd/MM/yyyy').format(DateTime.parse(output.date));
-    } catch (_) {}
-
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: _cellPadding),
-      decoration: BoxDecoration(
-        color: alternate ? AppColors.bg : AppColors.surface,
-        border: const Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: _colDate,
-            child: Text(displayDate, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colReference,
-            child: Text(
-              output.reference,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.accentLight),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colDesignation,
-            child: Text(output.designation, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colInvoice,
-            child: Text(
-              output.invoiceNumber.isEmpty ? '—' : output.invoiceNumber,
-              style: AppTextStyles.bodyMuted,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colStore,
-            child: Text(row.storeName, style: AppTextStyles.bodyMuted, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: _colDestination,
-            child: Text(
-              output.destination.isEmpty ? '—' : output.destination,
-              style: AppTextStyles.bodyMuted,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: _colQty,
-            child: Text(
-              '− ${output.quantity}',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error),
-            ),
-          ),
-          Expanded(
-            flex: _colActions,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  color: AppColors.textSecondary,
-                  tooltip: 'Modifier',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: () => onEdit(row),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  color: AppColors.error,
-                  tooltip: 'Supprimer',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: () => onDelete(row),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _OutputFormDialog extends StatefulWidget {
   final StockOutput output;
   final List<ProductOverview> products;
@@ -778,8 +648,8 @@ class _OutputFormDialogState extends State<_OutputFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Modifier la sortie'),
-      content: SizedBox(
-        width: 420,
+      content: DialogBody(
+        maxWidth: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/models/view_models.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
 /// Reference field with a search-as-you-type dropdown of products.
@@ -34,6 +35,18 @@ class _ProductAutocompleteState extends State<ProductAutocomplete> {
 
   @override
   Widget build(BuildContext context) {
+    // The options popup is an overlay, so it cannot measure the field
+    // itself; capture the field's width here and hand it down so the
+    // dropdown lines up with the input instead of using a fixed 320px.
+    return LayoutBuilder(
+      builder: (context, constraints) => _buildAutocomplete(
+        context,
+        constraints.maxWidth,
+      ),
+    );
+  }
+
+  Widget _buildAutocomplete(BuildContext context, double fieldWidth) {
     return Autocomplete<ProductOverview>(
       textEditingController: widget.controller,
       focusNode: _focusNode,
@@ -56,12 +69,19 @@ class _ProductAutocompleteState extends State<ProductAutocomplete> {
       optionsViewBuilder: (context, onSelectedOption, options) {
         return Align(
           alignment: Alignment.topLeft,
-          child: Material(
-            color: AppColors.surface,
-            elevation: 4,
-            borderRadius: BorderRadius.circular(8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.borderStrong),
+              boxShadow: AppShadows.medium,
+            ),
+            clipBehavior: Clip.antiAlias,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 220, maxWidth: 320),
+              constraints: BoxConstraints(
+                maxHeight: 260,
+                maxWidth: fieldWidth,
+              ),
               child: ListView.builder(
                 padding: EdgeInsets.zero,
                 shrinkWrap: true,
