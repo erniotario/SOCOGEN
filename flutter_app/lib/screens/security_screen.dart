@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../auth/auth_provider.dart';
@@ -403,14 +404,42 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     ],
                   ),
                   if (_syncServerRunning) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      _syncServerAddresses.isEmpty
-                          ? 'Serveur actif sur le port $syncPort (adresse IP locale introuvable).'
-                          : "Serveur actif. Sur l'autre appareil, saisissez l'adresse : "
-                              '${_syncServerAddresses.join(' ou ')}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    if (_syncServerAddresses.isEmpty)
+                      Text(
+                        'Serveur actif sur le port $syncPort '
+                        '(adresse IP locale introuvable).',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      )
+                    else ...[
+                      Text(
+                        "Serveur actif. Sur l'autre appareil, saisissez "
+                        "l'adresse : ${_syncServerAddresses.join(' ou ')}",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      const Text(
+                        'LIEN DE CONSULTATION',
+                        style: AppTextStyles.sectionLabel,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      const Text(
+                        'Partagez ce lien avec vos collègues sur le même '
+                        'Wi-Fi : ils consultent le stock dans leur navigateur, '
+                        'en lecture seule. Toute personne connectée au réseau '
+                        'peut ouvrir ce lien.',
+                        style: AppTextStyles.bodyMuted,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      for (final address in _syncServerAddresses)
+                        _ShareLinkRow(url: 'http://$address:$syncPort'),
+                    ],
                   ],
                   if (_syncServerError != null) ...[
                     const SizedBox(height: 8),
@@ -584,6 +613,58 @@ class _UserRow extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// One shareable read-only URL, with a copy button.
+class _ShareLinkRow extends StatelessWidget {
+  final String url;
+
+  const _ShareLinkRow({required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.bg,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: SelectableText(
+                url,
+                maxLines: 1,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.accentLight,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          IconButton(
+            tooltip: 'Copier le lien',
+            icon: const Icon(Icons.copy_all_outlined, size: 18),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: url));
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Lien copié.')),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
