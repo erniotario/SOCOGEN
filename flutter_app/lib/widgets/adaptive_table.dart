@@ -115,12 +115,16 @@ class Cells {
 
 /// A data table that reshapes itself to the space it is given.
 ///
-/// Wide layouts get a classic header + rows table (horizontally
+/// Roomy panes get a classic header + rows table (horizontally
 /// scrollable if the pane is narrower than [minTableWidth], so columns
-/// never squeeze below a readable size). Below [AppBreakpoints.medium]
-/// — phones in portrait — each record becomes a card with a title,
-/// subtitle and a two-column grid of labelled values, which is legible
-/// where a seven-column table is not.
+/// never squeeze below a readable size). Below [cardsBelow] each record
+/// becomes a card with a title, subtitle and a grid of labelled values,
+/// which is legible where a seven-column table is not.
+///
+/// The default cuts over at [AppBreakpoints.expanded], so phones *and*
+/// tablets get cards: a tablet can technically fit the table, but only
+/// by scrolling sideways to reach the action buttons, which is worse
+/// than reading the same record as a card.
 class AdaptiveTable extends StatelessWidget {
   final List<AppColumn> columns;
   final List<AppRow> rows;
@@ -148,6 +152,11 @@ class AdaptiveTable extends StatelessWidget {
   /// the space it is given.
   final bool shrinkWrap;
 
+  /// Pane width under which rows are rendered as cards rather than as a
+  /// table. Raise it for a table that needs even more room to be worth
+  /// showing; lower it to keep the table on smaller panes.
+  final double cardsBelow;
+
   const AdaptiveTable({
     super.key,
     required this.columns,
@@ -159,14 +168,14 @@ class AdaptiveTable extends StatelessWidget {
     this.rowHeight = 44,
     this.minTableWidth = 720,
     this.shrinkWrap = false,
+    this.cardsBelow = AppBreakpoints.expanded,
   });
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final size = AppBreakpoints.of(constraints.maxWidth);
-        if (size.isCompact) return _buildCards(context);
+        if (constraints.maxWidth < cardsBelow) return _buildCards(context);
         return _buildTable(context, constraints.maxWidth);
       },
     );

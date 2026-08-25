@@ -92,14 +92,19 @@ void main() {
       });
     });
 
-    testWidgets('renders record cards on a phone and a header row on '
-        'the desktop', (tester) async {
+    testWidgets('renders record cards below the cut-over and a table '
+        'above it', (tester) async {
+      // The card layout repeats the column label next to each value...
       await _pumpAt(tester, const Size(360, 740), _sampleTable(rows: 3));
-      // The card layout repeats the column label next to each value.
       expect(find.text('STOCK ACTUEL'), findsNWidgets(3));
 
-      await _pumpAt(tester, const Size(1280, 800), _sampleTable(rows: 3));
+      // ...including on a tablet, where the table would otherwise push
+      // its action column off the right edge.
+      await _pumpAt(tester, const Size(800, 1000), _sampleTable(rows: 3));
+      expect(find.text('STOCK ACTUEL'), findsNWidgets(3));
+
       // The table layout prints each column label exactly once.
+      await _pumpAt(tester, const Size(1280, 800), _sampleTable(rows: 3));
       expect(find.text('STOCK ACTUEL'), findsOneWidget);
     });
 
