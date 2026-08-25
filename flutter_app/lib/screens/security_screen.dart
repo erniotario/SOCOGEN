@@ -336,14 +336,18 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     style: AppTextStyles.bodyMuted,
                   ),
                   const SizedBox(height: 14),
-                  Row(
+                  // These two labels are long enough to overflow even a
+                  // tablet on one line, so let them flow onto another.
+                  Wrap(
+                    spacing: AppSpacing.md,
+                    runSpacing: AppSpacing.sm,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       OutlinedButton.icon(
                         onPressed: _dbBusy ? null : _importDatabase,
                         icon: const Icon(Icons.file_upload_outlined, size: 18),
                         label: const Text('Importer une base de données'),
                       ),
-                      const SizedBox(width: 12),
                       OutlinedButton.icon(
                         onPressed: _dbBusy ? null : _resetDatabase,
                         style: OutlinedButton.styleFrom(
@@ -353,10 +357,12 @@ class _SecurityScreenState extends State<SecurityScreen> {
                         icon: const Icon(Icons.delete_forever_outlined, size: 18),
                         label: const Text('Vider la base de données'),
                       ),
-                      if (_dbBusy) ...[
-                        const SizedBox(width: 14),
-                        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                      ],
+                      if (_dbBusy)
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                     ],
                   ),
                   if (_dbError != null) ...[
@@ -378,17 +384,22 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     style: AppTextStyles.bodyMuted,
                   ),
                   const SizedBox(height: 14),
-                  Row(
+                  Wrap(
+                    spacing: AppSpacing.md,
+                    runSpacing: AppSpacing.sm,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       OutlinedButton.icon(
                         onPressed: _syncServerBusy ? null : _toggleSyncServer,
                         icon: Icon(_syncServerRunning ? Icons.stop_circle_outlined : Icons.podcasts, size: 18),
                         label: Text(_syncServerRunning ? 'Arrêter le serveur' : 'Démarrer le serveur'),
                       ),
-                      if (_syncServerBusy) ...[
-                        const SizedBox(width: 14),
-                        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                      ],
+                      if (_syncServerBusy)
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                     ],
                   ),
                   if (_syncServerRunning) ...[
@@ -412,31 +423,41 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     style: AppTextStyles.bodyMuted,
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 220,
-                        child: TextField(
-                          controller: _peerIpController,
-                          decoration: const InputDecoration(
-                            labelText: "Adresse IP de l'autre appareil",
-                            hintText: '192.168.1.42',
-                            isDense: true,
+                  LayoutBuilder(
+                    builder: (context, constraints) => Wrap(
+                    spacing: AppSpacing.md,
+                    runSpacing: AppSpacing.sm,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        SizedBox(
+                          // Never wider than the panel itself, so the
+                          // field still fits a phone in portrait.
+                          width: constraints.maxWidth < 240
+                              ? constraints.maxWidth
+                              : 220,
+                          child: TextField(
+                            controller: _peerIpController,
+                            decoration: const InputDecoration(
+                              labelText: "Adresse IP de l'autre appareil",
+                              hintText: '192.168.1.42',
+                              isDense: true,
+                            ),
+                            keyboardType: TextInputType.url,
                           ),
-                          keyboardType: TextInputType.url,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      OutlinedButton.icon(
-                        onPressed: _syncBusy ? null : _syncWithPeer,
-                        icon: const Icon(Icons.sync, size: 18),
-                        label: const Text('Synchroniser'),
-                      ),
-                      if (_syncBusy) ...[
-                        const SizedBox(width: 14),
-                        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                        OutlinedButton.icon(
+                          onPressed: _syncBusy ? null : _syncWithPeer,
+                          icon: const Icon(Icons.sync, size: 18),
+                          label: const Text('Synchroniser'),
+                        ),
+                        if (_syncBusy)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                       ],
-                    ],
+                    ),
                   ),
                   if (_syncResultText != null) ...[
                     const SizedBox(height: 12),

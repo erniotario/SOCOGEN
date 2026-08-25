@@ -424,7 +424,16 @@ class _LabeledField extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(label.toUpperCase(), style: AppTextStyles.kpiLabel),
+            // Uppercase labels are wide; in a three-across form row they
+            // can exceed the column, so let them ellipsize.
+            Flexible(
+              child: Text(
+                label.toUpperCase(),
+                style: AppTextStyles.kpiLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             if (required)
               const Text(' *', style: TextStyle(color: AppColors.error, fontSize: 11, fontWeight: FontWeight.w700)),
           ],

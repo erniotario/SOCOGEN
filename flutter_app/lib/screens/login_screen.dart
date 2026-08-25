@@ -134,6 +134,10 @@ class _LoginScreenState extends State<LoginScreen>
                             controller: _usernameController,
                             label: "Nom d'utilisateur",
                             icon: Icons.person_outline,
+                            // Land the caret in the first field on open, so
+                            // the user can type straight away instead of
+                            // having to click into it first.
+                            autofocus: true,
                             textInputAction: TextInputAction.next,
                             onSubmitted: (_) => _passwordFocus.requestFocus(),
                           ),
@@ -267,6 +271,7 @@ class _LoginField extends StatelessWidget {
   final FocusNode? focusNode;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
+  final bool autofocus;
 
   const _LoginField({
     required this.controller,
@@ -277,6 +282,7 @@ class _LoginField extends StatelessWidget {
     this.focusNode,
     this.textInputAction,
     this.onSubmitted,
+    this.autofocus = false,
   });
 
   @override
@@ -284,6 +290,7 @@ class _LoginField extends StatelessWidget {
     return TextField(
       controller: controller,
       focusNode: focusNode,
+      autofocus: autofocus,
       obscureText: obscure,
       textInputAction: textInputAction,
       onSubmitted: onSubmitted,

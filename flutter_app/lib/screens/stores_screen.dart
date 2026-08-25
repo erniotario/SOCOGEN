@@ -182,11 +182,19 @@ class _StoresScreenState extends State<StoresScreen> {
                           ],
                         );
                       }
+                      // Stacked: both panes share the height. The details
+                      // panel keeps its natural size when there is room
+                      // (loose fit) and scrolls instead of overflowing on a
+                      // short window, e.g. a phone in landscape.
                       return Column(
                         children: [
-                          Expanded(child: table),
+                          Expanded(flex: 3, child: table),
                           const SizedBox(height: AppSpacing.lg),
-                          details,
+                          Flexible(
+                            flex: 2,
+                            fit: FlexFit.loose,
+                            child: SingleChildScrollView(child: details),
+                          ),
                         ],
                       );
                     },

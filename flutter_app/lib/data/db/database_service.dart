@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -24,6 +25,13 @@ class DatabaseService {
   static const String _dbFileName = 'socogen_stock.db';
 
   Database? _database;
+
+  /// Test seam: supply a ready-made database so widget tests can drive
+  /// the real screens. Without it, [database] resolves a path with
+  /// path_provider and copies the seed asset, neither of which works in
+  /// a plain widget test.
+  @visibleForTesting
+  set databaseForTesting(Database? db) => _database = db;
 
   Future<Database> get database async {
     final existing = _database;

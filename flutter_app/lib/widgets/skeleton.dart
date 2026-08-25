@@ -81,38 +81,55 @@ class SkeletonList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: padding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < rows; i++) ...[
-            SizedBox(
-              height: rowHeight,
-              child: Row(
-                children: [
-                  const Expanded(flex: 3, child: Skeleton(height: 12)),
-                  const SizedBox(width: AppSpacing.lg),
-                  const Expanded(flex: 5, child: Skeleton(height: 12)),
-                  const SizedBox(width: AppSpacing.lg),
-                  Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Skeleton(
-                        width: 40 + (i.isEven ? 12 : 0),
-                        height: 12,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Only draw as many placeholder rows as actually fit. A fixed
+        // count overflows wherever the pane is short — a phone in
+        // landscape, or a dashboard whose KPI tiles already took the
+        // upper half of the screen.
+        var count = rows;
+        if (constraints.maxHeight.isFinite) {
+          final available =
+              constraints.maxHeight - padding.top - padding.bottom;
+          count = (available / (rowHeight + 1)).floor().clamp(0, rows);
+        }
+        if (count == 0) return const SizedBox.shrink();
+
+        return Padding(
+          padding: padding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < count; i++) ...[
+                SizedBox(
+                  height: rowHeight,
+                  child: Row(
+                    children: [
+                      const Expanded(flex: 3, child: Skeleton(height: 12)),
+                      const SizedBox(width: AppSpacing.lg),
+                      const Expanded(flex: 5, child: Skeleton(height: 12)),
+                      const SizedBox(width: AppSpacing.lg),
+                      Expanded(
+                        flex: 2,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Skeleton(
+                            width: 40 + (i.isEven ? 12 : 0),
+                            height: 12,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            if (i != rows - 1)
-              const Divider(color: AppColors.border, height: 1),
-          ],
-        ],
-      ),
+                ),
+                if (i != count - 1)
+                  const Divider(color: AppColors.border, height: 1),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }
