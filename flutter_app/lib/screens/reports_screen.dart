@@ -206,9 +206,34 @@ class _ReportsScreenState extends State<ReportsScreen> {
         onRefresh: _refresh,
         color: AppColors.accentLight,
         backgroundColor: AppColors.surface,
-        child: ListView(
-          padding: padding,
-          children: [...header, _table(data.rows, shrinkWrap: true)],
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                padding.left,
+                padding.top,
+                padding.right,
+                0,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: header,
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                padding.left,
+                0,
+                padding.right,
+                padding.bottom,
+              ),
+              sliver: SliverAdaptiveTable(
+                table: _table(data.rows, shrinkWrap: false),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -296,7 +321,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _table(List<ReportRow> rows, {required bool shrinkWrap}) {
+  AdaptiveTable _table(List<ReportRow> rows, {required bool shrinkWrap}) {
     return AdaptiveTable(
       shrinkWrap: shrinkWrap,
       minTableWidth: 820,

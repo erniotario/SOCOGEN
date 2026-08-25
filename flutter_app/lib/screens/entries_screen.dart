@@ -136,30 +136,52 @@ class _EntriesScreenState extends State<EntriesScreen> {
                 onRefresh: _refresh,
                 color: AppColors.accentLight,
                 backgroundColor: AppColors.surface,
-                child: ListView(
-                  padding: padding,
-                  children: [
-                    _EntryFormCard(
-                      products: data.products,
-                      stores: data.stores,
-                      onSaved: _onChanged,
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    Row(
-                      children: [
-                        const Text(
-                          'HISTORIQUE DES ENTRÉES',
-                          style: AppTextStyles.sectionLabel,
+                child: CustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                        padding.left,
+                        padding.top,
+                        padding.right,
+                        0,
+                      ),
+                      sliver: SliverToBoxAdapter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _EntryFormCard(
+                              products: data.products,
+                              stores: data.stores,
+                              onSaved: _onChanged,
+                            ),
+                            const SizedBox(height: AppSpacing.xl),
+                            Row(
+                              children: [
+                                const Text(
+                                  'HISTORIQUE DES ENTRÉES',
+                                  style: AppTextStyles.sectionLabel,
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${data.entries.length} entrée(s)',
+                                  style: AppTextStyles.captionMuted,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
                         ),
-                        const Spacer(),
-                        Text(
-                          '${data.entries.length} entrée(s)',
-                          style: AppTextStyles.captionMuted,
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    _table(data),
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                        padding.left,
+                        0,
+                        padding.right,
+                        padding.bottom,
+                      ),
+                      sliver: SliverAdaptiveTable(table: _table(data)),
+                    ),
                   ],
                 ),
               );
@@ -170,9 +192,8 @@ class _EntriesScreenState extends State<EntriesScreen> {
     );
   }
 
-  Widget _table(_EntriesData data) {
+  AdaptiveTable _table(_EntriesData data) {
     return AdaptiveTable(
-      shrinkWrap: true,
       titleColumn: 2,
       subtitleColumn: 3,
       actionsColumn: 6,

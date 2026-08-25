@@ -136,30 +136,52 @@ class _OutputsScreenState extends State<OutputsScreen> {
                 onRefresh: _refresh,
                 color: AppColors.accentLight,
                 backgroundColor: AppColors.surface,
-                child: ListView(
-                  padding: padding,
-                  children: [
-                    _OutputFormCard(
-                      products: data.products,
-                      stores: data.stores,
-                      onSaved: _onChanged,
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    Row(
-                      children: [
-                        const Text(
-                          'HISTORIQUE DES SORTIES',
-                          style: AppTextStyles.sectionLabel,
+                child: CustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                        padding.left,
+                        padding.top,
+                        padding.right,
+                        0,
+                      ),
+                      sliver: SliverToBoxAdapter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _OutputFormCard(
+                              products: data.products,
+                              stores: data.stores,
+                              onSaved: _onChanged,
+                            ),
+                            const SizedBox(height: AppSpacing.xl),
+                            Row(
+                              children: [
+                                const Text(
+                                  'HISTORIQUE DES SORTIES',
+                                  style: AppTextStyles.sectionLabel,
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${data.outputs.length} sortie(s)',
+                                  style: AppTextStyles.captionMuted,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
                         ),
-                        const Spacer(),
-                        Text(
-                          '${data.outputs.length} sortie(s)',
-                          style: AppTextStyles.captionMuted,
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    _table(data),
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                        padding.left,
+                        0,
+                        padding.right,
+                        padding.bottom,
+                      ),
+                      sliver: SliverAdaptiveTable(table: _table(data)),
+                    ),
                   ],
                 ),
               );
@@ -170,9 +192,8 @@ class _OutputsScreenState extends State<OutputsScreen> {
     );
   }
 
-  Widget _table(_OutputsData data) {
+  AdaptiveTable _table(_OutputsData data) {
     return AdaptiveTable(
-      shrinkWrap: true,
       titleColumn: 1,
       subtitleColumn: 2,
       actionsColumn: 7,

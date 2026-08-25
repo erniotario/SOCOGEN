@@ -238,17 +238,78 @@ class AdaptiveTable extends StatelessWidget {
 
   // --- Compact layout ---------------------------------------------------
 
+  List<int> get _detailColumns => <int>[
+        for (var i = 0; i < columns.length; i++)
+          if (i != titleColumn &&
+              i != subtitleColumn &&
+              i != actionsColumn &&
+              columns[i].inCompactDetails)
+            i,
+      ];
+
+  Widget _card(int i) => _RecordCard(
+        columns: columns,
+        row: rows[i],
+        titleColumn: titleColumn,
+        subtitleColumn: subtitleColumn,
+        actionsColumn: actionsColumn,
+        detailColumns: _detailColumns,
+      );
+
+  Widget _wideRow(int i) => _WideRow(
+        columns: columns,
+        row: rows[i],
+        alternate: i.isOdd,
+        height: rowHeight,
+      );
+
+  /// Slivers rendering exactly the same content, for a page that scrolls
+  /// as one piece.
+  ///
+  /// This is the form to use when the table sits under other content
+  /// (KPI tiles, filters): [shrinkWrap] would also make it fit, but it
+  /// builds every row up front, so a 660-row report stutters. Slivers
+  /// keep the single scroll *and* the lazy row building.
+  List<Widget> _slivers(double width) {
+    if (rows.isEmpty) {
+      return [
+        SliverToBoxAdapter(
+          child: SizedBox(height: 220, child: empty ?? const SizedBox.shrink()),
+        ),
+      ];
+    }
+
+    if (width < cardsBelow) {
+      return [
+        SliverList.separated(
+          itemCount: rows.length,
+          separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (context, i) => _card(i),
+        ),
+      ];
+    }
+
+    return [
+      SliverToBoxAdapter(
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppRadius.lg),
+          ),
+          child: _HeaderRow(columns: columns),
+        ),
+      ),
+      SliverFixedExtentList.builder(
+        itemExtent: rowHeight,
+        itemCount: rows.length,
+        itemBuilder: (context, i) => _wideRow(i),
+      ),
+    ];
+  }
+
   Widget _buildCards(BuildContext context) {
     if (rows.isEmpty) return empty ?? const SizedBox.shrink();
 
-    final detailColumns = <int>[
-      for (var i = 0; i < columns.length; i++)
-        if (i != titleColumn &&
-            i != subtitleColumn &&
-            i != actionsColumn &&
-            columns[i].inCompactDetails)
-          i,
-    ];
+    final detailColumns = _detailColumns;
 
     return ListView.separated(
       primary: false,
@@ -264,6 +325,28 @@ class AdaptiveTable extends StatelessWidget {
         subtitleColumn: subtitleColumn,
         actionsColumn: actionsColumn,
         detailColumns: detailColumns,
+      ),
+    );
+  }
+}
+
+/// Sliver form of [AdaptiveTable], for pages built as a
+/// [CustomScrollView].
+///
+/// Prefer this over `AdaptiveTable(shrinkWrap: true)` whenever the row
+/// count can grow: shrink-wrapping forces every row to be built before
+/// the first frame, which is what made the Rapports and Transactions
+/// pages stutter with a real catalogue behind them.
+class SliverAdaptiveTable extends StatelessWidget {
+  final AdaptiveTable table;
+
+  const SliverAdaptiveTable({super.key, required this.table});
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverLayoutBuilder(
+      builder: (context, constraints) => SliverMainAxisGroup(
+        slivers: table._slivers(constraints.crossAxisExtent),
       ),
     );
   }

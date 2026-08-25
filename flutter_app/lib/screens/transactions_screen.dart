@@ -302,51 +302,73 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             onRefresh: _refresh,
             color: AppColors.accentLight,
             backgroundColor: AppColors.surface,
-            child: ListView(
-              padding: padding,
-              children: [
-                _InfoCard(
-                  overview: overview,
-                  storeAvailability: data.storeAvailability,
-                  rows: data.rows,
+            child: CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    padding.left,
+                    padding.top,
+                    padding.right,
+                    0,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                            _InfoCard(
+                              overview: overview,
+                              storeAvailability: data.storeAvailability,
+                              rows: data.rows,
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            _FiltersPanel(
+                              products: data.products,
+                              stores: data.stores,
+                              reference: _reference,
+                              storeId: _storeId,
+                              type: _type,
+                              dateFrom: _dateFrom,
+                              dateTo: _dateTo,
+                              searchController: _searchController,
+                              onReferenceChanged: (value) {
+                                setState(() => _reference = value);
+                                _reapply();
+                              },
+                              onStoreChanged: (value) {
+                                setState(() => _storeId = value);
+                                _reapply();
+                              },
+                              onTypeChanged: (value) {
+                                setState(() => _type = value);
+                                _reapply();
+                              },
+                              onDateFromChanged: (value) {
+                                setState(() => _dateFrom = value);
+                                _reapply();
+                              },
+                              onDateToChanged: (value) {
+                                setState(() => _dateTo = value);
+                                _reapply();
+                              },
+                              onSearchChanged: _onSearchChanged,
+                              onReset: _resetFilters,
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            _StatsRow(rows: data.rows),
+                            const SizedBox(height: AppSpacing.lg),
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                _FiltersPanel(
-                  products: data.products,
-                  stores: data.stores,
-                  reference: _reference,
-                  storeId: _storeId,
-                  type: _type,
-                  dateFrom: _dateFrom,
-                  dateTo: _dateTo,
-                  searchController: _searchController,
-                  onReferenceChanged: (value) {
-                    setState(() => _reference = value);
-                    _reapply();
-                  },
-                  onStoreChanged: (value) {
-                    setState(() => _storeId = value);
-                    _reapply();
-                  },
-                  onTypeChanged: (value) {
-                    setState(() => _type = value);
-                    _reapply();
-                  },
-                  onDateFromChanged: (value) {
-                    setState(() => _dateFrom = value);
-                    _reapply();
-                  },
-                  onDateToChanged: (value) {
-                    setState(() => _dateTo = value);
-                    _reapply();
-                  },
-                  onSearchChanged: _onSearchChanged,
-                  onReset: _resetFilters,
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    padding.left,
+                    0,
+                    padding.right,
+                    padding.bottom,
+                  ),
+                  sliver: SliverAdaptiveTable(table: _table(data)),
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                _StatsRow(rows: data.rows),
-                const SizedBox(height: AppSpacing.lg),
-                _table(data),
               ],
             ),
           ),
@@ -355,9 +377,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
-  Widget _table(_TransactionsData data) {
+  AdaptiveTable _table(_TransactionsData data) {
     return AdaptiveTable(
-      shrinkWrap: true,
       titleColumn: 2,
       subtitleColumn: 3,
       actionsColumn: 10,
