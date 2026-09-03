@@ -187,24 +187,26 @@ class AdaptiveTable extends StatelessWidget {
     final needsHScroll = available < minTableWidth;
     final tableWidth = needsHScroll ? minTableWidth : available;
 
-    Widget rowList = ListView.builder(
-      primary: false,
-      shrinkWrap: shrinkWrap,
-      physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
-      itemCount: rows.length,
-      itemExtent: rowHeight,
-      itemBuilder: (context, i) => _WideRow(
-        columns: columns,
-        row: rows[i],
-        alternate: i.isOdd,
-        height: rowHeight,
-      ),
-    );
-    if (!shrinkWrap) rowList = Scrollbar(child: rowList);
+    Widget rowList(ScrollController? controller) => ListView.builder(
+          primary: false,
+          controller: controller,
+          shrinkWrap: shrinkWrap,
+          physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
+          itemCount: rows.length,
+          itemExtent: rowHeight,
+          itemBuilder: (context, i) => _WideRow(
+            columns: columns,
+            row: rows[i],
+            alternate: i.isOdd,
+            height: rowHeight,
+          ),
+        );
 
-    final body = rows.isEmpty
+    final Widget body = rows.isEmpty
         ? SizedBox(height: 200, child: empty ?? const SizedBox.shrink())
-        : rowList;
+        : shrinkWrap
+            ? rowList(null)
+            : _BarredScroll(builder: (context, c) => rowList(c));
 
     Widget table = SizedBox(
       width: tableWidth,
@@ -218,10 +220,12 @@ class AdaptiveTable extends StatelessWidget {
     );
 
     if (needsHScroll) {
-      table = Scrollbar(
-        child: SingleChildScrollView(
+      final unscrolled = table;
+      table = _BarredScroll(
+        builder: (context, c) => SingleChildScrollView(
+          controller: c,
           scrollDirection: Axis.horizontal,
-          child: table,
+          child: unscrolled,
         ),
       );
     }
@@ -347,6 +351,51 @@ class SliverAdaptiveTable extends StatelessWidget {
     return SliverLayoutBuilder(
       builder: (context, constraints) => SliverMainAxisGroup(
         slivers: table._slivers(constraints.crossAxisExtent),
+      ),
+    );
+  }
+}
+
+/// Pairs a [Scrollbar] with the scroll view it controls.
+///
+/// A `Scrollbar` given no controller falls back to the *primary* one,
+/// which a `primary: false` list never uses. The thumb still paints
+/// itself from scroll notifications, so the bug is invisible until you
+/// try to grab it — and on a 655-product catalogue an ungrabbable thumb
+/// means the wheel is the only way down. Owning the controller here
+/// keeps both on the same [ScrollPosition].
+class _BarredScroll extends StatefulWidget {
+  final Widget Function(BuildContext context, ScrollController controller)
+      builder;
+
+  const _BarredScroll({required this.builder});
+
+  @override
+  State<_BarredScroll> createState() => _BarredScrollState();
+}
+
+class _BarredScrollState extends State<_BarredScroll> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Visibility and interactivity are left to `scrollbarTheme`, which
+    // already keeps the thumb pinned on desktop and fades it on touch.
+    return Scrollbar(
+      controller: _controller,
+      // MaterialScrollBehavior fits every desktop scroll view with a
+      // scrollbar of its own. Left on, it paints a second thumb in the
+      // same track as this one — and since ours draws over it, the
+      // pointer meets the top thumb while the working one sits beneath.
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: widget.builder(context, _controller),
       ),
     );
   }
