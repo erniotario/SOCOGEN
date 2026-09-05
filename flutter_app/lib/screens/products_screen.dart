@@ -12,6 +12,7 @@ import '../data/models/view_models.dart';
 import '../data/repositories/product_repository.dart';
 import '../data/repositories/store_repository.dart';
 import '../services/data_refresh_bus.dart';
+import '../services/excel/stock_import_service.dart';
 import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -99,10 +100,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
     _onSearchChanged('');
   }
 
-  /// Imports products from an Excel file (.xlsx/.xls/.xlsm), mirroring the
-  /// PySide6 `_import_products` logic: maps header columns (référence,
-  /// désignation, unité, stock initial, magasin), creates missing products,
-  /// and skips product/magasin pairs that already have a stock row.
+  /// Imports a Sage-style export workbook: the catalogue with its opening
+  /// stock per store, plus the movement sheets. Sheets are routed by name
+  /// (*Produits*, *Entrées*, *Sorties*); a workbook matching none of those
+  /// is read as a catalogue, as it was before movements were supported.
   Future<void> _importProducts() async {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
@@ -114,103 +115,80 @@ class _ProductsScreenState extends State<ProductsScreen> {
     setState(() => _importing = true);
     try {
       final bytes = await File(path).readAsBytes();
-      final workbook = Excel.decodeBytes(bytes);
-      if (workbook.tables.isEmpty) {
-        throw Exception('Le fichier Excel est vide.');
-      }
-      final rows = workbook.tables[workbook.tables.keys.first]!.rows;
-      if (rows.isEmpty) {
-        throw Exception('Le fichier Excel est vide.');
-      }
-
-      final headers = rows.first.map((c) => (_cellText(c?.value) ?? '').trim().toLowerCase()).toList();
-      int? referenceCol, designationCol, unitCol, initialStockCol, storeCol;
-      for (var i = 0; i < headers.length; i++) {
-        final h = headers[i];
-        if (h == 'reference' || h == 'référence' || h == 'ref') {
-          referenceCol = i;
-        } else if (h == 'designation' || h == 'désignation' || h == 'description') {
-          designationCol = i;
-        } else if (h == 'unite' || h == 'unité' || h == 'unit') {
-          unitCol = i;
-        } else if (h == 'stock initial' || h == 'initial_stock' || h == 'initial stock') {
-          initialStockCol = i;
-        } else if (h == 'magasin' || h == 'store' || h == 'store name' || h == 'nom magasin') {
-          storeCol = i;
-        }
-      }
-      if (referenceCol == null || designationCol == null) {
-        throw Exception('Colonnes obligatoires manquantes : référence et désignation.');
-      }
-
-      final stores = await _storeRepo.getAllStores();
-      final defaultStoreId = stores.isNotEmpty ? stores.first.id : null;
-
-      var imported = 0;
-      var skipped = 0;
-      for (var r = 1; r < rows.length; r++) {
-        final row = rows[r];
-        if (referenceCol >= row.length) continue;
-        final ref = _cellText(row[referenceCol]?.value)?.trim();
-        if (ref == null || ref.isEmpty) continue;
-
-        final designation = designationCol < row.length ? (_cellText(row[designationCol]?.value)?.trim() ?? '') : '';
-        if (designation.isEmpty) continue;
-
-        var unit = 'unité';
-        if (unitCol != null && unitCol < row.length) {
-          final v = _cellText(row[unitCol]?.value)?.trim();
-          if (v != null && v.isNotEmpty) unit = v;
-        }
-
-        var initialStock = 0;
-        if (initialStockCol != null && initialStockCol < row.length) {
-          initialStock = _cellInt(row[initialStockCol]?.value) ?? 0;
-        }
-
-        int? storeId;
-        if (storeCol != null && storeCol < row.length) {
-          final sname = _cellText(row[storeCol]?.value)?.trim();
-          if (sname != null && sname.isNotEmpty) {
-            for (final s in stores) {
-              if (s.name.toLowerCase() == sname.toLowerCase()) {
-                storeId = s.id;
-                break;
-              }
-            }
-          }
-        }
-        storeId ??= defaultStoreId;
-        if (storeId == null) {
-          skipped++;
-          continue;
-        }
-
-        final existing = await _productRepo.getByReference(ref);
-        final productId = existing?.id ?? await _productRepo.createProduct(reference: ref, designation: designation, unit: unit);
-
-        if (await _productRepo.productStockExists(productId, storeId)) {
-          skipped++;
-          continue;
-        }
-        await _productRepo.upsertProductStock(productId: productId, storeId: storeId, initialStock: initialStock);
-        imported++;
-      }
+      final report =
+          await StockImportService().importWorkbook(Excel.decodeBytes(bytes));
 
       await _load();
       DataRefreshBus.instance.notifyChanged();
       if (!mounted) return;
-      var msg = '$imported ligne(s) importée(s).';
-      if (skipped > 0) msg += ' $skipped doublon(s) ignoré(s).';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(report.summary),
+          action: report.problems.isEmpty
+              ? null
+              : SnackBarAction(
+                  label: 'Détails',
+                  onPressed: () => _showImportProblems(report),
+                ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur import : $e'), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text('Erreur import : $e'),
+          backgroundColor: AppColors.error,
+        ),
       );
     } finally {
       if (mounted) setState(() => _importing = false);
     }
+  }
+
+  /// Lists what the import refused, so an unreadable date, an unknown
+  /// magasin or a sheet read under the wrong role is something you can go
+  /// and fix rather than a silent gap in the stock. The sheets that were
+  /// read come first: most surprises turn out to be a sheet the import
+  /// never opened at all.
+  Future<void> _showImportProblems(ImportReport report) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Détails de l\'import'),
+        content: SizedBox(
+          width: 420,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const Text('Feuilles lues', style: AppTextStyles.sectionLabel),
+              for (final sheet in report.sheetsRead)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(sheet, style: AppTextStyles.bodyMuted),
+                ),
+              const SizedBox(height: AppSpacing.md),
+              const Text('Lignes ignorées', style: AppTextStyles.sectionLabel),
+              for (final problem in report.problems.take(50))
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(problem, style: AppTextStyles.bodyMuted),
+                ),
+              if (report.problems.length > 50)
+                Text(
+                  '… et ${report.problems.length - 50} autre(s).',
+                  style: AppTextStyles.bodyMuted,
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openAddDialog() async {
@@ -734,29 +712,4 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
       ],
     );
   }
-}
-
-/// Reads a cell's value as plain text, regardless of its underlying
-/// [CellValue] type (text, number, bool…).
-String? _cellText(CellValue? value) {
-  return switch (value) {
-    null => null,
-    TextCellValue v => v.value.toString().trim(),
-    IntCellValue v => '${v.value}',
-    DoubleCellValue v => '${v.value}',
-    BoolCellValue v => '${v.value}',
-    _ => value.toString(),
-  };
-}
-
-/// Reads a cell's value as an integer, returning `null` if it can't be
-/// interpreted as one.
-int? _cellInt(CellValue? value) {
-  return switch (value) {
-    null => null,
-    IntCellValue v => v.value,
-    DoubleCellValue v => v.value.toInt(),
-    TextCellValue v => int.tryParse(v.value.toString().trim()),
-    _ => null,
-  };
 }
