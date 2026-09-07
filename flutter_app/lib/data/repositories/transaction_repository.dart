@@ -10,12 +10,23 @@ class TransactionRepository {
 
   Future<Database> get _db async => _injectedDb ?? DatabaseService.instance.database;
 
-  /// Combined entries+outputs, oldest first, each annotated with a running
-  /// balance.
+  /// Combined entries+outputs, oldest first, each annotated with the
+  /// stock the product stood at once that movement was applied.
   ///
-  /// The balance starts at the SUM of `product_stocks.initial_stock` for
-  /// [reference] (or 0 when [reference] is null, i.e. "Tous les produits"),
-  /// then accumulates `in_qty - out_qty` chronologically (oldest first).
+  /// The balance is kept per product, starting from that product's
+  /// `product_stocks.initial_stock`, so a report covering the whole
+  /// catalogue reads as a stock card per product rather than as one
+  /// running total across unrelated articles.
+  ///
+  /// [storeId] narrows what "stock" means: with a store selected the
+  /// balance is that store's stock, otherwise it is the product's stock
+  /// across every store.
+  ///
+  /// [dateFrom], [dateTo], [type] and [search] choose which rows are
+  /// *shown*. They deliberately do not enter the balance: the stock after
+  /// a movement is a fact about that movement, not about the filter, so
+  /// the figures stay right when the operator looks at February alone or
+  /// at outputs alone.
   Future<List<TransactionRow>> getTransactions({
     String? reference,
     String? search,
@@ -26,134 +37,155 @@ class TransactionRepository {
   }) async {
     final db = await _db;
 
-    var initialSum = 0;
+    // --- Scope: which products and which store the figures cover.
+    final scopeWhere = <String>[];
+    final scopeArgs = <Object?>[];
     if (reference != null) {
-      final product = await db.query(
-        'products',
-        where: 'reference = ?',
-        whereArgs: [reference],
-        limit: 1,
-      );
-      if (product.isNotEmpty) {
-        if (storeId != null) {
-          initialSum = Sqflite.firstIntValue(await db.rawQuery(
-                'SELECT COALESCE(initial_stock, 0) FROM product_stocks WHERE product_id = ? AND store_id = ?',
-                [product.first['id'], storeId],
-              )) ??
-              0;
-        } else {
-          initialSum = Sqflite.firstIntValue(await db.rawQuery(
-                'SELECT COALESCE(SUM(initial_stock), 0) FROM product_stocks WHERE product_id = ?',
-                [product.first['id']],
-              )) ??
-              0;
-        }
-      }
-    }
-
-    final entryWhere = <String>[];
-    final entryArgs = <Object?>[];
-    final outputWhere = <String>[];
-    final outputArgs = <Object?>[];
-
-    if (reference != null) {
-      entryWhere.add('se.reference = ?');
-      entryArgs.add(reference);
-      outputWhere.add('so.reference = ?');
-      outputArgs.add(reference);
+      scopeWhere.add('reference = ?');
+      scopeArgs.add(reference);
     }
     if (storeId != null) {
-      entryWhere.add('se.store_id = ?');
-      entryArgs.add(storeId);
-      outputWhere.add('so.store_id = ?');
-      outputArgs.add(storeId);
+      scopeWhere.add('store_id = ?');
+      scopeArgs.add(storeId);
     }
-    if (dateFrom != null) {
-      entryWhere.add('se.date >= ?');
-      entryArgs.add(dateFrom);
-      outputWhere.add('so.date >= ?');
-      outputArgs.add(dateFrom);
+
+    final openingStock = await _openingStock(db, reference, storeId);
+    final rows = await _movements(db, scopeWhere, scopeArgs, storeId);
+
+    // Chronological order (entries before outputs on the same date, then
+    // by id) so the running balance is deterministic.
+    rows.sort((a, b) {
+      final byDate = a.date.compareTo(b.date);
+      if (byDate != 0) return byDate;
+      final byType = a.type.index.compareTo(b.type.index);
+      if (byType != 0) return byType;
+      return a.id.compareTo(b.id);
+    });
+
+    final balances = <String, int>{};
+    for (final row in rows) {
+      final running =
+          balances[row.reference] ?? openingStock[row.reference] ?? 0;
+      final next = running + row.inQty - row.outQty;
+      balances[row.reference] = next;
+      row.balance = next;
     }
-    if (dateTo != null) {
-      entryWhere.add('se.date <= ?');
-      entryArgs.add(dateTo);
-      outputWhere.add('so.date <= ?');
-      outputArgs.add(dateTo);
+
+    return _applyDisplayFilters(rows, search, type, dateFrom, dateTo);
+  }
+
+  /// Opening stock per product reference, over the same store scope as
+  /// the movements.
+  Future<Map<String, int>> _openingStock(
+    Database db,
+    String? reference,
+    int? storeId,
+  ) async {
+    final where = <String>[];
+    final args = <Object?>[];
+    if (reference != null) {
+      where.add('p.reference = ?');
+      args.add(reference);
     }
-    if (search != null && search.trim().isNotEmpty) {
-      final like = '%${search.trim()}%';
-      entryWhere.add('(se.reference LIKE ? OR se.designation LIKE ?)');
-      entryArgs.addAll([like, like]);
-      outputWhere.add('(so.reference LIKE ? OR so.designation LIKE ?)');
-      outputArgs.addAll([like, like]);
+    if (storeId != null) {
+      where.add('ps.store_id = ?');
+      args.add(storeId);
     }
+    final whereSql = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
+
+    final rows = await db.rawQuery('''
+      SELECT p.reference AS reference,
+             COALESCE(SUM(ps.initial_stock), 0) AS opening
+      FROM product_stocks ps
+      JOIN products p ON p.id = ps.product_id
+      $whereSql
+      GROUP BY p.reference
+    ''', args);
+
+    return {
+      for (final row in rows)
+        row['reference'] as String: (row['opening'] as num).toInt(),
+    };
+  }
+
+  Future<List<TransactionRow>> _movements(
+    Database db,
+    List<String> scopeWhere,
+    List<Object?> scopeArgs,
+    int? storeId,
+  ) async {
+    final whereSql =
+        scopeWhere.isEmpty ? '' : 'WHERE ${scopeWhere.map((c) => 'se.$c').join(' AND ')}';
+    final outWhereSql =
+        scopeWhere.isEmpty ? '' : 'WHERE ${scopeWhere.map((c) => 'so.$c').join(' AND ')}';
 
     final rows = <TransactionRow>[];
 
-    if (type != TransactionType.output) {
-      final whereSql = entryWhere.isEmpty ? '' : 'WHERE ${entryWhere.join(' AND ')}';
-      final entryRows = await db.rawQuery('''
-        SELECT se.id, se.date, se.reference, se.designation, se.supplier,
-               se.quantity, s.name AS store_name
-        FROM stock_entries se
-        JOIN stores s ON s.id = se.store_id
-        $whereSql
-      ''', entryArgs);
-      for (final row in entryRows) {
-        rows.add(TransactionRow(
-          type: TransactionType.entry,
-          id: row['id'] as int,
-          date: row['date'] as String,
-          reference: row['reference'] as String,
-          designation: row['designation'] as String,
-          storeName: row['store_name'] as String,
-          partner: (row['supplier'] as String?) ?? '',
-          invoiceNumber: '',
-          inQty: row['quantity'] as int,
-          outQty: 0,
-        ));
-      }
+    final entryRows = await db.rawQuery('''
+      SELECT se.id, se.date, se.reference, se.designation, se.supplier,
+             se.quantity, s.name AS store_name
+      FROM stock_entries se
+      JOIN stores s ON s.id = se.store_id
+      $whereSql
+    ''', scopeArgs);
+    for (final row in entryRows) {
+      rows.add(TransactionRow(
+        type: TransactionType.entry,
+        id: row['id'] as int,
+        date: row['date'] as String,
+        reference: row['reference'] as String,
+        designation: row['designation'] as String,
+        storeName: row['store_name'] as String,
+        partner: (row['supplier'] as String?) ?? '',
+        invoiceNumber: '',
+        inQty: (row['quantity'] as num).toInt(),
+        outQty: 0,
+      ));
     }
 
-    if (type != TransactionType.entry) {
-      final whereSql = outputWhere.isEmpty ? '' : 'WHERE ${outputWhere.join(' AND ')}';
-      final outputRows = await db.rawQuery('''
-        SELECT so.id, so.date, so.reference, so.designation, so.destination,
-               so.invoice_number, so.quantity, s.name AS store_name
-        FROM stock_outputs so
-        JOIN stores s ON s.id = so.store_id
-        $whereSql
-      ''', outputArgs);
-      for (final row in outputRows) {
-        rows.add(TransactionRow(
-          type: TransactionType.output,
-          id: row['id'] as int,
-          date: row['date'] as String,
-          reference: row['reference'] as String,
-          designation: row['designation'] as String,
-          storeName: row['store_name'] as String,
-          partner: (row['destination'] as String?) ?? '',
-          invoiceNumber: (row['invoice_number'] as String?) ?? '',
-          inQty: 0,
-          outQty: row['quantity'] as int,
-        ));
-      }
-    }
-
-    // Chronological order (entries before outputs on the same date) to
-    // compute the running balance correctly.
-    rows.sort((a, b) {
-      final dateCompare = a.date.compareTo(b.date);
-      if (dateCompare != 0) return dateCompare;
-      return a.type.index.compareTo(b.type.index);
-    });
-
-    var balance = initialSum;
-    for (final row in rows) {
-      balance += row.inQty - row.outQty;
-      row.balance = balance;
+    final outputRows = await db.rawQuery('''
+      SELECT so.id, so.date, so.reference, so.designation, so.destination,
+             so.invoice_number, so.quantity, s.name AS store_name
+      FROM stock_outputs so
+      JOIN stores s ON s.id = so.store_id
+      $outWhereSql
+    ''', scopeArgs);
+    for (final row in outputRows) {
+      rows.add(TransactionRow(
+        type: TransactionType.output,
+        id: row['id'] as int,
+        date: row['date'] as String,
+        reference: row['reference'] as String,
+        designation: row['designation'] as String,
+        storeName: row['store_name'] as String,
+        partner: (row['destination'] as String?) ?? '',
+        invoiceNumber: (row['invoice_number'] as String?) ?? '',
+        inQty: 0,
+        outQty: (row['quantity'] as num).toInt(),
+      ));
     }
 
     return rows;
+  }
+
+  List<TransactionRow> _applyDisplayFilters(
+    List<TransactionRow> rows,
+    String? search,
+    TransactionType? type,
+    String? dateFrom,
+    String? dateTo,
+  ) {
+    final needle = search?.trim().toLowerCase();
+    return rows.where((row) {
+      if (type != null && row.type != type) return false;
+      if (dateFrom != null && row.date.compareTo(dateFrom) < 0) return false;
+      if (dateTo != null && row.date.compareTo(dateTo) > 0) return false;
+      if (needle != null && needle.isNotEmpty) {
+        final matches = row.reference.toLowerCase().contains(needle) ||
+            row.designation.toLowerCase().contains(needle);
+        if (!matches) return false;
+      }
+      return true;
+    }).toList();
   }
 }

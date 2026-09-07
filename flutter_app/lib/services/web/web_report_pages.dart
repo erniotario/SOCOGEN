@@ -105,7 +105,7 @@ class WebReportPages {
       ..writeln('<table id="tbl"><thead><tr>'
           '<th>DATE</th><th>TYPE</th><th>RÉFÉRENCE</th><th>DÉSIGNATION</th>'
           '<th>MAGASIN</th><th>PARTENAIRE</th><th class="n">ENTRÉE</th>'
-          '<th class="n">SORTIE</th><th class="n">SOLDE</th>'
+          '<th class="n">SORTIE</th><th class="n">STOCK APRÈS</th>'
           '</tr></thead><tbody>');
 
     for (final row in rows) {

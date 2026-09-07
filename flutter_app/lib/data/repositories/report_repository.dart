@@ -10,6 +10,24 @@ class ReportRepository {
 
   Future<Database> get _db async => _injectedDb ?? DatabaseService.instance.database;
 
+  /// Entries and outputs summed once per (reference, store), joined in
+  /// rather than looked up per row.
+  ///
+  /// The correlated-subquery form this replaces re-scanned both movement
+  /// tables for every product/store pair, so the report grew with the
+  /// product of the two — slow enough on a real catalogue to look like a
+  /// freeze.
+  static const String _movementTotals = '''
+    LEFT JOIN (
+      SELECT reference, store_id, SUM(quantity) AS total
+      FROM stock_entries GROUP BY reference, store_id
+    ) e ON e.reference = p.reference AND e.store_id = s.id
+    LEFT JOIN (
+      SELECT reference, store_id, SUM(quantity) AS total
+      FROM stock_outputs GROUP BY reference, store_id
+    ) o ON o.reference = p.reference AND o.store_id = s.id
+  ''';
+
   /// One row per (product x store), with entries/outputs scoped to that
   /// store and matched to the product by `reference`.
   Future<List<ReportRow>> getReportRows({
@@ -40,12 +58,13 @@ class ReportRepository {
         p.unit AS unit,
         s.id AS store_id,
         s.name AS store_name,
-        ps.initial_stock AS initial_stock,
-        COALESCE((SELECT SUM(quantity) FROM stock_entries se WHERE se.reference = p.reference AND se.store_id = s.id), 0) AS entries,
-        COALESCE((SELECT SUM(quantity) FROM stock_outputs so WHERE so.reference = p.reference AND so.store_id = s.id), 0) AS outputs
+        COALESCE(ps.initial_stock, 0) AS initial_stock,
+        COALESCE(e.total, 0) AS entries,
+        COALESCE(o.total, 0) AS outputs
       FROM product_stocks ps
       JOIN products p ON p.id = ps.product_id
       JOIN stores s ON s.id = ps.store_id
+      $_movementTotals
       $where
       ORDER BY p.reference, s.name
     ''', args);
@@ -58,9 +77,9 @@ class ReportRepository {
               unit: (row['unit'] as String?) ?? 'unité',
               storeId: row['store_id'] as int,
               storeName: row['store_name'] as String,
-              initialStock: row['initial_stock'] as int,
-              entries: row['entries'] as int,
-              outputs: row['outputs'] as int,
+              initialStock: (row['initial_stock'] as num).toInt(),
+              entries: (row['entries'] as num).toInt(),
+              outputs: (row['outputs'] as num).toInt(),
             ))
         .toList();
 
@@ -71,22 +90,39 @@ class ReportRepository {
   }
 
   /// KPI counts computed over the FULL unfiltered dataset.
-  Future<({int total, int enStock, int stockFaible, int rupture})> getStatusCounts() async {
-    final rows = await getReportRows();
-    var enStock = 0, stockFaible = 0, rupture = 0;
-    for (final row in rows) {
-      switch (row.status) {
-        case StockStatus.enStock:
-          enStock++;
-          break;
-        case StockStatus.stockFaible:
-          stockFaible++;
-          break;
-        case StockStatus.rupture:
-          rupture++;
-          break;
-      }
-    }
-    return (total: rows.length, enStock: enStock, stockFaible: stockFaible, rupture: rupture);
+  ///
+  /// Counted in SQL rather than by walking [getReportRows] a second time,
+  /// which ran the whole report twice on every load and every keystroke
+  /// in the search box.
+  Future<({int total, int enStock, int stockFaible, int rupture})>
+      getStatusCounts() async {
+    final db = await _db;
+
+    // Mirrors StockStatus.fromCurrent: <= 0 rupture, < 10 faible, else
+    // en stock.
+    final rows = await db.rawQuery('''
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN current >= 10 THEN 1 ELSE 0 END) AS en_stock,
+        SUM(CASE WHEN current > 0 AND current < 10 THEN 1 ELSE 0 END) AS faible,
+        SUM(CASE WHEN current <= 0 THEN 1 ELSE 0 END) AS rupture
+      FROM (
+        SELECT
+          COALESCE(ps.initial_stock, 0) + COALESCE(e.total, 0) - COALESCE(o.total, 0)
+            AS current
+        FROM product_stocks ps
+        JOIN products p ON p.id = ps.product_id
+        JOIN stores s ON s.id = ps.store_id
+        $_movementTotals
+      )
+    ''');
+
+    int at(String column) => (rows.first[column] as num?)?.toInt() ?? 0;
+    return (
+      total: at('total'),
+      enStock: at('en_stock'),
+      stockFaible: at('faible'),
+      rupture: at('rupture'),
+    );
   }
 }

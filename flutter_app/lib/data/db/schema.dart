@@ -7,7 +7,7 @@
 class AppSchema {
   AppSchema._();
 
-  static const int version = 2;
+  static const int version = 3;
 
   static const List<String> createStatements = [
     '''
@@ -128,6 +128,24 @@ class AppSchema {
       value TEXT
     )
     ''',
+  ];
+
+  /// Movements are matched to products by `reference`, not by id, and the
+  /// Rapports screen sums them per (reference, store). Without these the
+  /// report scans both movement tables once per product/store pair, which
+  /// on a real catalogue means minutes of work and an unresponsive app.
+  ///
+  /// Applied on create, on upgrade, and to the seeded asset database,
+  /// which ships without them.
+  static const List<String> createIndexStatements = [
+    'CREATE INDEX IF NOT EXISTS idx_stock_entries_ref_store '
+        'ON stock_entries(reference, store_id)',
+    'CREATE INDEX IF NOT EXISTS idx_stock_outputs_ref_store '
+        'ON stock_outputs(reference, store_id)',
+    'CREATE INDEX IF NOT EXISTS idx_stock_entries_date ON stock_entries(date)',
+    'CREATE INDEX IF NOT EXISTS idx_stock_outputs_date ON stock_outputs(date)',
+    'CREATE INDEX IF NOT EXISTS idx_product_stocks_store '
+        'ON product_stocks(store_id)',
   ];
 
   static const List<String> defaultStores = [

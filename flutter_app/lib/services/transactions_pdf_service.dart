@@ -1,11 +1,30 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show compute;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../data/models/company_settings.dart';
 import '../data/models/view_models.dart';
+
+/// Everything [TransactionsPdfService.build] needs, in one object so the
+/// whole report can be handed to a background isolate in a single message.
+class TransactionsPdfRequest {
+  final String? productRef;
+  final List<TransactionRow> transactions;
+  final ProductOverview? overview;
+  final CompanySettings company;
+  final StoreAvailability? storeAvailability;
+
+  const TransactionsPdfRequest({
+    required this.productRef,
+    required this.transactions,
+    required this.overview,
+    required this.company,
+    this.storeAvailability,
+  });
+}
 
 
 /// Builds the "Rapport de transactions" / "Rapport produit" PDF, mirroring
@@ -25,6 +44,35 @@ class TransactionsPdfService {
   static const _rowIn = PdfColor.fromInt(0xFFD5F5E3);
   static const _rowOut = PdfColor.fromInt(0xFFFADBD8);
 
+  /// Rows per body table. A report of a few thousand movements is one
+  /// table only in appearance: MultiPage re-lays out a spanning table
+  /// once per page it crosses, so a single 4 700-row table costs about
+  /// 47 s where the same rows cut into page-sized tables cost 9 s.
+  /// Column widths are fixed, so the seams are invisible.
+  static const int _rowsPerChunk = 30;
+
+  /// A [MultiPage] refuses to let one widget span more than [maxPages]
+  /// pages. The default of 20 rejects any report past ~600 movements —
+  /// as an assert, so a debug build throws TooManyPagesException and a
+  /// release build spends minutes laying out pages it will not keep.
+  static const int _maxPages = 100000;
+
+  /// Builds the report on a background isolate, leaving the UI thread
+  /// free. A few thousand movements take several seconds of pure layout;
+  /// on the UI isolate that is long enough for Android to raise an ANR
+  /// and for iOS's watchdog to kill the app.
+  static Future<Uint8List> buildInBackground(TransactionsPdfRequest request) =>
+      compute(_buildIsolate, request);
+
+  static Future<Uint8List> _buildIsolate(TransactionsPdfRequest request) =>
+      build(
+        productRef: request.productRef,
+        transactions: request.transactions,
+        overview: request.overview,
+        company: request.company,
+        storeAvailability: request.storeAvailability,
+      );
+
   static Future<Uint8List> build({
     required String? productRef,
     required List<TransactionRow> transactions,
@@ -40,6 +88,7 @@ class TransactionsPdfService {
 
     doc.addPage(
       pw.MultiPage(
+        maxPages: _maxPages,
         pageFormat: PdfPageFormat.a4.copyWith(
           marginLeft: 10 * PdfPageFormat.mm,
           marginRight: 10 * PdfPageFormat.mm,
@@ -47,7 +96,10 @@ class TransactionsPdfService {
           marginBottom: 12 * PdfPageFormat.mm,
         ),
         header: (context) {
-          if (context.pageNumber != 1) return pw.SizedBox();
+          // The column headings ride in the page header rather than in
+          // the table, so every page of a long report is readable and
+          // not just the first.
+          if (context.pageNumber != 1) return _buildTableHeader();
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
@@ -60,11 +112,12 @@ class TransactionsPdfService {
                 style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: _primary),
               ),
               pw.SizedBox(height: 2 * PdfPageFormat.mm),
+              _buildTableHeader(),
             ],
           );
         },
         footer: (context) => _buildFooter(company, transactions.length, now),
-        build: (context) => [_buildTransactionsTable(transactions)],
+        build: (context) => _buildTransactionsTables(transactions),
       ),
     );
 
@@ -221,25 +274,54 @@ class TransactionsPdfService {
     );
   }
 
-  static pw.Widget _buildTransactionsTable(List<TransactionRow> rows) {
-    const headers = [
-      'DATE',
-      'TYPE',
-      'RÉFÉRENCE',
-      'DÉSIGNATION',
-      'MAGASIN',
-      'FOURN. / DEST.',
-      'FACTURE',
-      'ENTRÉE',
-      'SORTIE',
-      'SOLDE',
-    ];
-    // Total = 190mm to fit A4 portrait (210mm - 20mm margins)
-    const widthsMm = [18.0, 13.0, 22.0, 32.0, 22.0, 28.0, 17.0, 13.0, 13.0, 12.0];
-    final columnWidths = <int, pw.TableColumnWidth>{
-      for (var i = 0; i < widthsMm.length; i++) i: pw.FixedColumnWidth(widthsMm[i] * PdfPageFormat.mm),
-    };
+  static const _tableHeaders = [
+    'DATE',
+    'TYPE',
+    'RÉFÉRENCE',
+    'DÉSIGNATION',
+    'MAGASIN',
+    'FOURN. / DEST.',
+    'FACTURE',
+    'ENTRÉE',
+    'SORTIE',
+    'STOCK APRÈS',
+  ];
 
+  /// Total = 190mm to fit A4 portrait (210mm - 20mm margins).
+  static const _widthsMm = [18.0, 13.0, 22.0, 32.0, 22.0, 28.0, 17.0, 13.0, 13.0, 12.0];
+
+  static Map<int, pw.TableColumnWidth> get _columnWidths => {
+        for (var i = 0; i < _widthsMm.length; i++)
+          i: pw.FixedColumnWidth(_widthsMm[i] * PdfPageFormat.mm),
+      };
+
+  static pw.Widget _cell(
+    String text, {
+    pw.TextAlign align = pw.TextAlign.left,
+    PdfColor? color,
+    bool bold = false,
+  }) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          fontSize: 7.5,
+          color: color ?? PdfColors.black,
+          fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+        ),
+        textAlign: align,
+      ),
+    );
+  }
+
+  static String _truncate(String text, int max) =>
+      text.length > max ? text.substring(0, max) : text;
+
+  /// The blue column-heading strip, as a table of its own so the page
+  /// header can draw it on every page. Same fixed column widths as the
+  /// body tables, so the two line up.
+  static pw.Widget _buildTableHeader() {
     pw.Widget headerCell(String text, int index) => pw.Padding(
           padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 6),
           child: pw.Text(
@@ -249,66 +331,66 @@ class TransactionsPdfService {
           ),
         );
 
-    pw.Widget cell(String text, {pw.TextAlign align = pw.TextAlign.left, PdfColor? color, bool bold = false}) {
-      return pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 4),
-        child: pw.Text(
-          text,
-          style: pw.TextStyle(
-            fontSize: 7.5,
-            color: color ?? PdfColors.black,
-            fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
-          ),
-          textAlign: align,
+    return pw.Table(
+      columnWidths: _columnWidths,
+      border: pw.TableBorder.all(color: _borderLight, width: 0.4),
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: _primary),
+          children: [
+            for (var i = 0; i < _tableHeaders.length; i++) headerCell(_tableHeaders[i], i),
+          ],
         ),
-      );
-    }
+      ],
+    );
+  }
 
-    String truncate(String text, int max) => text.length > max ? text.substring(0, max) : text;
+  static pw.TableRow _buildTransactionRow(TransactionRow row) {
+    final isEntry = row.type == TransactionType.entry;
 
-    final tableRows = <pw.TableRow>[
-      pw.TableRow(
-        decoration: const pw.BoxDecoration(color: _primary),
-        children: [for (var i = 0; i < headers.length; i++) headerCell(headers[i], i)],
-      ),
-    ];
+    var displayDate = row.date;
+    try {
+      displayDate = DateFormat('dd/MM/yyyy').format(DateTime.parse(row.date));
+    } catch (_) {}
 
-    for (final row in rows) {
-      final isEntry = row.type == TransactionType.entry;
+    final inTxt = row.inQty > 0 ? '+ ${row.inQty}' : '-';
+    final outTxt = row.outQty > 0 ? '- ${row.outQty}' : '-';
+    final balColor = row.balance > 10 ? _green : (row.balance > 0 ? _orange : _red);
+    final partner = row.partner.isEmpty ? '-' : row.partner;
+    final invoice = row.invoiceNumber.isEmpty ? '-' : row.invoiceNumber;
 
-      var displayDate = row.date;
-      try {
-        displayDate = DateFormat('dd/MM/yyyy').format(DateTime.parse(row.date));
-      } catch (_) {}
+    return pw.TableRow(
+      decoration: pw.BoxDecoration(color: isEntry ? _rowIn : _rowOut),
+      children: [
+        _cell(displayDate, align: pw.TextAlign.center),
+        _cell(isEntry ? 'Entrée' : 'Sortie', align: pw.TextAlign.center, color: isEntry ? _green : _red, bold: true),
+        _cell(row.reference),
+        _cell(_truncate(row.designation, 36)),
+        _cell(row.storeName.isEmpty ? '-' : row.storeName),
+        _cell(_truncate(partner, 40)),
+        _cell(invoice, align: pw.TextAlign.center),
+        _cell(inTxt, align: pw.TextAlign.right, color: _green, bold: true),
+        _cell(outTxt, align: pw.TextAlign.right, color: _red, bold: true),
+        _cell('${row.balance}', align: pw.TextAlign.right, color: balColor, bold: true),
+      ],
+    );
+  }
 
-      final inTxt = row.inQty > 0 ? '+ ${row.inQty}' : '-';
-      final outTxt = row.outQty > 0 ? '- ${row.outQty}' : '-';
-      final balColor = row.balance > 10 ? _green : (row.balance > 0 ? _orange : _red);
-      final partner = row.partner.isEmpty ? '-' : row.partner;
-      final invoice = row.invoiceNumber.isEmpty ? '-' : row.invoiceNumber;
-
-      tableRows.add(pw.TableRow(
-        decoration: pw.BoxDecoration(color: isEntry ? _rowIn : _rowOut),
+  /// The movements as a run of page-sized tables rather than one long
+  /// one -- see [_rowsPerChunk] for why.
+  static List<pw.Widget> _buildTransactionsTables(List<TransactionRow> rows) {
+    final tables = <pw.Widget>[];
+    for (var start = 0; start < rows.length; start += _rowsPerChunk) {
+      final end = start + _rowsPerChunk < rows.length ? start + _rowsPerChunk : rows.length;
+      tables.add(pw.Table(
+        columnWidths: _columnWidths,
+        border: pw.TableBorder.all(color: _borderLight, width: 0.4),
         children: [
-          cell(displayDate, align: pw.TextAlign.center),
-          cell(isEntry ? 'Entrée' : 'Sortie', align: pw.TextAlign.center, color: isEntry ? _green : _red, bold: true),
-          cell(row.reference),
-          cell(truncate(row.designation, 36)),
-          cell(row.storeName.isEmpty ? '-' : row.storeName),
-          cell(truncate(partner, 40)),
-          cell(invoice, align: pw.TextAlign.center),
-          cell(inTxt, align: pw.TextAlign.right, color: _green, bold: true),
-          cell(outTxt, align: pw.TextAlign.right, color: _red, bold: true),
-          cell('${row.balance}', align: pw.TextAlign.right, color: balColor, bold: true),
+          for (var i = start; i < end; i++) _buildTransactionRow(rows[i]),
         ],
       ));
     }
-
-    return pw.Table(
-      columnWidths: columnWidths,
-      border: pw.TableBorder.all(color: _borderLight, width: 0.4),
-      children: tableRows,
-    );
+    return tables;
   }
 
   static pw.Widget _buildFooter(CompanySettings company, int count, DateTime now) {

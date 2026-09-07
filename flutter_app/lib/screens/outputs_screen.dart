@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -65,9 +67,11 @@ class _OutputsScreenState extends State<OutputsScreen> {
   }
 
   Future<_OutputsData> _load() async {
-    final outputs = await _outputRepo.getAll();
-    final products = await _productRepo.getProductOverviews();
-    final stores = await _storeRepo.getAllStores();
+    final (outputs, products, stores) = await (
+      _outputRepo.getAll(),
+      _productRepo.getProductOverviews(),
+      _storeRepo.getAllStores(),
+    ).wait;
     return _OutputsData(outputs: outputs, products: products, stores: stores);
   }
 
@@ -157,11 +161,14 @@ class _OutputsScreenState extends State<OutputsScreen> {
                             const SizedBox(height: AppSpacing.xl),
                             Row(
                               children: [
-                                const Text(
-                                  'HISTORIQUE DES SORTIES',
-                                  style: AppTextStyles.sectionLabel,
+                                const Expanded(
+                                  child: Text(
+                                    'HISTORIQUE DES SORTIES',
+                                    style: AppTextStyles.sectionLabel,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                const Spacer(),
+                                const SizedBox(width: AppSpacing.sm),
                                 Text(
                                   '${data.outputs.length} sortie(s)',
                                   style: AppTextStyles.captionMuted,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -65,9 +67,11 @@ class _EntriesScreenState extends State<EntriesScreen> {
   }
 
   Future<_EntriesData> _load() async {
-    final entries = await _entryRepo.getAll();
-    final products = await _productRepo.getProductOverviews();
-    final stores = await _storeRepo.getAllStores();
+    final (entries, products, stores) = await (
+      _entryRepo.getAll(),
+      _productRepo.getProductOverviews(),
+      _storeRepo.getAllStores(),
+    ).wait;
     return _EntriesData(entries: entries, products: products, stores: stores);
   }
 
@@ -157,11 +161,14 @@ class _EntriesScreenState extends State<EntriesScreen> {
                             const SizedBox(height: AppSpacing.xl),
                             Row(
                               children: [
-                                const Text(
-                                  'HISTORIQUE DES ENTRÉES',
-                                  style: AppTextStyles.sectionLabel,
+                                const Expanded(
+                                  child: Text(
+                                    'HISTORIQUE DES ENTRÉES',
+                                    style: AppTextStyles.sectionLabel,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                const Spacer(),
+                                const SizedBox(width: AppSpacing.sm),
                                 Text(
                                   '${data.entries.length} entrée(s)',
                                   style: AppTextStyles.captionMuted,

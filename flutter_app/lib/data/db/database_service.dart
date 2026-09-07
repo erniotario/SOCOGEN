@@ -56,9 +56,19 @@ class DatabaseService {
       version: AppSchema.version,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
+        // Write-ahead logging lets a read run while a write is in
+        // flight, and NORMAL drops the fsync per statement that makes
+        // an import or a sync crawl on phone storage. Both are safe
+        // for a single-process app: a crash can cost the last
+        // transaction, never the file.
+        await db.execute('PRAGMA journal_mode = WAL');
+        await db.execute('PRAGMA synchronous = NORMAL');
       },
       onCreate: (db, version) async {
         for (final statement in AppSchema.createStatements) {
+          await db.execute(statement);
+        }
+        for (final statement in AppSchema.createIndexStatements) {
           await db.execute(statement);
         }
         final now = nowIso();
@@ -71,8 +81,20 @@ class DatabaseService {
         if (oldVersion < 2) {
           await _migrateToV2(db);
         }
+        if (oldVersion < 3) {
+          await _migrateToV3(db);
+        }
       },
     );
+  }
+
+  /// Creates the query indexes. The seeded asset database ships without
+  /// them and every database created before v3 lacks them, so this runs
+  /// as an upgrade step rather than only at creation.
+  Future<void> _migrateToV3(Database db) async {
+    for (final statement in AppSchema.createIndexStatements) {
+      await db.execute(statement);
+    }
   }
 
   /// Adds the `updated_at`/`sync_id` columns and the `sync_tombstones`/
@@ -89,16 +111,22 @@ class DatabaseService {
     await db.update('products', {'updated_at': now}, where: 'updated_at IS NULL');
     await db.update('product_stocks', {'updated_at': now}, where: 'updated_at IS NULL');
 
+    // One statement per movement, but committed as a single batch: a
+    // few thousand rows each in their own transaction is minutes of
+    // fsync on a phone, and this runs on the first launch after an
+    // update.
     for (final table in ['stock_entries', 'stock_outputs']) {
       final rows = await db.query(table, columns: ['id'], where: 'sync_id IS NULL');
+      final batch = db.batch();
       for (final row in rows) {
-        await db.update(
+        batch.update(
           table,
           {'sync_id': newSyncId(), 'updated_at': now},
           where: 'id = ?',
           whereArgs: [row['id']],
         );
       }
+      await batch.commit(noResult: true);
     }
   }
 

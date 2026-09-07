@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/models/view_models.dart';
@@ -63,10 +65,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<_DashboardData> _load() async {
-    final products = await _productRepo.getProductOverviews();
-    final stores = await _storeRepo.getAllStores();
-    final totalEntries = await _entryRepo.getTotalQuantity();
-    final totalOutputs = await _outputRepo.getTotalQuantity();
+    final (products, stores, totalEntries, totalOutputs) = await (
+      _productRepo.getProductOverviews(),
+      _storeRepo.getAllStores(),
+      _entryRepo.getTotalQuantity(),
+      _outputRepo.getTotalQuantity(),
+    ).wait;
     return _DashboardData(
       products: products,
       storeCount: stores.length,

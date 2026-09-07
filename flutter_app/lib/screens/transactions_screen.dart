@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 
 import '../data/models/stock_entry.dart';
 import '../data/models/stock_output.dart';
@@ -59,6 +61,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   _TransactionsData? _data;
   String? _error;
 
+  /// True while a PDF report is being generated, so the export buttons
+  /// can show progress and refuse a second run.
+  bool _exporting = false;
+
   String? _reference;
   int? _storeId;
   TransactionType? _type;
@@ -91,16 +97,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   Future<void> _load() async {
     try {
-      final rows = await _transactionRepo.getTransactions(
-        reference: _reference,
-        search: _search.isEmpty ? null : _search,
-        storeId: _storeId,
-        type: _type,
-        dateFrom: DateFormat('yyyy-MM-dd').format(_dateFrom),
-        dateTo: DateFormat('yyyy-MM-dd').format(_dateTo),
-      );
-      final products = await _productRepo.getProductOverviews();
-      final stores = await _storeRepo.getAllStores();
+      final (rows, products, stores) = await (
+        _transactionRepo.getTransactions(
+          reference: _reference,
+          search: _search.isEmpty ? null : _search,
+          storeId: _storeId,
+          type: _type,
+          dateFrom: DateFormat('yyyy-MM-dd').format(_dateFrom),
+          dateTo: DateFormat('yyyy-MM-dd').format(_dateTo),
+        ),
+        _productRepo.getProductOverviews(),
+        _storeRepo.getAllStores(),
+      ).wait;
 
       StoreAvailability? storeAvailability;
       final ref = _reference;
@@ -204,25 +212,49 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     await _exportPdfReport(data, defaultName: 'transactions_tous_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf');
   }
 
-  Future<void> _exportPdfReport(_TransactionsData data, {required String defaultName}) async {
+  /// Builds the report off the UI isolate, holding [_exporting] for the
+  /// duration. Returns null when there is nothing to report or the build
+  /// failed, having already told the operator why.
+  Future<Uint8List?> _buildReport(_TransactionsData data) async {
     if (data.rows.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Aucune transaction à exporter.')),
       );
-      return;
+      return null;
     }
 
+    // A few thousand movements take seconds to lay out even off the UI
+    // thread, so say so rather than leaving a window that looks hung.
+    setState(() => _exporting = true);
     try {
       final company = await _settingsRepo.getSettings();
       final overview = _selectedOverview(data.products);
-      final bytes = await TransactionsPdfService.build(
-        productRef: _reference,
-        transactions: data.rows,
-        overview: overview,
-        storeAvailability: data.storeAvailability,
-        company: company,
+      return await TransactionsPdfService.buildInBackground(
+        TransactionsPdfRequest(
+          productRef: _reference,
+          transactions: data.rows,
+          overview: overview,
+          storeAvailability: data.storeAvailability,
+          company: company,
+        ),
       );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur rapport PDF : $e')),
+        );
+      }
+      return null;
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
 
+  Future<void> _exportPdfReport(_TransactionsData data, {required String defaultName}) async {
+    final bytes = await _buildReport(data);
+    if (bytes == null || !mounted) return;
+
+    try {
       final savePath = await FilePicker.saveFile(
         dialogTitle: 'Enregistrer le rapport PDF',
         fileName: defaultName,
@@ -243,6 +275,40 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       );
     }
   }
+
+  /// Sends the same report straight to a printer through the system
+  /// print dialog, so a paper copy needs no detour through a saved file.
+  Future<void> _printReport(_TransactionsData data) async {
+    final bytes = await _buildReport(data);
+    if (bytes == null) return;
+
+    final ref = _reference;
+    final name = ref == null
+        ? 'Rapport de transactions'
+        : 'Rapport produit $ref';
+    try {
+      await Printing.layoutPdf(
+        onLayout: (_) async => bytes,
+        name: name,
+        format: PdfPageFormat.a4,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impression impossible : $e')),
+      );
+    }
+  }
+
+  /// Swaps the export button's icon for a spinner while a report is
+  /// being generated.
+  Widget _exportIcon(Widget icon) => _exporting
+      ? const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        )
+      : icon;
 
   @override
   Widget build(BuildContext context) {
@@ -283,17 +349,27 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           subtitle: 'Historique des entrées et sorties',
           actions: [
             OutlinedButton.icon(
-              onPressed: data.rows.isNotEmpty ? () => _exportPdfAll(data) : null,
-              icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-              label: const Text('Rapport PDF (tout)'),
+              onPressed: data.rows.isNotEmpty && !_exporting
+                  ? () => _printReport(data)
+                  : null,
+              icon: _exportIcon(const Icon(Icons.print_outlined, size: 18)),
+              label: const Text('Imprimer'),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            OutlinedButton.icon(
+              onPressed: data.rows.isNotEmpty && !_exporting
+                  ? () => _exportPdfAll(data)
+                  : null,
+              icon: _exportIcon(const Icon(Icons.picture_as_pdf_outlined, size: 18)),
+              label: Text(_exporting ? 'Génération…' : 'Rapport PDF (tout)'),
             ),
             const SizedBox(width: AppSpacing.sm),
             ElevatedButton.icon(
-              onPressed: _reference != null && data.rows.isNotEmpty
+              onPressed: _reference != null && data.rows.isNotEmpty && !_exporting
                   ? () => _exportPdf(data)
                   : null,
-              icon: const Icon(Icons.picture_as_pdf, size: 18),
-              label: const Text('Rapport PDF'),
+              icon: _exportIcon(const Icon(Icons.picture_as_pdf, size: 18)),
+              label: Text(_exporting ? 'Génération…' : 'Rapport PDF'),
             ),
           ],
         ),
@@ -393,7 +469,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         AppColumn('N° FACTURE', flex: 9),
         AppColumn.number('ENTRÉE', flex: 8),
         AppColumn.number('SORTIE', flex: 8),
-        AppColumn.number('SOLDE', flex: 8),
+        AppColumn.number('STOCK APRÈS', flex: 8),
         AppColumn.actions(flex: 9),
       ],
       empty: const AppEmptyState(

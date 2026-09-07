@@ -53,6 +53,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
   StockStatus? _status;
   Timer? _searchDebounce;
 
+  /// Set in [build] from the window size, read by [_buildBody].
+  bool _scrollWholePage = false;
+
   bool get _hasFilters =>
       _search.isNotEmpty || _storeId != null || _status != null;
 
@@ -73,13 +76,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _load() async {
     try {
-      final rows = await _reportRepo.getReportRows(
-        search: _search.isEmpty ? null : _search,
-        storeId: _storeId,
-        status: _status,
-      );
-      final stores = await _storeRepo.getAllStores();
-      final counts = await _reportRepo.getStatusCounts();
+      final (rows, stores, counts) = await (
+        _reportRepo.getReportRows(
+          search: _search.isEmpty ? null : _search,
+          storeId: _storeId,
+          status: _status,
+        ),
+        _storeRepo.getAllStores(),
+        _reportRepo.getStatusCounts(),
+      ).wait;
       if (!mounted) return;
       setState(() {
         _data = _ReportsData(rows: rows, stores: stores, counts: counts);
@@ -114,6 +119,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final size = context.windowSize;
+    _scrollWholePage = size.isCompact || context.isShort;
     return Column(
       children: [
         PageHeader(
@@ -187,8 +193,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
       const SizedBox(height: AppSpacing.lg),
       Row(
         children: [
-          const Text('DÉTAIL PAR PRODUIT', style: AppTextStyles.sectionLabel),
-          const Spacer(),
+          // The count is short and always worth reading; the label is
+          // the half that gives way on a narrow phone.
+          const Expanded(
+            child: Text(
+              'DÉTAIL PAR PRODUIT',
+              style: AppTextStyles.sectionLabel,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
           Text(
             '${data.rows.length} produit(s)',
             style: AppTextStyles.captionMuted,
@@ -198,10 +212,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
       const SizedBox(height: AppSpacing.sm),
     ];
 
-    // On a phone the whole page scrolls as one column; on wider windows
-    // the summary and filters stay put while the table scrolls under its
-    // own sticky header.
-    if (size.isCompact) {
+    // On a phone -- and in any window too short to hold the summary,
+    // filters and a usable table at once -- the whole page scrolls as one
+    // column; on roomier windows the summary and filters stay put while
+    // the table scrolls under its own sticky header.
+    if (_scrollWholePage) {
       return RefreshIndicator(
         onRefresh: _refresh,
         color: AppColors.accentLight,

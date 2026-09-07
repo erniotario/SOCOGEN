@@ -63,6 +63,13 @@ extension ResponsiveContext on BuildContext {
 
   bool get isCompact => windowSize.isCompact;
 
+  /// True when the window is too short to pin a summary header above a
+  /// scrolling table -- a phone held sideways, or a squat desktop
+  /// window. Screens that do that fall back to scrolling the whole page.
+  bool get isShort => MediaQuery.sizeOf(this).height < shortWindowHeight;
+
+  static const double shortWindowHeight = 600;
+
   /// True on phones/tablets, where hit targets must be finger sized and
   /// hover affordances are pointless.
   bool get isTouch =>

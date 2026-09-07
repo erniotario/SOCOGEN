@@ -32,12 +32,50 @@ void main() {
     expect(rows.first.balance, 35);
   });
 
-  test('getTransactions for all products starts balance at 0', () async {
+  test('getTransactions over all products carries a balance per product', () async {
     final rows = await repo.getTransactions();
 
     expect(rows.map((r) => r.date).toList(),
         ['2026-01-05', '2026-01-08', '2026-01-10', '2026-02-01', '2026-02-05']);
-    expect(rows.map((r) => r.balance).toList(), [20, 8, 13, 21, 18]);
+    // REF1 opens at 15 and runs 35 -> 23 -> 28; REF2 opens at 0 and runs
+    // 8 -> 5. Each row shows that product's stock, not a total across
+    // unrelated articles.
+    expect(rows.map((r) => r.balance).toList(), [35, 23, 28, 8, 5]);
+  });
+
+  test('a date filter hides rows without falsifying the balance', () async {
+    final rows = await repo.getTransactions(dateFrom: '2026-01-08');
+
+    expect(rows.map((r) => r.date).toList(),
+        ['2026-01-08', '2026-01-10', '2026-02-01', '2026-02-05']);
+    // 2026-01-05's +20 is not shown but still counted: REF1 stands at 23
+    // after the 12 leaving on the 8th, not at -12 + 15.
+    expect(rows.map((r) => r.balance).toList(), [23, 28, 8, 5]);
+  });
+
+  test('a type filter hides rows without falsifying the balance', () async {
+    final rows = await repo.getTransactions(type: TransactionType.output);
+
+    expect(rows.map((r) => r.reference).toList(), ['REF1', 'REF2']);
+    expect(rows.map((r) => r.balance).toList(), [23, 5]);
+  });
+
+  test('a store filter scopes the balance to that store', () async {
+    final rows = await repo.getTransactions(reference: 'REF1', storeId: 1);
+
+    // StoreA holds 10 of REF1 to start, then +20 and -12.
+    expect(rows.map((r) => r.balance).toList(), [30, 18]);
+  });
+
+  test('the last row of each product matches its current stock', () async {
+    final rows = await repo.getTransactions();
+
+    final lastByRef = <String, int>{};
+    for (final row in rows) {
+      lastByRef[row.reference] = row.balance;
+    }
+    expect(lastByRef['REF1'], 28);
+    expect(lastByRef['REF2'], 5);
   });
 
   test('getTransactions filters by type', () async {

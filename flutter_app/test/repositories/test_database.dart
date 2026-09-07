@@ -24,8 +24,9 @@ import 'package:socogen/data/db/schema.dart';
 /// - Status counts: total=3, enStock=2, stockFaible=1, rupture=0
 /// - StoreOverview: StoreA productCount=2/totalStock=23, StoreB productCount=1/totalStock=10
 /// - StoreDetails(StoreA): productCount=2/totalEntries=28/totalOutputs=15/currentStock=23
-/// - Transactions(REF1): initialSum=15, chronological balances 35 -> 23 -> 28
-/// - Transactions(all): initialSum=0, chronological balances 20 -> 8 -> 13 -> 21 -> 18
+/// - Transactions(REF1): opens at 15, chronological balances 35 -> 23 -> 28
+/// - Transactions(all): balances run per product -- REF1 35 -> 23 -> 28,
+///   REF2 8 -> 5 -- so every row shows that product's stock at that point
 Future<Database> openTestDatabase() async {
   sqfliteFfiInit();
   final db = await databaseFactoryFfi.openDatabase(

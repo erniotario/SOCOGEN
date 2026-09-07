@@ -74,8 +74,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   Future<void> _load() async {
     try {
-      final products = await _productRepo.getProductOverviews(search: _search);
-      final stores = await _storeRepo.getAllStores();
+      final (products, stores) = await (
+        _productRepo.getProductOverviews(search: _search),
+        _storeRepo.getAllStores(),
+      ).wait;
       if (!mounted) return;
       setState(() {
         _data = _ProductsData(products: products, stores: stores);
