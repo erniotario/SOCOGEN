@@ -56,13 +56,7 @@ class DatabaseService {
       version: AppSchema.version,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
-        // Write-ahead logging lets a read run while a write is in
-        // flight, and NORMAL drops the fsync per statement that makes
-        // an import or a sync crawl on phone storage. Both are safe
-        // for a single-process app: a crash can cost the last
-        // transaction, never the file.
-        await db.execute('PRAGMA journal_mode = WAL');
-        await db.execute('PRAGMA synchronous = NORMAL');
+        await _applyPerformancePragmas(db);
       },
       onCreate: (db, version) async {
         for (final statement in AppSchema.createStatements) {
@@ -86,6 +80,39 @@ class DatabaseService {
         }
       },
     );
+  }
+
+  /// Tunes SQLite for the writes this app actually does. NORMAL drops
+  /// the fsync per statement that makes an import or a sync crawl on
+  /// phone storage; WAL lets a read run while a write is in flight. Both
+  /// are safe for a single-process app: a crash can cost the last
+  /// transaction, never the file.
+  ///
+  /// Read, never executed. Setting `journal_mode` answers with the mode
+  /// SQLite settled on, and Android's SQLiteDatabase refuses any
+  /// statement that returns rows through `execute()` -- "queries can be
+  /// performed using SQLiteDatabase query or rawQuery methods only". As
+  /// `execute` it threw while opening the database, which left the app
+  /// unable to reach its own data at all.
+  ///
+  /// Each pragma is allowed to fail on its own, because none of them is
+  /// worth failing startup over: a platform that refuses one keeps its
+  /// default, which is slower to write and just as correct. On Android
+  /// WAL is meant to be switched on by the
+  /// `com.tekartik.sqflite.wal_enabled` manifest flag, which hands
+  /// SQLiteDatabase the flag at open time instead of arguing with it
+  /// afterwards, so expect it to stay off here.
+  Future<void> _applyPerformancePragmas(Database db) async {
+    for (final pragma in const [
+      'PRAGMA journal_mode = WAL',
+      'PRAGMA synchronous = NORMAL',
+    ]) {
+      try {
+        await db.rawQuery(pragma);
+      } catch (_) {
+        // Keep the platform default for this one.
+      }
+    }
   }
 
   /// Creates the query indexes. The seeded asset database ships without
