@@ -288,7 +288,7 @@ class TransactionsPdfService {
   ];
 
   /// Total = 190mm to fit A4 portrait (210mm - 20mm margins).
-  static const _widthsMm = [18.0, 13.0, 22.0, 32.0, 22.0, 28.0, 17.0, 13.0, 13.0, 12.0];
+  static const _widthsMm = [18.0, 13.0, 22.0, 29.0, 22.0, 26.0, 17.0, 13.0, 13.0, 17.0];
 
   static Map<int, pw.TableColumnWidth> get _columnWidths => {
         for (var i = 0; i < _widthsMm.length; i++)

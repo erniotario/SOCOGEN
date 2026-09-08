@@ -463,13 +463,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         AppColumn('DATE', flex: 9),
         AppColumn('TYPE', flex: 7, align: Alignment.center),
         AppColumn('RÉFÉRENCE', flex: 10),
-        AppColumn('DÉSIGNATION', flex: 20),
+        AppColumn('DÉSIGNATION', flex: 18),
         AppColumn('MAGASIN', flex: 10),
-        AppColumn('PARTENAIRE', flex: 14),
+        AppColumn('PARTENAIRE', flex: 12),
         AppColumn('N° FACTURE', flex: 9),
         AppColumn.number('ENTRÉE', flex: 8),
         AppColumn.number('SORTIE', flex: 8),
-        AppColumn.number('STOCK APRÈS', flex: 8),
+        // Wider than its neighbours: the heading is three times their
+        // length and reads as part of SORTIE when it is clipped.
+        AppColumn.number('STOCK APRÈS', flex: 12),
         AppColumn.actions(flex: 9),
       ],
       empty: const AppEmptyState(
