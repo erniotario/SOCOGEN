@@ -337,20 +337,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   AdaptiveTable _table(List<ReportRow> rows, {required bool shrinkWrap}) {
+    final short = context.showsShortProductList;
     return AdaptiveTable(
       shrinkWrap: shrinkWrap,
-      minTableWidth: 820,
-      columns: const [
-        AppColumn('RÉFÉRENCE', flex: 11),
-        AppColumn('DÉSIGNATION', flex: 22),
-        AppColumn('UNITÉ', flex: 7),
-        AppColumn('MAGASIN', flex: 13),
-        AppColumn.number('STOCK INITIAL', flex: 11),
-        AppColumn.number('ENTRÉES', flex: 9),
-        AppColumn.number('SORTIES', flex: 9),
-        AppColumn.number('STOCK ACTUEL', flex: 11),
-        AppColumn('STATUT', flex: 12, align: Alignment.center),
-      ],
+      minTableWidth: short ? 420 : 820,
+      columns: short
+          ? const [
+              AppColumn('DÉSIGNATION', flex: 26),
+              AppColumn('MAGASIN', flex: 18),
+              AppColumn.number('STOCK ACTUEL', flex: 12),
+            ]
+          : const [
+              AppColumn('RÉFÉRENCE', flex: 11),
+              AppColumn('DÉSIGNATION', flex: 22),
+              AppColumn('UNITÉ', flex: 7),
+              AppColumn('MAGASIN', flex: 13),
+              AppColumn.number('STOCK INITIAL', flex: 11),
+              AppColumn.number('ENTRÉES', flex: 9),
+              AppColumn.number('SORTIES', flex: 9),
+              AppColumn.number('STOCK ACTUEL', flex: 11),
+              AppColumn('STATUT', flex: 12, align: Alignment.center),
+            ],
       empty: AppEmptyState(
         icon: _hasFilters ? Icons.filter_alt_off_outlined : Icons.bar_chart,
         title: _hasFilters ? 'Aucun résultat' : 'Aucun produit',
@@ -369,24 +376,39 @@ class _ReportsScreenState extends State<ReportsScreen> {
         for (final row in rows)
           AppRow(
             accent: row.status == StockStatus.rupture ? AppColors.error : null,
-            cells: [
-              Cells.identifier(row.reference),
-              Cells.text(row.designation),
-              Cells.muted(row.unit),
-              Cells.muted(row.storeName),
-              Cells.number(row.initialStock, color: AppColors.textSecondary),
-              Cells.number('+ ${row.entries}',
-                  color: AppColors.success, strong: true),
-              Cells.number('− ${row.outputs}',
-                  color: AppColors.error, strong: true),
-              Cells.number(
-                row.current,
-                color: row.status.color,
-                strong: true,
-                size: 14,
-              ),
-              StatusBadge(status: row.status),
-            ],
+            // The status badge goes with the columns it stood next to;
+            // the stock figure is still tinted by it, so a rupture is
+            // as visible on three columns as on nine.
+            cells: short
+                ? [
+                    Cells.text(row.designation),
+                    Cells.muted(row.storeName),
+                    Cells.number(
+                      row.current,
+                      color: row.status.color,
+                      strong: true,
+                      size: 14,
+                    ),
+                  ]
+                : [
+                    Cells.identifier(row.reference),
+                    Cells.text(row.designation),
+                    Cells.muted(row.unit),
+                    Cells.muted(row.storeName),
+                    Cells.number(row.initialStock,
+                        color: AppColors.textSecondary),
+                    Cells.number('+ ${row.entries}',
+                        color: AppColors.success, strong: true),
+                    Cells.number('− ${row.outputs}',
+                        color: AppColors.error, strong: true),
+                    Cells.number(
+                      row.current,
+                      color: row.status.color,
+                      strong: true,
+                      size: 14,
+                    ),
+                    StatusBadge(status: row.status),
+                  ],
           ),
       ],
     );

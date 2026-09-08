@@ -70,6 +70,14 @@ extension ResponsiveContext on BuildContext {
 
   static const double shortWindowHeight = 600;
 
+  /// True where the product lists are cut back to the product, its
+  /// magasin and what is in stock -- the three a storekeeper reads
+  /// walking the aisle with a phone. The desk platforms keep the full
+  /// breakdown (reference, unit, opening stock, movements), which is
+  /// what the same lists are for there.
+  bool get showsShortProductList =>
+      defaultTargetPlatform == TargetPlatform.android;
+
   /// True on phones/tablets, where hit targets must be finger sized and
   /// hover affordances are pointless.
   bool get isTouch =>

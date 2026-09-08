@@ -178,24 +178,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: AppTextStyles.sectionLabel,
             ),
             const SizedBox(height: AppSpacing.md),
-            Expanded(child: _productTable(data.products)),
+            Expanded(child: _productTable(context, data.products)),
           ],
         ),
       ),
     );
   }
 
-  Widget _productTable(List<ProductOverview> rows) {
+  Widget _productTable(BuildContext context, List<ProductOverview> rows) {
+    final short = context.showsShortProductList;
     return AdaptiveTable(
-      columns: const [
-        AppColumn('RÉFÉRENCE', flex: 12),
-        AppColumn('DÉSIGNATION', flex: 22),
-        AppColumn('UNITÉ', flex: 7),
-        AppColumn.number('STOCK INITIAL', flex: 11),
-        AppColumn.number('ENTRÉES', flex: 10),
-        AppColumn.number('SORTIES', flex: 10),
-        AppColumn.number('STOCK ACTUEL', flex: 11),
-      ],
+      // Three columns need far less room before they are worth
+      // scrolling sideways for.
+      minTableWidth: short ? 420 : 720,
+      columns: short
+          ? const [
+              AppColumn('DÉSIGNATION', flex: 26),
+              AppColumn('MAGASIN', flex: 18),
+              AppColumn.number('STOCK ACTUEL', flex: 12),
+            ]
+          : const [
+              AppColumn('RÉFÉRENCE', flex: 12),
+              AppColumn('DÉSIGNATION', flex: 22),
+              AppColumn('UNITÉ', flex: 7),
+              AppColumn.number('STOCK INITIAL', flex: 11),
+              AppColumn.number('ENTRÉES', flex: 10),
+              AppColumn.number('SORTIES', flex: 10),
+              AppColumn.number('STOCK ACTUEL', flex: 11),
+            ],
       empty: const AppEmptyState(
         icon: Icons.inventory_2_outlined,
         title: 'Aucun produit',
@@ -205,31 +215,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
       rows: [
         for (final overview in rows)
           AppRow(
-            cells: [
-              Cells.identifier(overview.product.reference),
-              Cells.text(overview.product.designation),
-              Cells.muted(overview.product.unit),
-              Cells.number(
-                overview.initialStock,
-                color: AppColors.textSecondary,
-              ),
-              Cells.number(
-                '+ ${overview.entriesTotal}',
-                color: AppColors.success,
-                strong: true,
-              ),
-              Cells.number(
-                '− ${overview.outputsTotal}',
-                color: AppColors.error,
-                strong: true,
-              ),
-              Cells.number(
-                overview.currentStock,
-                color: overview.status.color,
-                strong: true,
-                size: 14,
-              ),
-            ],
+            cells: short
+                ? [
+                    Cells.text(overview.product.designation),
+                    Cells.muted(overview.storeNames.isEmpty
+                        ? '—'
+                        : overview.storeNames),
+                    Cells.number(
+                      overview.currentStock,
+                      color: overview.status.color,
+                      strong: true,
+                      size: 14,
+                    ),
+                  ]
+                : [
+                    Cells.identifier(overview.product.reference),
+                    Cells.text(overview.product.designation),
+                    Cells.muted(overview.product.unit),
+                    Cells.number(
+                      overview.initialStock,
+                      color: AppColors.textSecondary,
+                    ),
+                    Cells.number(
+                      '+ ${overview.entriesTotal}',
+                      color: AppColors.success,
+                      strong: true,
+                    ),
+                    Cells.number(
+                      '− ${overview.outputsTotal}',
+                      color: AppColors.error,
+                      strong: true,
+                    ),
+                    Cells.number(
+                      overview.currentStock,
+                      color: overview.status.color,
+                      strong: true,
+                      size: 14,
+                    ),
+                  ],
           ),
       ],
     );

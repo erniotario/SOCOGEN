@@ -454,56 +454,124 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   AdaptiveTable _table(_TransactionsData data) {
+    final short = context.showsShortProductList;
     return AdaptiveTable(
+      // On Android every movement is a card, and eight detail fields made
+      // one card fill most of a phone screen. Keep what identifies the
+      // movement and what it did to the stock, tighten the card, and
+      // roughly twice as many fit. Nothing is lost that the card does not
+      // already say another way: entree or sortie is in the coloured edge
+      // and in the sign on the quantity.
       titleColumn: 2,
       subtitleColumn: 3,
-      actionsColumn: 10,
-      minTableWidth: 1000,
-      columns: const [
-        AppColumn('DATE', flex: 9),
-        AppColumn('TYPE', flex: 7, align: Alignment.center),
-        AppColumn('RÉFÉRENCE', flex: 10),
-        AppColumn('DÉSIGNATION', flex: 18),
-        AppColumn('MAGASIN', flex: 10),
-        AppColumn('PARTENAIRE', flex: 12),
-        AppColumn('N° FACTURE', flex: 9),
-        AppColumn.number('ENTRÉE', flex: 8),
-        AppColumn.number('SORTIE', flex: 8),
-        // Wider than its neighbours: the heading is three times their
-        // length and reads as part of SORTIE when it is clipped.
-        AppColumn.number('STOCK APRÈS', flex: 12),
-        AppColumn.actions(flex: 9),
-      ],
+      actionsColumn: short ? 6 : 10,
+      minTableWidth: short ? 620 : 1000,
+      dense: short,
+      columns: short
+          ? const [
+              AppColumn('DATE', flex: 12),
+              AppColumn('TYPE', flex: 9, align: Alignment.center),
+              AppColumn('DÉSIGNATION', flex: 24),
+              AppColumn('MAGASIN', flex: 14),
+              AppColumn.number('QUANTITÉ', flex: 11),
+              AppColumn.number('STOCK APRÈS', flex: 13),
+              AppColumn.actions(flex: 10),
+            ]
+          : const [
+              AppColumn('DATE', flex: 9),
+              AppColumn('TYPE', flex: 7, align: Alignment.center),
+              AppColumn('RÉFÉRENCE', flex: 10),
+              AppColumn('DÉSIGNATION', flex: 18),
+              AppColumn('MAGASIN', flex: 10),
+              AppColumn('PARTENAIRE', flex: 12),
+              AppColumn('N° FACTURE', flex: 9),
+              AppColumn.number('ENTRÉE', flex: 8),
+              AppColumn.number('SORTIE', flex: 8),
+              // Wider than its neighbours: the heading is three times
+              // their length and reads as part of SORTIE when clipped.
+              AppColumn.number('STOCK APRÈS', flex: 12),
+              AppColumn.actions(flex: 9),
+            ],
       empty: const AppEmptyState(
         icon: Icons.swap_horiz,
         title: 'Aucune transaction',
         message: 'Aucun mouvement ne correspond aux filtres sélectionnés.',
       ),
       rows: [
-        for (final row in data.rows) _transactionRow(row, data),
+        for (final row in data.rows) _transactionRow(row, data, short: short),
       ],
     );
   }
 
-  AppRow _transactionRow(TransactionRow row, _TransactionsData data) {
+  Widget _typeCell(bool isEntry, Color typeColor) => Text(
+        isEntry ? 'Entrée' : 'Sortie',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: typeColor,
+        ),
+      );
+
+  Widget _balanceCell(TransactionRow row) => Cells.number(
+        row.balance,
+        strong: true,
+        color: StockStatus.fromCurrent(row.balance).color,
+      );
+
+  Widget _actionsCell(TransactionRow row, _TransactionsData data) => RowActions(
+        actions: [
+          RowAction(
+            icon: Icons.edit_outlined,
+            tooltip: 'Modifier',
+            onPressed: () => _openEditDialog(row, data.stores),
+          ),
+          RowAction(
+            icon: Icons.delete_outline,
+            tooltip: 'Supprimer',
+            destructive: true,
+            onPressed: () => _deleteTransaction(row),
+          ),
+        ],
+      );
+
+  AppRow _transactionRow(
+    TransactionRow row,
+    _TransactionsData data, {
+    required bool short,
+  }) {
     final isEntry = row.type == TransactionType.entry;
     final typeColor = isEntry ? AppColors.success : AppColors.error;
+
+    if (short) {
+      return AppRow(
+        accent: typeColor,
+        onTap: () => _openEditDialog(row, data.stores),
+        cells: [
+          Cells.muted(formatDisplayDate(row.date)),
+          _typeCell(isEntry, typeColor),
+          Cells.text(row.designation),
+          Cells.muted(row.storeName),
+          // One signed figure rather than a column each for in and out:
+          // the sign and the colour already say which it was.
+          Cells.number(
+            isEntry ? '+ ${row.inQty}' : '− ${row.outQty}',
+            color: typeColor,
+            strong: true,
+          ),
+          _balanceCell(row),
+          _actionsCell(row, data),
+        ],
+      );
+    }
 
     return AppRow(
       accent: typeColor,
       onTap: () => _openEditDialog(row, data.stores),
       cells: [
         Cells.muted(formatDisplayDate(row.date)),
-        Text(
-          isEntry ? 'Entrée' : 'Sortie',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: typeColor,
-          ),
-        ),
+        _typeCell(isEntry, typeColor),
         Cells.identifier(row.reference),
         Cells.text(row.designation),
         Cells.muted(row.storeName),
@@ -519,26 +587,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             ? Cells.number('− ${row.outQty}',
                 color: AppColors.error, strong: true)
             : Cells.blank,
-        Cells.number(
-          row.balance,
-          strong: true,
-          color: StockStatus.fromCurrent(row.balance).color,
-        ),
-        RowActions(
-          actions: [
-            RowAction(
-              icon: Icons.edit_outlined,
-              tooltip: 'Modifier',
-              onPressed: () => _openEditDialog(row, data.stores),
-            ),
-            RowAction(
-              icon: Icons.delete_outline,
-              tooltip: 'Supprimer',
-              destructive: true,
-              onPressed: () => _deleteTransaction(row),
-            ),
-          ],
-        ),
+        _balanceCell(row),
+        _actionsCell(row, data),
       ],
     );
   }

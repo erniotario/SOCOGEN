@@ -157,6 +157,11 @@ class AdaptiveTable extends StatelessWidget {
   /// showing; lower it to keep the table on smaller panes.
   final double cardsBelow;
 
+  /// Tightens the card layout so more records fit on a phone screen.
+  /// Worth it for a long feed the operator scans rather than reads, at
+  /// the cost of a more crowded card.
+  final bool dense;
+
   const AdaptiveTable({
     super.key,
     required this.columns,
@@ -169,6 +174,7 @@ class AdaptiveTable extends StatelessWidget {
     this.minTableWidth = 720,
     this.shrinkWrap = false,
     this.cardsBelow = AppBreakpoints.expanded,
+    this.dense = false,
   });
 
   @override
@@ -258,6 +264,7 @@ class AdaptiveTable extends StatelessWidget {
         subtitleColumn: subtitleColumn,
         actionsColumn: actionsColumn,
         detailColumns: _detailColumns,
+        dense: dense,
       );
 
   Widget _wideRow(int i) => _WideRow(
@@ -329,6 +336,7 @@ class AdaptiveTable extends StatelessWidget {
         subtitleColumn: subtitleColumn,
         actionsColumn: actionsColumn,
         detailColumns: detailColumns,
+        dense: dense,
       ),
     );
   }
@@ -518,6 +526,7 @@ class _RecordCard extends StatelessWidget {
   final int? subtitleColumn;
   final int? actionsColumn;
   final List<int> detailColumns;
+  final bool dense;
 
   const _RecordCard({
     required this.columns,
@@ -526,6 +535,7 @@ class _RecordCard extends StatelessWidget {
     required this.subtitleColumn,
     required this.actionsColumn,
     required this.detailColumns,
+    this.dense = false,
   });
 
   Widget? _cell(int? index) {
@@ -539,6 +549,7 @@ class _RecordCard extends StatelessWidget {
     final title = _cell(titleColumn);
     final subtitle = _cell(subtitleColumn);
     final actions = _cell(actionsColumn);
+    final pad = dense ? AppSpacing.sm : AppSpacing.md;
 
     return Material(
       color: row.selected ? AppColors.selected : AppColors.surface,
@@ -557,12 +568,7 @@ class _RecordCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                  AppSpacing.md,
-                ),
+                padding: EdgeInsets.fromLTRB(pad, pad, AppSpacing.sm, pad),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -604,8 +610,9 @@ class _RecordCard extends StatelessWidget {
               if (detailColumns.isNotEmpty) ...[
                 const Divider(color: AppColors.border, height: 1),
                 Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
+                  padding: EdgeInsets.all(pad),
                   child: _DetailGrid(
+                    dense: dense,
                     entries: [
                       for (final i in detailColumns)
                         (label: columns[i].label, value: row.cells[i]),
@@ -624,20 +631,21 @@ class _RecordCard extends StatelessWidget {
 /// Two-column grid of labelled values shown inside a record card.
 class _DetailGrid extends StatelessWidget {
   final List<({String label, Widget value})> entries;
+  final bool dense;
 
-  const _DetailGrid({required this.entries});
+  const _DetailGrid({required this.entries, this.dense = false});
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const spacing = AppSpacing.md;
+        final spacing = dense ? AppSpacing.sm : AppSpacing.md;
         final columns = constraints.maxWidth >= 420 ? 3 : 2;
         final width =
             (constraints.maxWidth - spacing * (columns - 1)) / columns;
         return Wrap(
           spacing: spacing,
-          runSpacing: AppSpacing.md,
+          runSpacing: dense ? AppSpacing.sm : AppSpacing.md,
           children: [
             for (final entry in entries)
               SizedBox(
