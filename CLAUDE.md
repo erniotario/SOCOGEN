@@ -6,11 +6,11 @@ Real deployment: ~400 articles across three magasins (Hysacam, Ekie,
 Elig-Essono), a few thousand movements a year, imported from Sage
 Gestion Commerciale.
 
-**Work in `flutter_app/`.** The Python/PySide6 application at the
-repository root is the original that this was ported from; it is kept for
-reference and is not developed any more. `scripts/` holds Python tooling
-that still earns its place — the seed-database builders and the Sage
-`.gcm` reader.
+**The application is `flutter_app/`.** A Python/PySide6 version came
+first and was removed once the port shipped on all three platforms; it is
+in the Git history if a behaviour ever needs checking against it.
+`scripts/` holds the Python tooling that still earns its place — the
+clean seed-database builder and the Sage `.gcm` reader.
 
 The interface is in French — labels, messages, errors, and the prose in
 commits about the screens. Keep it that way. The people using this are
@@ -31,7 +31,7 @@ flutter build apk --release
 Python tooling, from the repository root:
 
 ```bash
-.venv/Scripts/python.exe scripts/build_seed_db.py        # -> flutter_app/assets/db/socogen_seed.db
+.venv/Scripts/python.exe scripts/build_clean_seed_db.py  # -> flutter_app/assets/db/socogen_seed.db
 .venv/Scripts/python.exe scripts/gcm_to_excel.py <file.gcm>
 ```
 
