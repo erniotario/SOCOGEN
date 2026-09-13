@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../auth/auth_provider.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/entries_screen.dart';
+import '../screens/inventory_screen.dart';
 import '../screens/outputs_screen.dart';
 import '../screens/products_screen.dart';
 import '../screens/reports_screen.dart';
@@ -49,6 +50,7 @@ const List<_NavEntry> _navEntries = [
   _NavEntry(Icons.call_received, Icons.call_received, 'Entrées'),
   _NavEntry(Icons.call_made, Icons.call_made, 'Sorties'),
   _NavEntry(Icons.swap_horiz, Icons.swap_horiz, 'Transactions'),
+  _NavEntry(Icons.fact_check_outlined, Icons.fact_check, 'Inventaire'),
   _NavEntry(Icons.bar_chart_outlined, Icons.bar_chart, 'Rapports'),
   _NavEntry(Icons.store_outlined, Icons.store, 'Magasins'),
   _NavEntry(Icons.security_outlined, Icons.security, 'Sécurité'),
@@ -61,7 +63,11 @@ const int _adminOnlyCount = 2;
 
 /// Indices that start a new visual section in the sidebar
 /// (a divider is drawn above each, except the first).
-const List<int> _sectionStarts = [4, 6];
+///
+/// Sections are: the daily stock screens, then the ledger ones
+/// (Transactions, Inventaire, Rapports), then administration. These are
+/// positions into [_navEntries] -- inserting a destination moves them.
+const List<int> _sectionStarts = [4, 7];
 
 /// Destinations that get a slot in the phone bottom bar. The rest live
 /// behind the trailing "Plus" destination.
@@ -73,6 +79,7 @@ const List<Widget> _screens = [
   EntriesScreen(),
   OutputsScreen(),
   TransactionsScreen(),
+  InventoryScreen(),
   ReportsScreen(),
   StoresScreen(),
   SecurityScreen(),

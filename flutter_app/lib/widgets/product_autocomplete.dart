@@ -77,27 +77,38 @@ class _ProductAutocompleteState extends State<ProductAutocomplete> {
               boxShadow: AppShadows.medium,
             ),
             clipBehavior: Clip.antiAlias,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: 260,
-                maxWidth: fieldWidth,
-              ),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final option = options.elementAt(index);
-                  return ListTile(
-                    dense: true,
-                    title: Text(
-                      '${option.product.reference} — ${option.product.designation}',
-                      style: AppTextStyles.body,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () => onSelectedOption(option),
-                  );
-                },
+            // The options are ListTiles, which paint their highlight and
+            // ink splash on the nearest Material ancestor. Without one
+            // inside this coloured box that ancestor is the page behind
+            // the overlay, so the box hides every splash and the options
+            // feel dead to the touch. A transparent Material here keeps
+            // the surface colour above and gives the tiles something to
+            // paint on.
+            child: Material(
+              type: MaterialType.transparency,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: 260,
+                  maxWidth: fieldWidth,
+                ),
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  itemCount: options.length,
+                  itemBuilder: (context, index) {
+                    final option = options.elementAt(index);
+                    return ListTile(
+                      dense: true,
+                      title: Text(
+                        '${option.product.reference} — '
+                        '${option.product.designation}',
+                        style: AppTextStyles.body,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => onSelectedOption(option),
+                    );
+                  },
+                ),
               ),
             ),
           ),

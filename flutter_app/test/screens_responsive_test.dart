@@ -7,6 +7,7 @@ import 'package:socogen/auth/auth_provider.dart';
 import 'package:socogen/data/db/database_service.dart';
 import 'package:socogen/screens/dashboard_screen.dart';
 import 'package:socogen/screens/entries_screen.dart';
+import 'package:socogen/screens/inventory_screen.dart';
 import 'package:socogen/screens/outputs_screen.dart';
 import 'package:socogen/screens/products_screen.dart';
 import 'package:socogen/screens/reports_screen.dart';
@@ -38,6 +39,7 @@ final _screens = <String, Widget Function()>{
   'Entrées': () => const EntriesScreen(),
   'Sorties': () => const OutputsScreen(),
   'Transactions': () => const TransactionsScreen(),
+  'Inventaire': () => const InventoryScreen(),
   'Rapports': () => const ReportsScreen(),
   'Magasins': () => const StoresScreen(),
   'Sécurité': () => const SecurityScreen(),

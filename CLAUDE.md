@@ -23,7 +23,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~145 tests across 18 files
+flutter test                 # ~165 tests across 22 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -109,8 +109,10 @@ not make any of them worse.
   on file is never blamed on whoever imports next — a warning that fires
   every time is one that gets learned as noise.
 
-  What is still missing is the **cure**: nothing can settle a negative
-  once found. That needs the physical inventory below.
+  The **cure** is the physical inventory below: counting the shelf and
+  posting the difference is what actually settles one of these, and
+  `inventory_service_test.dart` pins that a settled article leaves the
+  Rapports anomaly list.
 - **A movement has no author.** The app has users and roles
   (`admin` / `magasinier`), but `stock_entries` and `stock_outputs`
   record no one. In a stock ledger, who entered a line and when is not a
@@ -119,10 +121,23 @@ not make any of them worse.
   changed or deleted outright. Accounting practice is a corrective
   movement that leaves the original standing, so the trail stays
   readable. Prefer that shape for new work.
-- **There is no physical inventory.** No way to record a count and post
-  the difference as an adjustment, which is the normal way a real stock
-  is reconciled with its records — and the honest fix for those negative
-  balances.
+- **Physical inventory — done, and it is the cure for the above.**
+  `InventoryScreen` records what a shelf actually holds and posts the
+  difference as a corrective movement: a surplus becomes an entrée, a
+  shortfall a sortie, both carrying the counterparty
+  `InventoryService.label` ("Inventaire physique") so they are
+  recognisable in Transactions. Current stock is derived, so an
+  inventory cannot *set* a stock — it can only move it, which is also
+  the accounting shape this project wants: the original lines stay
+  standing. Two rules the code holds and any change must keep. A count
+  session is a **draft** — nothing is written until validation — and an
+  article absent from the draft is **not counted, never assumed zero**;
+  on a 400-article catalogue the other reading would empty the store.
+  And `InventoryService.post` recomputes the variance against the *live*
+  balance rather than the figure the operator was shown, because a draft
+  can sit on screen while real movements land behind it. Still open: a
+  count has no author and no session record, so "who counted what, when"
+  is not on file — see the attribution gap above.
 - **There is no valuation.** No prices anywhere, so no stock value, no
   CUMP or FIFO, nothing an accountant can use. Sage holds the prices; an
   import path exists.
