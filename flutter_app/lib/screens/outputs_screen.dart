@@ -13,6 +13,7 @@ import '../data/repositories/store_repository.dart';
 import '../services/data_refresh_bus.dart';
 import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
+import '../widgets/status_badge.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/formatters.dart';
@@ -353,11 +354,11 @@ class _OutputFormCardState extends State<_OutputFormCard> {
     });
   }
 
-  Color _stockColor(int current) {
-    if (current > 10) return AppColors.success;
-    if (current > 0) return AppColors.warning;
-    return AppColors.error;
-  }
+  /// The chip under the product picker reads its colour from the same
+  /// thresholds as every table, so a store already in the negative
+  /// announces itself here too -- on the one screen where the next
+  /// sortie would push it further down.
+  Color _stockColor(int current) => StockStatus.fromCurrent(current).color;
 
   Future<void> _save() async {
     final invoice = _invoiceController.text.trim();

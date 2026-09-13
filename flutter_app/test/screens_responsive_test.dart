@@ -120,4 +120,45 @@ void main() {
       });
     });
   }
+
+  // The Rapports anomaly banner only exists while the ledger holds a
+  // balance below zero, so the fixture above -- which has none -- never
+  // lays it out. It is a long French sentence beside a button, the exact
+  // shape that has overflowed a 360px phone in this project before, so
+  // it gets a pass of its own with a negative row seeded first.
+  group('Rapports with a negative balance', () {
+    _sizes.forEach((sizeName, size) {
+      testWidgets('raises the banner without overflow on $sizeName',
+          (tester) async {
+        // Drives REF2/StoreA from 5 down to -4. The write has to go
+        // through runAsync: a testWidgets body runs in a fake-async
+        // zone, where a real sqflite future never completes and the
+        // test simply hangs.
+        await tester.runAsync(() async {
+          await db.insert('stock_outputs', {
+            'date': '2026-03-02',
+            'reference': 'REF2',
+            'designation': 'Produit Deux',
+            'invoice_number': 'INV4',
+            'store_id': 1,
+            'destination': 'Client Z',
+            'quantity': 9,
+          });
+        });
+
+        await _pumpScreen(tester, size, const ReportsScreen());
+
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'the anomaly banner overflowed at $sizeName ($size)',
+        );
+        expect(
+          find.textContaining('de stock en négatif'),
+          findsOneWidget,
+          reason: 'the banner should be raised at $sizeName ($size)',
+        );
+      });
+    });
+  });
 }

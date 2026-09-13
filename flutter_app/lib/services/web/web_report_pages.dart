@@ -37,6 +37,8 @@ class WebReportPages {
         return 'low';
       case StockStatus.rupture:
         return 'out';
+      case StockStatus.stockNegatif:
+        return 'neg';
     }
   }
 
@@ -172,7 +174,7 @@ class WebReportPages {
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--elev:#111827;--border:#21262d;
 --strong:#30363d;--fg:#e6edf3;--dim:#8b949e;--muted:#484f58;--accent:#58a6ff;
---ok:#3fb950;--low:#d29922;--out:#f85149}
+--ok:#3fb950;--low:#d29922;--out:#f85149;--neg:#db61db}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);
 font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
@@ -210,11 +212,13 @@ tr:nth-child(even) td{background:rgba(255,255,255,.015)}
 .b{font-weight:700}
 .ref{color:var(--accent);font-weight:700}
 .ok{color:var(--ok)}.low{color:var(--low)}.out{color:var(--out)}
+.neg{color:var(--neg)}
 .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;
 font-weight:700;border:1px solid}
 .badge.ok{background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.4)}
 .badge.low{background:rgba(210,153,34,.15);border-color:rgba(210,153,34,.4)}
 .badge.out{background:rgba(248,81,73,.15);border-color:rgba(248,81,73,.4)}
+.badge.neg{background:rgba(219,97,219,.15);border-color:rgba(219,97,219,.4)}
 .empty{color:var(--dim);text-align:center;padding:40px 0}
 footer{color:var(--muted);font-size:11px;text-align:center;padding:20px}
 a{color:var(--accent)}

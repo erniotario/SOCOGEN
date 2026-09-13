@@ -366,9 +366,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         for (final overview in rows)
           AppRow(
             onTap: () => _openEditDialog(overview),
-            accent: overview.status == StockStatus.rupture
-                ? AppColors.error
-                : null,
+            accent: overview.status.isDepleted ? overview.status.color : null,
             cells: [
               Cells.identifier(overview.product.reference),
               Cells.text(overview.product.designation),

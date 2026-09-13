@@ -94,18 +94,21 @@ class ReportRepository {
   /// Counted in SQL rather than by walking [getReportRows] a second time,
   /// which ran the whole report twice on every load and every keystroke
   /// in the search box.
-  Future<({int total, int enStock, int stockFaible, int rupture})>
+  Future<({int total, int enStock, int stockFaible, int rupture, int negatif})>
       getStatusCounts() async {
     final db = await _db;
 
-    // Mirrors StockStatus.fromCurrent: <= 0 rupture, < 10 faible, else
-    // en stock.
+    // Mirrors StockStatus.fromCurrent: < 0 negatif, 0 rupture, < 10
+    // faible, else en stock. Keep the two in step -- the screen reads
+    // its badge from Dart and its KPI from here, and they must not
+    // disagree about the same row.
     final rows = await db.rawQuery('''
       SELECT
         COUNT(*) AS total,
         SUM(CASE WHEN current >= 10 THEN 1 ELSE 0 END) AS en_stock,
         SUM(CASE WHEN current > 0 AND current < 10 THEN 1 ELSE 0 END) AS faible,
-        SUM(CASE WHEN current <= 0 THEN 1 ELSE 0 END) AS rupture
+        SUM(CASE WHEN current = 0 THEN 1 ELSE 0 END) AS rupture,
+        SUM(CASE WHEN current < 0 THEN 1 ELSE 0 END) AS negatif
       FROM (
         SELECT
           COALESCE(ps.initial_stock, 0) + COALESCE(e.total, 0) - COALESCE(o.total, 0)
@@ -123,6 +126,7 @@ class ReportRepository {
       enStock: at('en_stock'),
       stockFaible: at('faible'),
       rupture: at('rupture'),
+      negatif: at('negatif'),
     );
   }
 }

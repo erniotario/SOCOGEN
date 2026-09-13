@@ -26,7 +26,8 @@ class ReportsScreen extends StatefulWidget {
   State<ReportsScreen> createState() => _ReportsScreenState();
 }
 
-typedef _StatusCounts = ({int total, int enStock, int stockFaible, int rupture});
+typedef _StatusCounts =
+    ({int total, int enStock, int stockFaible, int rupture, int negatif});
 
 class _ReportsData {
   final List<ReportRow> rows;
@@ -104,6 +105,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
     setState(() => _search = value);
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 250), _load);
+  }
+
+  void _showNegativeOnly() {
+    setState(() => _status = StockStatus.stockNegatif);
+    _reapply();
   }
 
   void _clearFilters() {
@@ -188,6 +194,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
           color: AppColors.error,
         ),
       ]),
+      if (data.counts.negatif > 0) ...[
+        const SizedBox(height: AppSpacing.lg),
+        _NegativeStockBanner(
+          count: data.counts.negatif,
+          showing: _status == StockStatus.stockNegatif,
+          onShow: _showNegativeOnly,
+        ),
+      ],
       const SizedBox(height: AppSpacing.lg),
       _buildFilters(data.stores),
       const SizedBox(height: AppSpacing.lg),
@@ -325,6 +339,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 value: StockStatus.rupture,
                 child: Text('Rupture'),
               ),
+              DropdownMenuItem<StockStatus?>(
+                value: StockStatus.stockNegatif,
+                child: Text('Stock négatif'),
+              ),
             ],
             onChanged: (value) {
               setState(() => _status = value);
@@ -375,7 +393,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       rows: [
         for (final row in rows)
           AppRow(
-            accent: row.status == StockStatus.rupture ? AppColors.error : null,
+            accent: row.status.isDepleted ? row.status.color : null,
             // The status badge goes with the columns it stood next to;
             // the stock figure is still tinted by it, so a rupture is
             // as visible on three columns as on nine.
@@ -411,6 +429,76 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   ],
           ),
       ],
+    );
+  }
+}
+
+/// Raised above the Rapports table when the ledger holds a stock below
+/// zero. Such a figure is not a low stock but an impossible one -- a
+/// sortie recorded that never happened, or an entrée never entered --
+/// and it used to be indistinguishable from the hundreds of articles
+/// legitimately sitting at zero. The button narrows the table down to
+/// exactly those rows, so the list to settle is one tap away.
+class _NegativeStockBanner extends StatelessWidget {
+  final int count;
+
+  /// True once the table is already filtered to these rows, in which
+  /// case the button is dropped rather than offering a filter that is
+  /// already applied; the banner itself stays, as the count is still
+  /// worth reading.
+  final bool showing;
+  final VoidCallback onShow;
+
+  const _NegativeStockBanner({
+    required this.count,
+    required this.showing,
+    required this.onShow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final plural = count > 1 ? 's' : '';
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.anomalyBg,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.anomaly.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.report_problem_outlined,
+            size: 16,
+            color: AppColors.anomaly,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              '$count ligne$plural de stock en négatif — '
+              'un mouvement manque ou est en trop. À régulariser.',
+              style: const TextStyle(fontSize: 12, color: AppColors.anomaly),
+            ),
+          ),
+          if (!showing) ...[
+            const SizedBox(width: AppSpacing.sm),
+            TextButton(
+              onPressed: onShow,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.anomaly,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                minimumSize: const Size(0, 32),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('Afficher'),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

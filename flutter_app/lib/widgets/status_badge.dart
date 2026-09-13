@@ -4,7 +4,8 @@ import '../data/models/view_models.dart';
 import '../theme/app_colors.dart';
 
 /// Maps a [StockStatus] to its accent color: green/orange/red, matching
-/// the thresholds used by the Dashboard and Rapports screens.
+/// the thresholds used by the Dashboard and Rapports screens, plus the
+/// magenta that sets a negative balance apart from a plain rupture.
 extension StockStatusColor on StockStatus {
   Color get color {
     switch (this) {
@@ -14,6 +15,8 @@ extension StockStatusColor on StockStatus {
         return AppColors.warning;
       case StockStatus.rupture:
         return AppColors.error;
+      case StockStatus.stockNegatif:
+        return AppColors.anomaly;
     }
   }
 }

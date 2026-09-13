@@ -23,7 +23,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~125 tests across 18 files
+flutter test                 # ~135 tests across 18 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -91,11 +91,19 @@ deliberate to name — close them when the work touches that area, and do
 not make any of them worse.
 
 - **Stock must not silently go negative.** 21 of the 400 live articles
-  currently show a negative balance, which means either a sortie was
-  recorded that never happened or an entrée was never entered. Nothing in
-  the app prevents it and nothing flags it. A sortie beyond available
-  stock should be refused, or recorded and raised as a discrepancy to
-  settle — never accepted in silence.
+  show a negative balance, which means either a sortie was recorded that
+  never happened or an entrée was never entered. It is now *flagged*:
+  `StockStatus.stockNegatif` is a state of its own, apart from `rupture`,
+  so a negative no longer hides among the hundreds of articles
+  legitimately sitting at zero — Rapports raises a banner naming the
+  count and filters the table down to those rows. Still missing is the
+  write side and the cure. Only the Sorties form warns before creating
+  one, and only with a soft "Continuer quand même ?"; editing a past
+  movement in Transactions and importing from Sage both go straight
+  through. And nothing can yet *settle* a negative once found — that
+  needs the physical inventory below. A sortie beyond available stock
+  should be refused, or recorded and raised as a discrepancy to settle —
+  never accepted in silence.
 - **A movement has no author.** The app has users and roles
   (`admin` / `magasinier`), but `stock_entries` and `stock_outputs`
   record no one. In a stock ledger, who entered a line and when is not a

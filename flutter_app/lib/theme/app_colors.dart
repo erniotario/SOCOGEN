@@ -51,6 +51,13 @@ class AppColors {
   static const Color error = Color(0xFFF85149);
   static const Color errorBg = Color(0xFF3D0D0A);
 
+  // Status: an impossible figure -- a stock below zero. Deliberately
+  // not the error red: a negative balance must not read as one more
+  // rupture, which is a normal, legitimate state hundreds of articles
+  // are in.
+  static const Color anomaly = Color(0xFFDB61DB);
+  static const Color anomalyBg = Color(0xFF3A1039);
+
   // Status: informational
   static const Color info = Color(0xFF58A6FF);
   static const Color infoBg = Color(0xFF10243E);
