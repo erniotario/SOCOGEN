@@ -23,7 +23,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~135 tests across 18 files
+flutter test                 # ~145 tests across 18 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -92,18 +92,25 @@ not make any of them worse.
 
 - **Stock must not silently go negative.** 21 of the 400 live articles
   show a negative balance, which means either a sortie was recorded that
-  never happened or an entrée was never entered. It is now *flagged*:
-  `StockStatus.stockNegatif` is a state of its own, apart from `rupture`,
-  so a negative no longer hides among the hundreds of articles
-  legitimately sitting at zero — Rapports raises a banner naming the
-  count and filters the table down to those rows. Still missing is the
-  write side and the cure. Only the Sorties form warns before creating
-  one, and only with a soft "Continuer quand même ?"; editing a past
-  movement in Transactions and importing from Sage both go straight
-  through. And nothing can yet *settle* a negative once found — that
-  needs the physical inventory below. A sortie beyond available stock
-  should be refused, or recorded and raised as a discrepancy to settle —
-  never accepted in silence.
+  never happened or an entrée was never entered. It is now *flagged* on
+  both sides. `StockStatus.stockNegatif` is a state of its own, apart
+  from `rupture`, so a negative no longer hides among the hundreds of
+  articles legitimately sitting at zero — Rapports raises a banner
+  naming the count and filters the table down to those rows. And all
+  three write paths warn before creating one: the Sorties form, the
+  Transactions edit dialog (via `ProductRepository.balanceExcluding`,
+  which judges an edit on what it would *leave behind* rather than on a
+  sum that still holds the row's old figure), and the Sage import, which
+  reports per-magasin balances its run drove below zero. The chosen
+  policy is warn-and-record, not refuse: a storekeeper whose goods have
+  physically left must still be able to say so, and the override is no
+  longer silent because it lands on the Rapports list. The import
+  compares against a snapshot taken before the run, so a negative already
+  on file is never blamed on whoever imports next — a warning that fires
+  every time is one that gets learned as noise.
+
+  What is still missing is the **cure**: nothing can settle a negative
+  once found. That needs the physical inventory below.
 - **A movement has no author.** The app has users and roles
   (`admin` / `magasinier`), but `stock_entries` and `stock_outputs`
   record no one. In a stock ledger, who entered a line and when is not a

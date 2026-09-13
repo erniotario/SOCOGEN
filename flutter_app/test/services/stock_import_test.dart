@@ -4,6 +4,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:socogen/data/db/schema.dart';
 import 'package:socogen/data/repositories/product_repository.dart';
+import 'package:socogen/data/repositories/report_repository.dart';
 import 'package:socogen/data/repositories/stock_entry_repository.dart';
 import 'package:socogen/data/repositories/stock_output_repository.dart';
 import 'package:socogen/data/repositories/store_repository.dart';
@@ -35,6 +36,7 @@ StockImportService _service(Database db) => StockImportService(
       storeRepository: StoreRepository(database: db),
       entryRepository: StockEntryRepository(database: db),
       outputRepository: StockOutputRepository(database: db),
+      reportRepository: ReportRepository(database: db),
     );
 
 CellValue _t(String v) => TextCellValue(v);
@@ -213,4 +215,90 @@ void main() {
     expect(report.sheetsRead.single, contains('Produits'));
     expect(report.problems.single, contains('Mouvements'));
   });
+
+  group('stock négatif', () {
+    /// 100 d'ouverture, puis une sortie de 250 : le magasin finit à -150.
+    Excel bookDrivingArt1Negative() => _workbook({
+          'Produits': _catalogue,
+          'Sorties': [
+            [_t('DATE'), _t('RÉFÉRENCE'), _t('MAGASIN'), _t('QUANTITÉ'), _t('N° FACTURE'), _t('DESTINATION')],
+            [_t('2026-02-03'), _t('ART-1'), _t('Magasin Central'), _n(250), _t('FA-99'), _t('Chantier Est')],
+          ],
+        });
+
+    test('a run that drives a magasin below zero says so', () async {
+      final report = await _service(db).importWorkbook(bookDrivingArt1Negative());
+
+      expect(report.outputs, 1, reason: 'la sortie est enregistrée, pas refusée');
+      expect(report.negatives, 1);
+      expect(
+        report.problems.any((p) => p.contains('ART-1') && p.contains('-150')),
+        isTrue,
+        reason: 'le rapport doit nommer la référence et le solde : '
+            '${report.problems}',
+      );
+      expect(report.summary, contains('négatif'));
+    });
+
+    test('a clean run says nothing about negatives', () async {
+      final report = await _service(db).importWorkbook(_workbook({
+        'Produits': _catalogue,
+        'Sorties': [
+          [_t('DATE'), _t('RÉFÉRENCE'), _t('MAGASIN'), _t('QUANTITÉ'), _t('N° FACTURE'), _t('DESTINATION')],
+          [_t('2026-02-03'), _t('ART-1'), _t('Magasin Central'), _n(25), _t('FA-77'), _t('Chantier Est')],
+        ],
+      }));
+
+      expect(report.negatives, 0);
+      expect(report.problems, isEmpty);
+      expect(report.summary, isNot(contains('négatif')));
+    });
+
+    test('a negative already on file is not blamed on the next import',
+        () async {
+      // First run puts ART-1 at -150 and reports it.
+      final first = await _service(db).importWorkbook(bookDrivingArt1Negative());
+      expect(first.negatives, 1);
+
+      // A second, unrelated import leaves that balance exactly as it
+      // was. Rapports still flags it; this run did not cause it, so the
+      // run must not claim it -- a warning that fires every time is one
+      // the operator learns to scroll past.
+      final second = await _service(db).importWorkbook(_workbook({
+        'Entrées': [
+          [_t('DATE'), _t('RÉFÉRENCE'), _t('MAGASIN'), _t('QUANTITÉ'), _t('FOURNISSEUR')],
+          [_t('2026-03-01'), _t('ART-2'), _t('Dépôt Nord'), _n(5), _t('SOCACIM')],
+        ],
+      }));
+
+      expect(second.entries, 1);
+      expect(second.negatives, 0);
+      expect(
+        second.problems.any((p) => p.contains('ART-1')),
+        isFalse,
+        reason: 'déjà négatif avant ce run : ${second.problems}',
+      );
+    });
+
+    test('a run that digs an existing negative deeper says so again',
+        () async {
+      await _service(db).importWorkbook(bookDrivingArt1Negative());
+
+      final second = await _service(db).importWorkbook(_workbook({
+        'Sorties': [
+          [_t('DATE'), _t('RÉFÉRENCE'), _t('MAGASIN'), _t('QUANTITÉ'), _t('N° FACTURE'), _t('DESTINATION')],
+          [_t('2026-04-04'), _t('ART-1'), _t('Magasin Central'), _n(10), _t('FA-100'), _t('Chantier Est')],
+        ],
+      }));
+
+      expect(second.outputs, 1);
+      expect(second.negatives, 1, reason: '-150 est devenu -160');
+      expect(
+        second.problems.any((p) => p.contains('-160')),
+        isTrue,
+        reason: '${second.problems}',
+      );
+    });
+  });
+
 }

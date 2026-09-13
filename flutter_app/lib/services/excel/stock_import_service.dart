@@ -3,7 +3,9 @@ import 'package:excel/excel.dart';
 import '../../data/models/stock_entry.dart';
 import '../../data/models/stock_output.dart';
 import '../../data/models/store.dart';
+import '../../data/models/view_models.dart';
 import '../../data/repositories/product_repository.dart';
+import '../../data/repositories/report_repository.dart';
 import '../../data/repositories/stock_entry_repository.dart';
 import '../../data/repositories/stock_output_repository.dart';
 import '../../data/repositories/store_repository.dart';
@@ -19,6 +21,13 @@ class ImportReport {
   int entries = 0;
   int outputs = 0;
   int skipped = 0;
+
+  /// (product, store) balances this run drove below zero, or drove
+  /// further below zero than they already were. Pre-existing negatives
+  /// are not counted: Rapports already flags those, and blaming them on
+  /// whoever happened to run the next import is how a real warning gets
+  /// learned as noise.
+  int negatives = 0;
 
   /// Sheets found in the workbook, by the role they were read as.
   final List<String> sheetsRead = [];
@@ -38,6 +47,7 @@ class ImportReport {
     if (parts.isEmpty) return 'Rien à importer.';
     var text = 'Importé : ${parts.join(', ')}';
     if (skipped > 0) text += ' — $skipped ignoré(s)';
+    if (negatives > 0) text += ' — $negatives stock(s) négatif(s)';
     return text;
   }
 }
@@ -60,15 +70,21 @@ class StockImportService {
     StoreRepository? storeRepository,
     StockEntryRepository? entryRepository,
     StockOutputRepository? outputRepository,
+    ReportRepository? reportRepository,
   })  : _products = productRepository ?? ProductRepository(),
         _stores = storeRepository ?? StoreRepository(),
         _entries = entryRepository ?? StockEntryRepository(),
-        _outputs = outputRepository ?? StockOutputRepository();
+        _outputs = outputRepository ?? StockOutputRepository(),
+        _reports = reportRepository ?? ReportRepository();
 
   final ProductRepository _products;
   final StoreRepository _stores;
   final StockEntryRepository _entries;
   final StockOutputRepository _outputs;
+  final ReportRepository _reports;
+
+  /// Enough to act on without burying the rest of the report.
+  static const int _maxNegativesListed = 10;
 
   Future<ImportReport> importWorkbook(Excel workbook) async {
     final report = ImportReport();
@@ -80,6 +96,8 @@ class StockImportService {
     if (stores.isEmpty) {
       throw Exception('Aucun magasin : créez-en un avant d\'importer.');
     }
+
+    final negativesBefore = await _negativesBefore();
 
     final unrecognised = <String>[];
     for (final name in workbook.tables.keys) {
@@ -107,6 +125,7 @@ class StockImportService {
       final first = workbook.tables.keys.first;
       report.sheetsRead.add('$first → produits');
       await _importCatalogue(workbook.tables[first]!.rows, stores, report);
+      await _flagNegativeBalances(negativesBefore, report);
       return report;
     }
 
@@ -119,8 +138,57 @@ class StockImportService {
       );
     }
 
+    await _flagNegativeBalances(negativesBefore, report);
     return report;
   }
+
+  /// Names the (product, store) pairs this run left below zero.
+  ///
+  /// Movements arrive as a batch in file order, so checking row by row
+  /// would cry wolf -- a sortie legitimately precedes its entrée in
+  /// plenty of exports, and the balance is only meaningful once the
+  /// whole sheet is in. What matters is where the run *left* each
+  /// magasin, so the balances are read once at the end and compared
+  /// against the snapshot taken before the first sheet.
+  Future<void> _flagNegativeBalances(
+    Map<String, int> before,
+    ImportReport report,
+  ) async {
+    final after = await _reports.getReportRows(
+      status: StockStatus.stockNegatif,
+    );
+
+    final worsened = after.where((row) {
+      final previous = before['${row.reference}|${row.storeId}'];
+      return previous == null || row.current < previous;
+    }).toList();
+
+    report.negatives = worsened.length;
+    for (final row in worsened.take(_maxNegativesListed)) {
+      report.problems.add(
+        'Stock négatif après import : ${row.reference} '
+        '(${row.storeName}) à ${row.current}. À régulariser.',
+      );
+    }
+    final remaining = worsened.length - _maxNegativesListed;
+    if (remaining > 0) {
+      report.problems.add(
+        '… et $remaining autre(s) référence(s) en stock négatif.',
+      );
+    }
+  }
+
+  /// Balances already below zero before the import touched anything,
+  /// keyed by reference and store.
+  Future<Map<String, int>> _negativesBefore() async {
+    final rows = await _reports.getReportRows(
+      status: StockStatus.stockNegatif,
+    );
+    return {
+      for (final row in rows) '${row.reference}|${row.storeId}': row.current,
+    };
+  }
+
 
   // --- Catalogue + opening stock ---------------------------------------
 

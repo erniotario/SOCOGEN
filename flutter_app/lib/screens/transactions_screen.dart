@@ -955,6 +955,7 @@ class _TransactionFormDialog extends StatefulWidget {
 class _TransactionFormDialogState extends State<_TransactionFormDialog> {
   final _entryRepo = StockEntryRepository();
   final _outputRepo = StockOutputRepository();
+  final _productRepo = ProductRepository();
   late final TextEditingController _refController;
   late final TextEditingController _desController;
   late final TextEditingController _counterpartController;
@@ -1023,6 +1024,47 @@ class _TransactionFormDialogState extends State<_TransactionFormDialog> {
     if (qty <= 0) {
       setState(() => _error = 'La quantité doit être supérieure à 0.');
       return;
+    }
+
+    // What this edit would leave behind, judged with the row's own old
+    // figure taken out of the sum -- the ledger still holds it until the
+    // update lands. Editing history is the one write path that had no
+    // stock check at all: raising a sortie, or lowering an entrée, could
+    // drive a magasin below zero without a word.
+    final base = await _productRepo.balanceExcluding(
+      reference: ref,
+      storeId: _storeId!,
+      excludeEntryId: _isEntry ? widget.row.id : null,
+      excludeOutputId: _isEntry ? null : widget.row.id,
+    );
+    final after = _isEntry ? base + qty : base - qty;
+    if (after < 0) {
+      if (!mounted) return;
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Stock négatif'),
+          content: Text(
+            'Cette modification laisserait le stock de ce magasin à $after '
+            'pour $ref.\n'
+            'Un stock ne peut pas être négatif : il manque une entrée, ou '
+            'une sortie de trop a été saisie.\n\n'
+            'Enregistrer quand même ? La ligne sera signalée dans les '
+            'Rapports comme à régulariser.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) return;
     }
 
     setState(() {

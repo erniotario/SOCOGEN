@@ -186,6 +186,49 @@ class ProductRepository {
         .toList();
   }
 
+  /// Balance of (reference, store) with one movement deliberately left
+  /// out of the sum.
+  ///
+  /// Editing a past movement has to be judged on what it would leave
+  /// behind, not on what the ledger says while the row's old figure is
+  /// still counted in it -- otherwise raising a sortie from 5 to 50
+  /// looks fine right up until it is saved.
+  ///
+  /// `id IS NOT ?` carries the whole exclusion: against NULL it is true
+  /// for every row (exclude nothing), against an id it is true for every
+  /// row but that one. So the same statement serves a new movement and
+  /// an edited one.
+  Future<int> balanceExcluding({
+    required String reference,
+    required int storeId,
+    int? excludeEntryId,
+    int? excludeOutputId,
+  }) async {
+    final db = await _db;
+    final rows = await db.rawQuery('''
+      SELECT
+        COALESCE((
+          SELECT ps.initial_stock FROM product_stocks ps
+          JOIN products p ON p.id = ps.product_id
+          WHERE p.reference = ? AND ps.store_id = ?
+        ), 0)
+        + COALESCE((
+          SELECT SUM(quantity) FROM stock_entries
+          WHERE reference = ? AND store_id = ? AND id IS NOT ?
+        ), 0)
+        - COALESCE((
+          SELECT SUM(quantity) FROM stock_outputs
+          WHERE reference = ? AND store_id = ? AND id IS NOT ?
+        ), 0)
+        AS balance
+    ''', [
+      reference, storeId,
+      reference, storeId, excludeEntryId,
+      reference, storeId, excludeOutputId,
+    ]);
+    return (rows.first['balance'] as num?)?.toInt() ?? 0;
+  }
+
   Future<int> createProduct({
     required String reference,
     required String designation,

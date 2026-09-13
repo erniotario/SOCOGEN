@@ -378,17 +378,38 @@ class _OutputFormCardState extends State<_OutputFormCard> {
       return;
     }
 
-    final storeAvail = _availability?.where((a) => a.storeId == _storeId).firstOrNull;
-    final current = storeAvail?.available ?? _selectedProduct!.currentStock;
+    // Read for the chosen magasin at save time rather than trusting
+    // _availability, which is loaded when the product is picked and
+    // holds nothing for a magasin the product has no product_stocks row
+    // in. The old fallback then compared the quantity against the total
+    // across every other store and let the sortie through.
+    final current = await _productRepo.balanceExcluding(
+      reference: _selectedProduct!.product.reference,
+      storeId: _storeId!,
+    );
     if (qty > current) {
+      if (!mounted) return;
+      final after = current - qty;
       final proceed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Stock insuffisant'),
-          content: Text('Stock disponible dans ce magasin : $current. Quantité demandée : $qty.\nContinuer quand même ?'),
+          content: Text(
+            'Stock disponible dans ce magasin : $current. '
+            'Quantité demandée : $qty.\n'
+            'Cette sortie laisserait le stock à $after.\n\n'
+            'Enregistrer quand même ? La ligne sera signalée dans les '
+            'Rapports comme à régulariser.',
+          ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Non')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Oui')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Enregistrer'),
+            ),
           ],
         ),
       );
