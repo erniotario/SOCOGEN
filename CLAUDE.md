@@ -1,10 +1,24 @@
-# SOCOGEN — gestion de stock
+# SM — gestion de stock
 
-A stock-management application for a Cameroonian wholesaler, shipping to
+A stock-management application for Cameroonian wholesalers, shipping to
 **Windows, Android and iOS** from one Flutter codebase in `flutter_app/`.
-Real deployment: ~400 articles across three magasins (Hysacam, Ekie,
-Elig-Essono), a few thousand movements a year, imported from Sage
-Gestion Commerciale.
+The first customer, SOCOGEN, runs ~400 articles across three magasins
+(Hysacam, Ekie, Elig-Essono) and a few thousand movements a year,
+imported from Sage Gestion Commerciale — most of the hard-won detail
+below comes from that deployment.
+
+**The product is named SM; the repository, the Dart package and the
+database file are still `socogen`.** The app was named after its first
+customer, which stopped being true once a second business could install
+it. `AppBranding` (`lib/theme/app_branding.dart`) holds the product name
+so the next rename is one line, and records the three identifiers that
+deliberately do *not* follow it, because they are identity rather than
+branding: `DatabaseService._dbFileName` (on Windows the database sits
+beside the executable, so a new filename reads as an empty install),
+`AppId` in `installer.iss` (Inno upgrades in place only while it
+matches), and the Android `applicationId`. A customer's own name is data
+— `company_settings`, filled in at first run — and appears on their
+documents.
 
 **The application is `flutter_app/`.** A Python/PySide6 version came
 first and was removed once the port shipped on all three platforms; it is
@@ -23,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~191 tests across 23 files
+flutter test                 # ~192 tests across 23 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -45,9 +59,9 @@ itself.
 - **The Windows installer must be compiled outside the project folder.**
   Output written in place trips real-time antivirus scanning and dies
   with `EndUpdateResource failed (110)`. Compile elsewhere and copy back:
-  `ISCC.exe "/O<temp-dir>" installer.iss`, then copy `SOCOGEN_Setup.exe`
+  `ISCC.exe "/O<temp-dir>" installer.iss`, then copy `SM_Setup.exe`
   into `flutter_app/dist/`.
-- **`socogen.exe` keeping an old timestamp after a release build is
+- **`SM.exe` keeping an old timestamp after a release build is
   normal** — it is the C++ runner shell, relinked only when the Windows
   runner sources change. The Dart code is
   `build/windows/x64/runner/Release/data/app.so`; check *that* date to

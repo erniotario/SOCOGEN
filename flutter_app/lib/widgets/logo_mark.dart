@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_branding.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
-/// The SOCOGEN app mark: a gradient tile with the company initial.
+/// The app mark: a gradient tile carrying the product initial.
 ///
 /// Used by the sidebar, the rail, the login card and the splash screen
 /// so the product has one consistent identity everywhere.
@@ -62,7 +63,7 @@ class LogoLockup extends StatelessWidget {
         LogoMark(size: markSize),
         const SizedBox(height: AppSpacing.md),
         Text(
-          'SOCOGEN',
+          AppBranding.productName,
           style: TextStyle(
             fontSize: titleSize,
             fontWeight: FontWeight.w800,

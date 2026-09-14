@@ -1,4 +1,4 @@
-/// Clean SOCOGEN schema (mirrors scripts/schema.sql, plus the v2 sync
+/// Clean schema (mirrors scripts/schema.sql, plus the v2 sync
 /// columns/tables added for the local Wi-Fi synchronisation feature).
 ///
 /// Used only as a fallback when the seeded asset database
@@ -75,7 +75,7 @@ class AppSchema {
     '''
     CREATE TABLE company_settings (
       id INTEGER PRIMARY KEY,
-      name TEXT DEFAULT 'SOCOGEN',
+      name TEXT DEFAULT '',
       address TEXT DEFAULT '',
       city TEXT DEFAULT 'Yaoundé, Cameroun',
       phone TEXT DEFAULT '',

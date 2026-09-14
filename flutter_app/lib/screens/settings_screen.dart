@@ -100,7 +100,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _saving = true);
     try {
       await _settingsRepo.saveSettings(CompanySettings(
-        name: _nameController.text.trim().isEmpty ? 'SOCOGEN' : _nameController.text.trim(),
+        // An emptied field means the name is unknown, not that it is the
+                    // first customer's.
+                    name: _nameController.text.trim(),
         address: _addressController.text.trim(),
         city: _cityController.text.trim(),
         phone: _phoneController.text.trim(),
@@ -160,7 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               label: 'Nom de la société',
                               required: true,
                               controller: _nameController,
-                              hintText: 'Ex : SOCOGEN SARL',
+                              hintText: 'Ex : ETS KAMGA & FILS',
                             ),
                           ),
                           RowItem(
@@ -222,14 +224,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             child: _LabeledField(
                               label: 'Email',
                               controller: _emailController,
-                              hintText: 'Ex : contact@socogen.cm',
+                              hintText: 'Ex : contact@monentreprise.cm',
                             ),
                           ),
                           RowItem(
                             child: _LabeledField(
                               label: 'Site web',
                               controller: _websiteController,
-                              hintText: 'Ex : www.socogen.cm',
+                              hintText: 'Ex : www.monentreprise.cm',
                             ),
                           ),
                         ],

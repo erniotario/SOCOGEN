@@ -7,12 +7,13 @@ import 'auth/auth_provider.dart';
 import 'data/db/database_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_spacing.dart';
+import 'theme/app_branding.dart';
 import 'theme/app_text_styles.dart';
 import 'theme/app_theme.dart';
 import 'widgets/logo_mark.dart';
 
 void main() {
-  runApp(const SocogenApp());
+  runApp(const StockApp());
 }
 
 /// Lets desktop users drag-scroll long tables with the mouse, which the
@@ -29,15 +30,15 @@ class _AppScrollBehavior extends MaterialScrollBehavior {
       };
 }
 
-class SocogenApp extends StatelessWidget {
-  const SocogenApp({super.key});
+class StockApp extends StatelessWidget {
+  const StockApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AuthProvider(),
       child: MaterialApp(
-        title: 'SOCOGEN — Gestion de Stock',
+        title: AppBranding.windowTitle,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
         scrollBehavior: const _AppScrollBehavior(),

@@ -1,4 +1,6 @@
-# Driver for the SOCOGEN Flutter Windows desktop app.
+# Driver for the SM Flutter Windows desktop app (the product the
+# SOCOGEN repository builds -- the process is named SM since the
+# rename, while the database file kept its socogen_stock.db name).
 #
 # Gives an agent a programmatic handle on the running app: launch it,
 # photograph it, click it, type into it, close it.
@@ -68,9 +70,9 @@ if (-not ("SgWin" -as [type])) { Add-Type -TypeDefinition $sig }
 # case-insensitive, so $h would silently overwrite the -H parameter and
 # the window gets resized to the value of a window handle.
 function Get-AppWindow {
-  $all = @(Get-Process socogen -ErrorAction SilentlyContinue |
+  $all = @(Get-Process SM -ErrorAction SilentlyContinue |
            Where-Object { $_.MainWindowHandle -ne 0 })
-  if ($all.Count -eq 0) { throw "SOCOGEN window not found. Launch it first." }
+  if ($all.Count -eq 0) { throw "SM window not found. Launch it first." }
 
   # Never pick blind. A developer commonly has their own instance open
   # on the real database; driving that one would type into their
@@ -79,12 +81,12 @@ function Get-AppWindow {
   # error, not a coin flip.
   if ($PidTarget -ne 0) {
     $match = $all | Where-Object { $_.Id -eq $PidTarget } | Select-Object -First 1
-    if ($null -eq $match) { throw "no SOCOGEN window for pid $PidTarget" }
+    if ($null -eq $match) { throw "no SM window for pid $PidTarget" }
     return $match.MainWindowHandle
   }
   if ($all.Count -gt 1) {
     $ids = ($all | ForEach-Object { $_.Id }) -join ", "
-    throw "several SOCOGEN instances running (pids: $ids). Re-run with -Pid <id>."
+    throw "several SM instances running (pids: $ids). Re-run with -Pid <id>."
   }
   return $all[0].MainWindowHandle
 }
@@ -104,13 +106,13 @@ switch ($Action) {
 
   "launch" {
     if ([string]::IsNullOrWhiteSpace($AppDir)) {
-      throw "launch needs -AppDir (the folder holding socogen.exe)"
+      throw "launch needs -AppDir (the folder holding SM.exe)"
     }
-    $exe = Join-Path $AppDir "socogen.exe"
-    if (-not (Test-Path $exe)) { throw "no socogen.exe in $AppDir -- build first" }
+    $exe = Join-Path $AppDir "SM.exe"
+    if (-not (Test-Path $exe)) { throw "no SM.exe in $AppDir -- build first" }
 
     # -PassThru so we hold the process WE started. Scanning for "a
-    # socogen window" instead would hand back a developer's own installed
+    # SM window" instead would hand back a developer's own installed
     # copy if one happens to be open -- and every later click would land
     # in their live session, on their real data.
     $started = Start-Process -FilePath $exe -WorkingDirectory $AppDir -PassThru
@@ -137,10 +139,10 @@ switch ($Action) {
       Stop-Process -Id $PidTarget -Force -ErrorAction SilentlyContinue
       Write-Output "stopped pid=$PidTarget"
     } else {
-      $all = @(Get-Process socogen -ErrorAction SilentlyContinue)
+      $all = @(Get-Process SM -ErrorAction SilentlyContinue)
       if ($all.Count -gt 1) {
         $ids = ($all | ForEach-Object { $_.Id }) -join ", "
-        throw "several SOCOGEN instances running (pids: $ids). Re-run with -Pid <id>."
+        throw "several SM instances running (pids: $ids). Re-run with -Pid <id>."
       }
       $all | Stop-Process -Force
       Write-Output "stopped"

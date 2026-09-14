@@ -53,7 +53,7 @@ CREATE TABLE stock_outputs (
 
 CREATE TABLE company_settings (
     id INTEGER PRIMARY KEY,
-    name TEXT DEFAULT 'SOCOGEN',
+    name TEXT DEFAULT '',
     address TEXT DEFAULT '',
     city TEXT DEFAULT 'Yaoundé, Cameroun',
     phone TEXT DEFAULT '',

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../theme/app_branding.dart';
 import '../data/models/company_settings.dart';
 import '../data/models/view_models.dart';
 
@@ -125,7 +126,8 @@ class TransactionsPdfService {
   }
 
   static pw.Widget _buildDocumentHeader(CompanySettings company, String? productRef, DateTime now) {
-    final name = company.name.isEmpty ? 'SOCOGEN' : company.name;
+    final name =
+        company.name.isEmpty ? AppBranding.productName : company.name;
 
     final leftChildren = <pw.Widget>[
       pw.Text(name, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: _primary)),
@@ -394,7 +396,8 @@ class TransactionsPdfService {
   }
 
   static pw.Widget _buildFooter(CompanySettings company, int count, DateTime now) {
-    final name = company.name.isEmpty ? 'SOCOGEN' : company.name;
+    final name =
+        company.name.isEmpty ? AppBranding.productName : company.name;
     return pw.Column(
       mainAxisSize: pw.MainAxisSize.min,
       children: [

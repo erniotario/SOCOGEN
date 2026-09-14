@@ -1,4 +1,5 @@
 import '../../data/models/view_models.dart';
+import '../../theme/app_branding.dart';
 import '../../data/repositories/report_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/transaction_repository.dart';
@@ -141,7 +142,7 @@ class WebReportPages {
 
   static String notFoundPage() => _shell(
         title: 'Introuvable',
-        company: 'SOCOGEN',
+        company: AppBranding.productName,
         active: '',
         body: '<p class="empty">Cette page n\'existe pas. '
             '<a href="/">Retour au stock</a>.</p>',

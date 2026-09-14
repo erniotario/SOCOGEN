@@ -1,4 +1,4 @@
-"""Stand up a throwaway, fully isolated copy of a built SOCOGEN runner.
+"""Stand up a throwaway, fully isolated copy of a built SM runner.
 
 Why this exists
 ---------------
@@ -15,6 +15,8 @@ answer to both.
    `DatabaseService._resolveDatabasePath()` uses the directory of
    `Platform.resolvedExecutable`, so `build/windows/x64/runner/Debug/
    socogen_stock.db` *is* the developer's working data, not build junk.
+   (That filename survived the rename to SM on purpose: changing it
+   would read as a brand-new install with no stock in it.)
    Driving the app in place would write real movements into it. Copying
    the whole runner folder gives an instance whose writes -- including a
    validated inventory -- cannot reach it.
@@ -39,8 +41,8 @@ PASSWORD = "verif1234"
 
 
 def build(src: str, dest: str) -> None:
-    if not os.path.isfile(os.path.join(src, "socogen.exe")):
-        sys.exit(f"no socogen.exe in {src} -- build the app first")
+    if not os.path.isfile(os.path.join(src, "SM.exe")):
+        sys.exit(f"no SM.exe in {src} -- build the app first")
 
     if os.path.exists(dest):
         shutil.rmtree(dest)

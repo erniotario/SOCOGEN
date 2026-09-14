@@ -1,11 +1,13 @@
 ---
 name: run-socogen
-description: Build, launch and drive the SOCOGEN Flutter Windows desktop app - run it, screenshot it, click through its screens, and verify a change in the real app rather than only in tests. Use for "run the app", "start SOCOGEN", "screenshot the app", "check X on the running app", "click through Inventaire/Rapports".
+description: Build, launch and drive the SM Flutter Windows desktop app (the SOCOGEN repository) - run it, screenshot it, click through its screens, and verify a change in the real app rather than only in tests. Use for "run the app", "start SM", "start SOCOGEN", "screenshot the app", "check X on the running app", "click through Inventaire/Rapports".
 ---
 
-# Running SOCOGEN
+# Running SM
 
-Windows Flutter desktop app. Paths below are relative to the
+Windows Flutter desktop app. The product is named **SM**; the
+repository, the Dart package and the database file are still named
+socogen, and deliberately so. Paths below are relative to the
 **repository root**.
 
 The app is driven by `.claude/skills/run-socogen/drive.ps1` — launch,
@@ -27,7 +29,7 @@ on this machine. Python 3 for `sandbox.py` — stdlib only; the repo's
 cd flutter_app && flutter build windows --debug
 ```
 
-Produces `flutter_app/build/windows/x64/runner/Debug/socogen.exe`.
+Produces `flutter_app/build/windows/x64/runner/Debug/SM.exe`.
 Incremental builds take ~110 s; the first one is several minutes of
 `cl.exe`. Release builds are `--release`, but debug is what you want for
 driving.
@@ -132,7 +134,7 @@ reload attached. Fine for a person at the keyboard; useless for an agent
 
 ```bash
 cd flutter_app && flutter analyze   # keep at zero
-cd flutter_app && flutter test      # 164 tests
+cd flutter_app && flutter test      # ~193 tests
 ```
 
 Don't run the suite while a driven app is up: `web_report_test.dart`
@@ -175,8 +177,8 @@ serving its Wi-Fi sync.
 
 | Symptom | Fix |
 |---|---|
-| `SOCOGEN window not found` | Nothing running — `-Action launch` first. |
-| `several SOCOGEN instances running (pids: ...)` | Pass `-Pid <id>`; don't let it pick. |
+| `SM window not found` | Nothing running — `-Action launch` first. |
+| `several SM instances running (pids: ...)` | Pass `-Pid <id>`; don't let it pick. |
 | `Cannot convert value "System.Collections.Hashtable" to type "System.Int32"` | Your wrapper's `$p` collided with `-Pid`. Rename to `$opts`/`$AppPid`. |
 | Capture is a blank rectangle | Not using `PrintWindow` flag 2. |
 | Typed text never appears | Clipboard paste; use `-Action keys`. |

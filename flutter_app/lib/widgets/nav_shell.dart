@@ -12,6 +12,7 @@ import '../screens/security_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/stores_screen.dart';
 import '../screens/transactions_screen.dart';
+import '../theme/app_branding.dart';
 import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -423,7 +424,7 @@ class _SidebarHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'SOCOGEN',
+                  AppBranding.productName,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -432,7 +433,7 @@ class _SidebarHeader extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: AppSpacing.xxs),
-                Text('Gestion de Stock', style: AppTextStyles.captionMuted),
+                Text(AppBranding.tagline, style: AppTextStyles.captionMuted),
               ],
             ),
           ),
