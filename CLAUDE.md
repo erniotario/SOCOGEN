@@ -84,6 +84,20 @@ wrong store silently corrupts that store's balance, and a silent
 corruption is worse than a rejected row. Hold that line everywhere:
 where the right answer is unknown, say so and let the operator decide.
 
+**A database belongs to one business, and says so.** `sync_meta` carries a
+`tenant_id`, minted on first sync rather than at creation — stamping on
+creation would give two devices of the same business different ids and they
+would refuse each other forever. `SyncEngine.reconcileTenant` settles it:
+an unclaimed database adopts whoever it first syncs with, a claim is never
+reassigned, and two *different* claims raise `TenantMismatch` before a
+single row is applied. The check has to come first, because the merge runs
+on natural keys — a store by its name, a product by its reference — so two
+businesses both keeping a "Dépôt" and a "RIZ25" would not fail to merge,
+they would fuse, and the newer `updated_at` would overwrite real stock with
+a stranger's. `sync_tenant_test.dart` pins both halves, including a test
+that the same rows *do* fuse when the claims match, so the refusal test
+cannot pass for the wrong reason.
+
 ### The professional bar
 
 This is a real ledger of a business's goods. The gaps below are known and
@@ -224,6 +238,12 @@ layout on the UI thread is an ANR on Android and a watchdog kill on iOS.
 - Platform-conditional UI is driven with
   `debugDefaultTargetPlatformOverride`, reset **inside** the test body —
   the framework checks foundation debug vars before `tearDown` runs.
+- **Two in-memory databases are the same database** unless the open
+  options say `singleInstance: false`. `inMemoryDatabasePath` opened twice
+  hands back one handle, so a two-device sync test quietly becomes one
+  device syncing with itself and every assertion about the peer passes
+  because the row never went anywhere. `sync_engine_test.dart` and
+  `sync_tenant_test.dart` both set it.
 - Anything that can only fail on a device (the sqflite rule above, print
   dialogs) cannot be caught here. Say so rather than implying a green
   suite covers it.

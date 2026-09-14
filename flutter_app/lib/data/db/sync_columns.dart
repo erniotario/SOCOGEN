@@ -7,6 +7,12 @@ const _uuid = Uuid();
 /// rows, which have no natural unique key.
 String newSyncId() => _uuid.v4();
 
+/// Identity minted for a business the first time two of its devices sync.
+/// Distinct from [newSyncId] only in intent -- one names a row, this names
+/// the whole database -- but naming it separately keeps the two from being
+/// confused at the call site.
+String newTenantId() => _uuid.v4();
+
 /// Current UTC timestamp in a format that sorts correctly with simple
 /// string comparison, used to populate `updated_at` columns.
 String nowIso() => DateTime.now().toUtc().toIso8601String();

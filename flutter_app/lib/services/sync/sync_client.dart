@@ -29,21 +29,33 @@ class SyncClient {
   Future<SyncResult> syncWithPeer(String host, {int port = syncPort}) async {
     final since = await SyncEngine.getLastSyncAt(_database);
     final outgoing = await SyncEngine.collectChanges(_database, since);
+    final localTenant = await SyncEngine.getTenantId(_database);
 
     final uri = Uri.parse('http://$host:$port/sync');
     final response = await http
         .post(
           uri,
           headers: {'content-type': 'application/json'},
-          body: jsonEncode(outgoing.toJson()),
+          body: jsonEncode(outgoing.withTenant(localTenant).toJson()),
         )
         .timeout(const Duration(seconds: 20));
 
+    // The peer refuses an exchange between two businesses before it merges
+    // anything, and says so with 409 rather than a generic failure.
+    if (response.statusCode == 409) {
+      throw const TenantMismatch();
+    }
     if (response.statusCode != 200) {
       throw Exception('Le serveur a répondu avec le code ${response.statusCode}');
     }
 
     final incoming = ChangeSet.fromJson(jsonDecode(response.body) as Map<String, Object?>);
+
+    // Checked on this side too. The peer could be an older build with no
+    // tenant check at all, in which case this is the only thing standing
+    // between a stranger's catalogue and the local one.
+    await SyncEngine.reconcileTenant(_database, incoming.tenantId);
+
     final received = await SyncEngine.applyChanges(_database, incoming);
     await SyncEngine.setLastSyncAt(_database, nowIso());
 

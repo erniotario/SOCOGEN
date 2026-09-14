@@ -26,6 +26,23 @@ class Tombstone {
       );
 }
 
+/// Raised when two databases claimed by different businesses try to
+/// sync.
+///
+/// Carries its own French message because a storekeeper reads it, not a
+/// log: it says which device is wrong and that nothing was exchanged.
+class TenantMismatch implements Exception {
+  const TenantMismatch();
+
+  String get message =>
+      'Cet appareil appartient à une autre entreprise. '
+      'Synchronisation annulée : aucune donnée '
+      "n'a été échangée.";
+
+  @override
+  String toString() => message;
+}
+
 /// Everything that changed (or was deleted) on a device since a given
 /// timestamp. Exchanged verbatim, in both directions, during a manual sync.
 class ChangeSet {
@@ -36,6 +53,10 @@ class ChangeSet {
   final List<Map<String, Object?>> stockOutputs;
   final List<Tombstone> tombstones;
 
+  /// Which business this change set belongs to. Null from a device that has
+  /// not been claimed yet; the peer settles it on first contact.
+  final String? tenantId;
+
   const ChangeSet({
     this.stores = const [],
     this.products = const [],
@@ -43,6 +64,7 @@ class ChangeSet {
     this.stockEntries = const [],
     this.stockOutputs = const [],
     this.tombstones = const [],
+    this.tenantId,
   });
 
   bool get isEmpty =>
@@ -63,6 +85,18 @@ class ChangeSet {
       stockOutputs.length +
       tombstones.length;
 
+  /// The same changes, stamped with the identity of the business sending
+  /// them.
+  ChangeSet withTenant(String? id) => ChangeSet(
+        stores: stores,
+        products: products,
+        productStocks: productStocks,
+        stockEntries: stockEntries,
+        stockOutputs: stockOutputs,
+        tombstones: tombstones,
+        tenantId: id,
+      );
+
   Map<String, Object?> toJson() => {
         'stores': stores,
         'products': products,
@@ -70,6 +104,7 @@ class ChangeSet {
         'stockEntries': stockEntries,
         'stockOutputs': stockOutputs,
         'tombstones': tombstones.map((t) => t.toJson()).toList(),
+        'tenantId': tenantId,
       };
 
   factory ChangeSet.fromJson(Map<String, Object?> json) {
@@ -82,6 +117,8 @@ class ChangeSet {
       tombstones: ((json['tombstones'] as List?) ?? const [])
           .map((e) => Tombstone.fromJson(Map<String, Object?>.from(e as Map)))
           .toList(),
+      // Absent from a peer running a build older than the tenant check.
+      tenantId: json['tenantId'] as String?,
     );
   }
 

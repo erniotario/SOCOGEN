@@ -86,6 +86,20 @@ class SyncServer {
       final incoming = ChangeSet.fromJson(
         jsonDecode(await request.readAsString()) as Map<String, Object?>,
       );
+
+      // Settle identity before a single row is applied. The merge runs on
+      // natural keys, so a check made afterwards would be a report of a
+      // corruption rather than a guard against one.
+      final String tenantId;
+      try {
+        tenantId = await SyncEngine.reconcileTenant(
+          _database,
+          incoming.tenantId,
+        );
+      } on TenantMismatch catch (mismatch) {
+        return Response(409, body: mismatch.message);
+      }
+
       await SyncEngine.applyChanges(_database, incoming);
 
       final outgoing = await SyncEngine.collectChanges(_database, syncEpoch);
@@ -96,7 +110,7 @@ class SyncServer {
       }
 
       return Response.ok(
-        jsonEncode(outgoing.toJson()),
+        jsonEncode(outgoing.withTenant(tenantId).toJson()),
         headers: {'content-type': 'application/json'},
       );
     } catch (e) {

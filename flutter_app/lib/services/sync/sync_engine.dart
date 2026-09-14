@@ -1,5 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
+import '../../data/db/sync_columns.dart';
+
 import 'sync_models.dart';
 
 /// Sentinel "since" value meaning "the beginning of time", used the first
@@ -15,6 +17,68 @@ const String syncEpoch = '1970-01-01T00:00:00.000Z';
 /// recent `updated_at` wins. Deletions are propagated via `sync_tombstones`.
 class SyncEngine {
   SyncEngine._();
+
+  /// Identity of the business this database belongs to.
+  ///
+  /// Held in `sync_meta` rather than a column, because it is a property of
+  /// the whole file and not of any row -- a device serves one business, the
+  /// way a paper ledger in a back office does.
+  ///
+  /// Null means *not yet claimed*. A database is deliberately not stamped on
+  /// creation: two devices of the same business would then mint different
+  /// ids and refuse each other forever. Identity is settled on first sync
+  /// instead, by [reconcileTenant].
+  static Future<String?> getTenantId(DatabaseExecutor db) async {
+    final rows = await db.query(
+      'sync_meta',
+      where: 'key = ?',
+      whereArgs: ['tenant_id'],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    final value = rows.first['value'] as String?;
+    return (value == null || value.isEmpty) ? null : value;
+  }
+
+  /// Claims this database for [tenantId]. Never overwrites an existing
+  /// claim: an identity that could be reassigned would defeat the check it
+  /// exists to support.
+  static Future<void> claimTenant(DatabaseExecutor db, String tenantId) async {
+    final existing = await getTenantId(db);
+    if (existing != null) return;
+    await db.insert(
+      'sync_meta',
+      {'key': 'tenant_id', 'value': tenantId},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Decides whether two databases may exchange rows, and settles identity
+  /// when one or both sides are unclaimed.
+  ///
+  /// Returns the id both sides should carry. Throws [TenantMismatch] when
+  /// the two are claimed by different businesses -- the case this whole
+  /// mechanism exists for. `SyncEngine` merges on natural keys (a store by
+  /// its name, a product by its reference), so an exchange between two
+  /// businesses does not fail: it silently fuses two catalogues, and the
+  /// more recent `updated_at` overwrites real stock with a stranger's.
+  ///
+  /// First contact is trusted. An unclaimed database adopts whoever it
+  /// first syncs with, which is the trust already implied by typing a peer's
+  /// address into the Sécurité screen. Everything after that is pinned.
+  static Future<String> reconcileTenant(
+    DatabaseExecutor db,
+    String? peerTenantId,
+  ) async {
+    final local = await getTenantId(db);
+
+    if (local != null && peerTenantId != null && local != peerTenantId) {
+      throw const TenantMismatch();
+    }
+    final settled = local ?? peerTenantId ?? newTenantId();
+    if (local == null) await claimTenant(db, settled);
+    return settled;
+  }
 
   static Future<String> getLastSyncAt(Database db) async {
     final rows = await db.query('sync_meta', where: 'key = ?', whereArgs: ['last_sync_at'], limit: 1);

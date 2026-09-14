@@ -18,6 +18,11 @@ Future<Database> _openEmptyDb() async {
     inMemoryDatabasePath,
     options: OpenDatabaseOptions(
       version: AppSchema.version,
+      // Without singleInstance:false, opening inMemoryDatabasePath twice
+      // hands back the SAME database, and a two-device test quietly
+      // becomes one device syncing with itself -- every assertion about
+      // the peer passes because the row never went anywhere.
+      singleInstance: false,
       onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, version) async {
         for (final statement in AppSchema.createStatements) {
