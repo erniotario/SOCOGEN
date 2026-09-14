@@ -109,24 +109,42 @@ switch ($Action) {
     $exe = Join-Path $AppDir "socogen.exe"
     if (-not (Test-Path $exe)) { throw "no socogen.exe in $AppDir -- build first" }
 
-    Start-Process -FilePath $exe -WorkingDirectory $AppDir
+    # -PassThru so we hold the process WE started. Scanning for "a
+    # socogen window" instead would hand back a developer's own installed
+    # copy if one happens to be open -- and every later click would land
+    # in their live session, on their real data.
+    $started = Start-Process -FilePath $exe -WorkingDirectory $AppDir -PassThru
     $deadline = (Get-Date).AddSeconds($TimeoutSec)
     while ((Get-Date) -lt $deadline) {
-      $proc = Get-Process socogen -ErrorAction SilentlyContinue |
-              Where-Object { $_.MainWindowHandle -ne 0 }
-      if ($proc) {
+      $started.Refresh()
+      if ($started.HasExited) {
+        throw "app exited immediately (code $($started.ExitCode))"
+      }
+      if ($started.MainWindowHandle -ne 0) {
         Start-Sleep -Seconds 2      # let the first frame paint
-        Write-Output "launched pid=$($proc.Id)"
+        Write-Output "launched pid=$($started.Id)"
         exit 0
       }
-      Start-Sleep -Seconds 2
+      Start-Sleep -Milliseconds 500
     }
     throw "app did not open a window within $TimeoutSec s"
   }
 
   "quit" {
-    Get-Process socogen -ErrorAction SilentlyContinue | Stop-Process -Force
-    Write-Output "stopped"
+    # Only ever stops the pinned instance unless there is exactly one, so
+    # a stray `quit` cannot close a developer's own copy mid-use.
+    if ($PidTarget -ne 0) {
+      Stop-Process -Id $PidTarget -Force -ErrorAction SilentlyContinue
+      Write-Output "stopped pid=$PidTarget"
+    } else {
+      $all = @(Get-Process socogen -ErrorAction SilentlyContinue)
+      if ($all.Count -gt 1) {
+        $ids = ($all | ForEach-Object { $_.Id }) -join ", "
+        throw "several SOCOGEN instances running (pids: $ids). Re-run with -Pid <id>."
+      }
+      $all | Stop-Process -Force
+      Write-Output "stopped"
+    }
   }
 
   "capture" {
