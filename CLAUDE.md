@@ -23,7 +23,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~165 tests across 22 files
+flutter test                 # ~191 tests across 23 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -175,6 +175,27 @@ the bundled `assets/db/socogen_seed.db` is copied somewhere writable:
 | Windows | beside the executable |
 | Android / iOS | app documents directory (`app_flutter/socogen_stock.db`) |
 | Linux / macOS | application support directory |
+
+
+**A fresh database is nobody's business yet.** The seed asset ships with
+no accounts, no magasins, and an empty company name, and
+`AppSchema.defaultStores` is deliberately an empty list. It used to carry
+the first customer's three magasins and their name, so the next business
+opened the app to a stranger's premises on its own reports.
+`CompanySetupScreen` asks once, after the first administrator is created,
+and writes `company_settings` plus the magasins it is given. Two things
+it must keep doing: suggest **no** magasin names (a suggestion here is
+the inherited identity all over again), and offer the *skip* — a second
+device of the same business takes its magasins from the first device by
+sync, and inventing them here would merge as duplicates, since sync
+matches a store by its name.
+
+Whether the question has been answered lives in
+`sync_meta.company_configured`, device-local because `sync_meta` is not
+part of a `ChangeSet`. A database carrying no flag but already holding
+products or movements is treated as configured and the flag is written
+once: installations that predate the screen must never be dragged back
+through setup, and `company_setup_test.dart` pins that.
 
 The seed asset is schema **v1** and ships without indexes, so a schema
 change needs an `onUpgrade` step and not only an `onCreate` one — a fresh

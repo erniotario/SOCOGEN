@@ -12,7 +12,7 @@ class CompanySettings {
 
   const CompanySettings({
     this.id = 1,
-    this.name = 'SOCOGEN',
+    this.name = '',
     this.address = '',
     this.city = '',
     this.phone = '',
@@ -26,7 +26,7 @@ class CompanySettings {
   factory CompanySettings.fromMap(Map<String, Object?> map) {
     return CompanySettings(
       id: map['id'] as int? ?? 1,
-      name: (map['name'] as String?) ?? 'SOCOGEN',
+      name: (map['name'] as String?) ?? '',
       address: (map['address'] as String?) ?? '',
       city: (map['city'] as String?) ?? '',
       phone: (map['phone'] as String?) ?? '',

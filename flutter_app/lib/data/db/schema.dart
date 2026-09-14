@@ -148,9 +148,11 @@ class AppSchema {
         'ON product_stocks(store_id)',
   ];
 
-  static const List<String> defaultStores = [
-    'Hysacam',
-    'Ekie',
-    'Elig-Essono',
-  ];
+  /// Deliberately empty. A database starts with no magasins: a business
+  /// names its own at first run, and shipping one customer's warehouses
+  /// as everyone's default meant the next business opened the app to a
+  /// stranger's premises. Every screen that picks a default store already
+  /// guards for an empty list; `StockImportService` refuses an import
+  /// until at least one exists.
+  static const List<String> defaultStores = [];
 }

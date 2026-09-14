@@ -21,8 +21,9 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
 
   /// Decides whether to show the setup form (no users yet) or the login
-  /// form. The seeded database always has the admin user, so this only
-  /// triggers setup mode if the seed asset was missing on first launch.
+  /// form. The bundled seed asset ships with no accounts, so a fresh
+  /// install lands on setup and the first person to open the app creates
+  /// the administrator.
   Future<void> checkSetup() async {
     final hasUsers = await _userRepository.hasUsers();
     _status = hasUsers ? AuthStatus.loggedOut : AuthStatus.setupRequired;

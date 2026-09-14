@@ -5,6 +5,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:socogen/auth/auth_provider.dart';
 import 'package:socogen/data/db/database_service.dart';
+import 'package:socogen/screens/company_setup_screen.dart';
 import 'package:socogen/screens/dashboard_screen.dart';
 import 'package:socogen/screens/entries_screen.dart';
 import 'package:socogen/screens/inventory_screen.dart';
@@ -34,6 +35,10 @@ const _sizes = <String, Size>{
 };
 
 final _screens = <String, Widget Function()>{
+  // Only ever seen on a brand-new install, so it never reaches the
+  // other screens' fixture data -- but it is a long French form and
+  // belongs in the overflow matrix like the rest.
+  'Configuration initiale': () => CompanySetupScreen(onDone: () {}),
   'Tableau de bord': () => const DashboardScreen(),
   'Produits': () => const ProductsScreen(),
   'Entrées': () => const EntriesScreen(),

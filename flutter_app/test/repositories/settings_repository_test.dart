@@ -19,10 +19,16 @@ void main() {
     await db.close();
   });
 
-  test('getSettings returns defaults when no row exists', () async {
+  test('getSettings invents no company when no row exists', () async {
     final settings = await repo.getSettings();
     expect(settings.id, 1);
-    expect(settings.name, 'SOCOGEN');
+    expect(
+      settings.name,
+      '',
+      reason: 'an unnamed installation is unnamed -- it used to fall back '
+          'to the first customer, which put their name on the next '
+          "customer's reports",
+    );
   });
 
   test('saveSettings inserts then updates the singleton row', () async {

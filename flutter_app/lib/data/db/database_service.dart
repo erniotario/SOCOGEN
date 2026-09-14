@@ -69,7 +69,10 @@ class DatabaseService {
         for (final name in AppSchema.defaultStores) {
           await db.insert('stores', {'name': name, 'updated_at': now});
         }
-        await db.insert('company_settings', {'id': 1, 'name': 'SOCOGEN'});
+        // Blank, not 'SOCOGEN'. The first-run setup asks whose business
+        // this is; a name filled in here would put the first customer's
+        // identity on every other customer's reports.
+        await db.insert('company_settings', {'id': 1, 'name': ''});
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
