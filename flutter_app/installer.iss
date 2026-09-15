@@ -35,7 +35,10 @@ Source: "{#ReleaseDir}\flutter_windows.dll";            DestDir: "{app}"; Flags:
 Source: "{#ReleaseDir}\sqlite3.dll";                    DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ReleaseDir}\pdfium.dll";                     DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ReleaseDir}\printing_plugin.dll";            DestDir: "{app}"; Flags: ignoreversion
-Source: "{#ReleaseDir}\native_assets.json";             DestDir: "{app}"; Flags: ignoreversion
+; Emitted by some Flutter versions and not others. The payload is
+; listed file by file, so one that stops being generated fails the
+; whole compile unless it is marked optional.
+Source: "{#ReleaseDir}\native_assets.json";             DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#ReleaseDir}\data\*";                         DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "windows\runner\resources\app_icon.ico";        DestDir: "{app}"; DestName: "sm.ico"; Flags: ignoreversion
 
