@@ -21,6 +21,10 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=lowest
+; Without this an upgrade keeps the group name the previous install
+; recorded, so renaming the product leaves a Start Menu folder still
+; named after the old one.
+UsePreviousGroup=no
 PrivilegesRequiredOverridesAllowed=dialog
 
 [Languages]
@@ -49,8 +53,11 @@ Source: "windows\runner\resources\app_icon.ico";        DestDir: "{app}"; DestNa
 ; filename was left alone. Only the old shell is swept up.
 Type: files; Name: "{app}\socogen.exe"
 Type: files; Name: "{app}\socogen.ico"
-Type: files; Name: "{group}\SOCOGEN.lnk"
-Type: files; Name: "{group}\Désinstaller SOCOGEN.lnk"
+; Left behind by installs made when Flutter still emitted it. It
+; records an absolute path from the build machine, so it is stale
+; the moment it is copied to anyone else.
+Type: files; Name: "{app}\native_assets.json"
+Type: filesandordirs; Name: "{autoprograms}\SOCOGEN"
 Type: files; Name: "{autodesktop}\SOCOGEN.lnk"
 
 [Icons]
