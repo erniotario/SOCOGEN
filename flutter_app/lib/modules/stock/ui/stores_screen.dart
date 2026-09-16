@@ -13,6 +13,7 @@ import 'package:socogen/shared/ui/widgets/empty_state.dart';
 import 'package:socogen/shared/ui/widgets/page_header.dart';
 import 'package:socogen/shared/ui/widgets/row_actions.dart';
 import 'package:socogen/shared/ui/widgets/skeleton.dart';
+import 'package:socogen/core/errors/messages.dart';
 
 class StoresScreen extends StatefulWidget {
   const StoresScreen({super.key});
@@ -461,7 +462,7 @@ class _StoreFormDialogState extends State<_StoreFormDialog> {
       Navigator.pop(context, true);
     } catch (e) {
       setState(() {
-        _error = 'Erreur : $e';
+        _error = messagePour(e, operation: 'la modification du magasin');
         _saving = false;
       });
     }

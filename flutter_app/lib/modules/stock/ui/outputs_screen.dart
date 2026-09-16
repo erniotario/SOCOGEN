@@ -24,6 +24,7 @@ import 'package:socogen/shared/ui/widgets/page_header.dart';
 import 'package:socogen/shared/ui/widgets/product_autocomplete.dart';
 import 'package:socogen/shared/ui/widgets/row_actions.dart';
 import 'package:socogen/shared/ui/widgets/skeleton.dart';
+import 'package:socogen/core/errors/messages.dart';
 
 class OutputsScreen extends StatefulWidget {
   const OutputsScreen({super.key});
@@ -445,7 +446,7 @@ class _OutputFormCardState extends State<_OutputFormCard> {
       widget.onSaved();
     } catch (e) {
       setState(() {
-        _error = 'Erreur : $e';
+        _error = messagePour(e, operation: 'la sortie de stock');
         _saving = false;
       });
     }
@@ -688,7 +689,7 @@ class _OutputFormDialogState extends State<_OutputFormDialog> {
       Navigator.pop(context, true);
     } catch (e) {
       setState(() {
-        _error = 'Erreur : $e';
+        _error = messagePour(e, operation: 'la sortie de stock');
         _saving = false;
       });
     }

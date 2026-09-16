@@ -17,6 +17,7 @@ import 'package:socogen/shared/ui/widgets/product_autocomplete.dart';
 import 'package:socogen/shared/ui/widgets/row_actions.dart';
 import 'package:socogen/shared/ui/widgets/skeleton.dart';
 import 'package:socogen/shared/ui/widgets/status_badge.dart';
+import 'package:socogen/core/errors/messages.dart';
 
 /// Physical inventory: count what the shelf actually holds, and let the
 /// app post the difference as a corrective movement.
@@ -168,7 +169,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur : $e'),
+          content: Text(messagePour(e, operation: "la validation de l'inventaire")),
           backgroundColor: AppColors.error,
         ),
       );

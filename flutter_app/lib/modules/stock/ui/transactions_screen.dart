@@ -32,6 +32,7 @@ import 'package:socogen/shared/ui/widgets/page_header.dart';
 import 'package:socogen/shared/ui/widgets/row_actions.dart';
 import 'package:socogen/shared/ui/widgets/skeleton.dart';
 import 'package:socogen/shared/ui/widgets/status_badge.dart';
+import 'package:socogen/core/errors/messages.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -128,7 +129,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = '$e');
+      setState(() => _error = messagePour(e, operation: 'le chargement des mouvements'));
     }
   }
 
@@ -241,7 +242,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur rapport PDF : $e')),
+          SnackBar(content: Text(messagePour(e, operation: 'la génération du rapport'))),
         );
       }
       return null;
@@ -271,7 +272,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur export PDF : $e')),
+        SnackBar(content: Text(messagePour(e, operation: "l'export PDF"))),
       );
     }
   }
@@ -295,7 +296,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Impression impossible : $e')),
+        SnackBar(content: Text(messagePour(e, operation: "l'impression"))),
       );
     }
   }
@@ -1100,7 +1101,7 @@ class _TransactionFormDialogState extends State<_TransactionFormDialog> {
       Navigator.pop(context, true);
     } catch (e) {
       setState(() {
-        _error = 'Erreur : $e';
+        _error = messagePour(e, operation: 'la modification du mouvement');
         _saving = false;
       });
     }

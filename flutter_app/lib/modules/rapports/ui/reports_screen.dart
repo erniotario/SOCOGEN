@@ -18,6 +18,7 @@ import 'package:socogen/shared/ui/widgets/kpi_card.dart';
 import 'package:socogen/shared/ui/widgets/page_header.dart';
 import 'package:socogen/shared/ui/widgets/skeleton.dart';
 import 'package:socogen/shared/ui/widgets/status_badge.dart';
+import 'package:socogen/core/errors/messages.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -93,7 +94,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = '$e');
+      setState(() => _error = messagePour(e, operation: 'le chargement du rapport'));
     }
   }
 

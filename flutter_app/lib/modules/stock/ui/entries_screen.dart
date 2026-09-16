@@ -23,6 +23,7 @@ import 'package:socogen/shared/ui/widgets/page_header.dart';
 import 'package:socogen/shared/ui/widgets/product_autocomplete.dart';
 import 'package:socogen/shared/ui/widgets/row_actions.dart';
 import 'package:socogen/shared/ui/widgets/skeleton.dart';
+import 'package:socogen/core/errors/messages.dart';
 
 class EntriesScreen extends StatefulWidget {
   const EntriesScreen({super.key});
@@ -354,7 +355,7 @@ class _EntryFormCardState extends State<_EntryFormCard> {
       widget.onSaved();
     } catch (e) {
       setState(() {
-        _error = 'Erreur : $e';
+        _error = messagePour(e, operation: "l'enregistrement de l'entrée");
         _saving = false;
       });
     }
@@ -558,7 +559,7 @@ class _EntryFormDialogState extends State<_EntryFormDialog> {
       Navigator.pop(context, true);
     } catch (e) {
       setState(() {
-        _error = 'Erreur : $e';
+        _error = messagePour(e, operation: "l'enregistrement de l'entrée");
         _saving = false;
       });
     }

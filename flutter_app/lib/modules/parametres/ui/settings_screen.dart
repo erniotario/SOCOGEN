@@ -13,6 +13,7 @@ import 'package:socogen/shared/ui/widgets/empty_state.dart';
 import 'package:socogen/shared/ui/widgets/page_header.dart';
 import 'package:socogen/shared/ui/widgets/responsive_row.dart';
 import 'package:socogen/shared/ui/widgets/section_card.dart';
+import 'package:socogen/core/errors/messages.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -122,7 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _statusMessage = 'Erreur : $e';
+        _statusMessage = messagePour(e, operation: "l'enregistrement des paramètres");
         _statusIsError = true;
       });
     }

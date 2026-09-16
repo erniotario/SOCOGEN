@@ -10,6 +10,7 @@ import 'package:socogen/modules/rapports/services/web_report_pages.dart';
 import 'package:socogen/core/db/sync_columns.dart';
 import 'package:socogen/core/sync/sync_engine.dart';
 import 'package:socogen/core/sync/sync_models.dart';
+import 'package:socogen/core/errors/messages.dart';
 
 /// Fixed port the local sync server listens on. Both devices must agree on
 /// this value; only the IP address differs.
@@ -74,7 +75,7 @@ class SyncServer {
         }
       } catch (e) {
         return Response.internalServerError(
-          body: 'Erreur lors de la génération de la page : $e',
+          body: messagePour(e, operation: 'la génération de la page'),
         );
       }
     }
@@ -114,7 +115,8 @@ class SyncServer {
         headers: {'content-type': 'application/json'},
       );
     } catch (e) {
-      return Response.internalServerError(body: 'Erreur de synchronisation : $e');
+      return Response.internalServerError(
+          body: messagePour(e, operation: 'la synchronisation'));
     }
   }
 

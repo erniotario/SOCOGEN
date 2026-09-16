@@ -16,6 +16,7 @@ import 'package:socogen/shared/ui/theme/app_breakpoints.dart';
 import 'package:socogen/shared/ui/theme/app_spacing.dart';
 import 'package:socogen/shared/ui/widgets/page_header.dart';
 import 'package:socogen/shared/ui/widgets/section_card.dart';
+import 'package:socogen/core/errors/messages.dart';
 
 /// Admin-only screen for creating accounts, changing roles, resetting
 /// passwords and deleting users.
@@ -168,7 +169,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
       if (!mounted) return;
       setState(() {
         _dbBusy = false;
-        _dbError = 'Erreur : $e';
+        _dbError = messagePour(e, operation: "l'opération sur la base");
       });
     }
   }
@@ -206,7 +207,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
       if (!mounted) return;
       setState(() {
         _dbBusy = false;
-        _dbError = 'Erreur : $e';
+        _dbError = messagePour(e, operation: "l'opération sur la base");
       });
     }
   }
@@ -234,7 +235,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _syncServerError = 'Erreur : $e');
+      setState(() => _syncServerError = messagePour(e, operation: 'le démarrage du serveur'));
     } finally {
       if (mounted) setState(() => _syncServerBusy = false);
     }
@@ -261,7 +262,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _syncError = 'Erreur : $e');
+      setState(() => _syncError = messagePour(e, operation: 'la synchronisation'));
     } finally {
       if (mounted) setState(() => _syncBusy = false);
     }
@@ -726,7 +727,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
       Navigator.pop(context, true);
     } catch (e) {
       setState(() {
-        _error = 'Erreur : $e';
+        _error = messagePour(e, operation: 'la modification du compte');
         _saving = false;
       });
     }

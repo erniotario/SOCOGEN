@@ -24,6 +24,7 @@ import 'package:socogen/shared/ui/widgets/page_header.dart';
 import 'package:socogen/shared/ui/widgets/row_actions.dart';
 import 'package:socogen/shared/ui/widgets/skeleton.dart';
 import 'package:socogen/shared/ui/widgets/status_badge.dart';
+import 'package:socogen/core/errors/messages.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -85,7 +86,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = '$e');
+      setState(() => _error = messagePour(e, operation: 'le chargement des produits'));
     }
   }
 
@@ -138,7 +139,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur import : $e'),
+          content: Text(messagePour(e, operation: "l'import")),
           backgroundColor: AppColors.error,
         ),
       );
@@ -575,7 +576,7 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
       Navigator.pop(context, true);
     } catch (e) {
       setState(() {
-        _error = 'Erreur : $e';
+        _error = messagePour(e, operation: "l'enregistrement de l'article");
         _saving = false;
       });
     }

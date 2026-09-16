@@ -7,6 +7,7 @@ import 'package:socogen/shared/ui/theme/app_colors.dart';
 import 'package:socogen/shared/ui/theme/app_spacing.dart';
 import 'package:socogen/shared/ui/theme/app_text_styles.dart';
 import 'package:socogen/shared/ui/widgets/logo_mark.dart';
+import 'package:socogen/core/errors/messages.dart';
 
 /// Asked once, on a brand-new database, right after the first
 /// administrator account is created.
@@ -121,7 +122,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = 'Erreur : $e';
+        _error = messagePour(e, operation: 'la configuration');
       });
     }
   }
@@ -140,7 +141,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = 'Erreur : $e';
+        _error = messagePour(e, operation: 'la configuration');
       });
     }
   }
