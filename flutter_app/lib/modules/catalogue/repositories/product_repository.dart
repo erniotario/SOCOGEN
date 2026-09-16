@@ -157,77 +157,7 @@ class ProductRepository {
         .toList();
   }
 
-  /// Available stock per store for a given product reference:
-  /// initial_stock(product, store) + entries(reference, store) - outputs(reference, store).
-  /// Only includes stores the product has a product_stocks row in.
-  Future<List<StoreAvailability>> getStoreAvailability(String reference, int productId) async {
-    final db = await _db;
-    final rows = await db.rawQuery('''
-      SELECT
-        s.id AS store_id,
-        s.name AS store_name,
-        ps.initial_stock AS initial_stock,
-        ps.initial_stock
-          + COALESCE((SELECT SUM(quantity) FROM stock_entries se WHERE se.reference = ? AND se.store_id = s.id), 0)
-          - COALESCE((SELECT SUM(quantity) FROM stock_outputs so WHERE so.reference = ? AND so.store_id = s.id), 0)
-          AS available
-      FROM product_stocks ps
-      JOIN stores s ON s.id = ps.store_id
-      WHERE ps.product_id = ?
-      ORDER BY ps.id
-    ''', [reference, reference, productId]);
-    return rows
-        .map((row) => StoreAvailability(
-              storeId: row['store_id'] as int,
-              storeName: row['store_name'] as String,
-              initialStock: row['initial_stock'] as int,
-              available: row['available'] as int,
-            ))
-        .toList();
-  }
 
-  /// Balance of (reference, store) with one movement deliberately left
-  /// out of the sum.
-  ///
-  /// Editing a past movement has to be judged on what it would leave
-  /// behind, not on what the ledger says while the row's old figure is
-  /// still counted in it -- otherwise raising a sortie from 5 to 50
-  /// looks fine right up until it is saved.
-  ///
-  /// `id IS NOT ?` carries the whole exclusion: against NULL it is true
-  /// for every row (exclude nothing), against an id it is true for every
-  /// row but that one. So the same statement serves a new movement and
-  /// an edited one.
-  Future<int> balanceExcluding({
-    required String reference,
-    required int storeId,
-    int? excludeEntryId,
-    int? excludeOutputId,
-  }) async {
-    final db = await _db;
-    final rows = await db.rawQuery('''
-      SELECT
-        COALESCE((
-          SELECT ps.initial_stock FROM product_stocks ps
-          JOIN products p ON p.id = ps.product_id
-          WHERE p.reference = ? AND ps.store_id = ?
-        ), 0)
-        + COALESCE((
-          SELECT SUM(quantity) FROM stock_entries
-          WHERE reference = ? AND store_id = ? AND id IS NOT ?
-        ), 0)
-        - COALESCE((
-          SELECT SUM(quantity) FROM stock_outputs
-          WHERE reference = ? AND store_id = ? AND id IS NOT ?
-        ), 0)
-        AS balance
-    ''', [
-      reference, storeId,
-      reference, storeId, excludeEntryId,
-      reference, storeId, excludeOutputId,
-    ]);
-    return (rows.first['balance'] as num?)?.toInt() ?? 0;
-  }
 
   /// Crée un article.
   ///
@@ -333,48 +263,5 @@ class ProductRepository {
     );
   }
 
-  /// True if a product_stocks row already exists for (productId, storeId).
-  /// Used by the Excel import to skip duplicates rather than overwrite
-  /// an existing initial stock value.
-  Future<bool> productStockExists(int productId, int storeId) async {
-    final db = await _db;
-    final rows = await db.query(
-      'product_stocks',
-      where: 'product_id = ? AND store_id = ?',
-      whereArgs: [productId, storeId],
-      limit: 1,
-    );
-    return rows.isNotEmpty;
-  }
 
-  /// Inserts or updates the product_stocks row for (productId, storeId),
-  /// preserving the row id on update.
-  Future<void> upsertProductStock({
-    required int productId,
-    required int storeId,
-    required int initialStock,
-  }) async {
-    final db = await _db;
-    final existing = await db.query(
-      'product_stocks',
-      where: 'product_id = ? AND store_id = ?',
-      whereArgs: [productId, storeId],
-      limit: 1,
-    );
-    if (existing.isEmpty) {
-      await db.insert('product_stocks', {
-        'product_id': productId,
-        'store_id': storeId,
-        'initial_stock': initialStock,
-        'updated_at': nowIso(),
-      });
-    } else {
-      await db.update(
-        'product_stocks',
-        {'initial_stock': initialStock, 'updated_at': nowIso()},
-        where: 'id = ?',
-        whereArgs: [existing.first['id']],
-      );
-    }
-  }
 }

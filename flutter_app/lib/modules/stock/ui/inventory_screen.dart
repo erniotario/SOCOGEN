@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:socogen/modules/stock/models/store.dart';
 import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
+import 'package:socogen/modules/stock/services/stock_service.dart';
 import 'package:socogen/modules/stock/repositories/store_repository.dart';
 import 'package:socogen/core/events/data_refresh_bus.dart';
 import 'package:socogen/modules/stock/services/inventory_service.dart';
@@ -45,7 +46,8 @@ class _InventoryData {
 }
 
 class _InventoryScreenState extends State<InventoryScreen> {
-  final _productRepo = ProductRepository();
+  final _catalogue = CatalogueService();
+  final _stock = StockService();
   final _storeRepo = StoreRepository();
   final _inventory = InventoryService();
 
@@ -65,7 +67,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Future<_InventoryData> _load() async {
     final (products, stores) = await (
-      _productRepo.getProductOverviews(),
+      _catalogue.listerArticles(),
       _storeRepo.getAllStores(),
     ).wait;
     return _InventoryData(products: products, stores: stores);
@@ -218,7 +220,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           _CountFormCard(
                             products: data.products,
                             stores: data.stores,
-                            productRepository: _productRepo,
+                            stockService: _stock,
                             onCounted: _addCount,
                           ),
                           if (_counts.isNotEmpty) ...[
@@ -374,13 +376,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
 class _CountFormCard extends StatefulWidget {
   final List<ProductOverview> products;
   final List<Store> stores;
-  final ProductRepository productRepository;
+  final StockService stockService;
   final ValueChanged<InventoryCount> onCounted;
 
   const _CountFormCard({
     required this.products,
     required this.stores,
-    required this.productRepository,
+    required this.stockService,
     required this.onCounted,
   });
 
@@ -424,9 +426,9 @@ class _CountFormCardState extends State<_CountFormCard> {
       return;
     }
     setState(() => _loadingTheoretical = true);
-    final balance = await widget.productRepository.balanceExcluding(
+    final balance = await widget.stockService.solde(
       reference: product.product.reference,
-      storeId: storeId,
+      magasinId: storeId,
     );
     if (!mounted) return;
     setState(() {

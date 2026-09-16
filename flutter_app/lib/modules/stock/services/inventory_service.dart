@@ -1,6 +1,6 @@
 import 'package:socogen/modules/stock/models/stock_entry.dart';
 import 'package:socogen/modules/stock/models/stock_output.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/stock/services/stock_service.dart';
 import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
 
@@ -83,14 +83,14 @@ class InventoryPostReport {
 /// Transactions already shows.
 class InventoryService {
   InventoryService({
-    ProductRepository? productRepository,
+    StockService? stockService,
     StockEntryRepository? entryRepository,
     StockOutputRepository? outputRepository,
-  })  : _products = productRepository ?? ProductRepository(),
+  })  : _stock = stockService ?? StockService(),
         _entries = entryRepository ?? StockEntryRepository(),
         _outputs = outputRepository ?? StockOutputRepository();
 
-  final ProductRepository _products;
+  final StockService _stock;
   final StockEntryRepository _entries;
   final StockOutputRepository _outputs;
 
@@ -122,9 +122,9 @@ class InventoryService {
         continue;
       }
 
-      final live = await _products.balanceExcluding(
+      final live = await _stock.solde(
         reference: count.reference,
-        storeId: count.storeId,
+        magasinId: count.storeId,
       );
       final variance = count.counted - live;
 

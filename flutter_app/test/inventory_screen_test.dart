@@ -6,7 +6,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:socogen/core/auth/auth_provider.dart';
 import 'package:socogen/core/db/database_service.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/stock/repositories/stock_repository.dart';
 import 'package:socogen/modules/stock/ui/inventory_screen.dart';
 import 'package:socogen/shared/ui/theme/app_theme.dart';
 
@@ -110,9 +110,9 @@ void main() {
     await pumpScreen(tester, const Size(1280, 800));
     await countRef1(tester, 25);
 
-    final products = ProductRepository(database: db);
+    final stock = StockRepository(database: db);
     final balance = await tester.runAsync(
-      () => products.balanceExcluding(reference: 'REF1', storeId: 1),
+      () => stock.balanceExcluding(reference: 'REF1', storeId: 1),
     );
 
     expect(balance, 18, reason: 'un comptage est un brouillon jusqu\'à validation');
@@ -130,9 +130,9 @@ void main() {
     await tester.tap(find.text('Valider'));
     await settle(tester);
 
-    final products = ProductRepository(database: db);
+    final stock = StockRepository(database: db);
     final balance = await tester.runAsync(
-      () => products.balanceExcluding(reference: 'REF1', storeId: 1),
+      () => stock.balanceExcluding(reference: 'REF1', storeId: 1),
     );
     expect(balance, 25, reason: 'le stock suit le comptage');
 

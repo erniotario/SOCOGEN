@@ -7,7 +7,8 @@ import 'package:intl/intl.dart';
 import 'package:socogen/modules/stock/models/stock_output.dart';
 import 'package:socogen/modules/stock/models/store.dart';
 import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
+import 'package:socogen/modules/stock/services/stock_service.dart';
 import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
 import 'package:socogen/modules/stock/repositories/store_repository.dart';
 import 'package:socogen/core/events/data_refresh_bus.dart';
@@ -43,7 +44,7 @@ class _OutputsData {
 
 class _OutputsScreenState extends State<OutputsScreen> {
   final _outputRepo = StockOutputRepository();
-  final _productRepo = ProductRepository();
+  final _catalogue = CatalogueService();
   final _storeRepo = StoreRepository();
 
   late Future<_OutputsData> _future;
@@ -71,7 +72,7 @@ class _OutputsScreenState extends State<OutputsScreen> {
   Future<_OutputsData> _load() async {
     final (outputs, products, stores) = await (
       _outputRepo.getAll(),
-      _productRepo.getProductOverviews(),
+      _catalogue.listerArticles(),
       _storeRepo.getAllStores(),
     ).wait;
     return _OutputsData(outputs: outputs, products: products, stores: stores);
@@ -278,7 +279,7 @@ class _OutputFormCard extends StatefulWidget {
 
 class _OutputFormCardState extends State<_OutputFormCard> {
   final _outputRepo = StockOutputRepository();
-  final _productRepo = ProductRepository();
+  final _stock = StockService();
   final _refController = TextEditingController();
   final _invoiceController = TextEditingController();
   final _destinationController = TextEditingController();
@@ -336,7 +337,10 @@ class _OutputFormCardState extends State<_OutputFormCard> {
   }
 
   Future<void> _onProductSelected(ProductOverview overview) async {
-    final availability = await _productRepo.getStoreAvailability(overview.product.reference, overview.product.id);
+    final availability = await _stock.disponibiliteParMagasin(
+      reference: overview.product.reference,
+      articleId: overview.product.id,
+    );
     if (!mounted) return;
     final available = availability.where((a) => a.available > 0).toList();
     setState(() {
@@ -384,9 +388,9 @@ class _OutputFormCardState extends State<_OutputFormCard> {
     // holds nothing for a magasin the product has no product_stocks row
     // in. The old fallback then compared the quantity against the total
     // across every other store and let the sortie through.
-    final current = await _productRepo.balanceExcluding(
+    final current = await _stock.solde(
       reference: _selectedProduct!.product.reference,
-      storeId: _storeId!,
+      magasinId: _storeId!,
     );
     if (qty > current) {
       if (!mounted) return;

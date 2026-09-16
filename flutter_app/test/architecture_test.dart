@@ -20,7 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 ///   * `shell/` échappe à tout, c'est la racine de composition et son
 ///     rôle est précisément d'assembler les modules entre eux.
 ///
-/// [_detteConnue] gèle les 27 manquements hérités de l'organisation
+/// [_detteConnue] gèle les manquements hérités de l'organisation
 /// précédente, où ces frontières n'existaient pas. La liste ne peut que
 /// rétrécir : un manquement nouveau fait échouer le test, et une entrée
 /// devenue inutile le fait échouer aussi. Chaque phase qui crée les
@@ -37,19 +37,12 @@ const Set<String> _detteConnue = {
   'modules/rapports/services/transactions_pdf_service.dart -> modules/parametres/models/company_settings.dart',
   'modules/rapports/services/web_report_pages.dart -> modules/parametres/repositories/settings_repository.dart',
   'modules/rapports/services/web_report_pages.dart -> modules/stock/repositories/transaction_repository.dart',
-  'modules/rapports/ui/dashboard_screen.dart -> modules/catalogue/repositories/product_repository.dart',
   'modules/rapports/ui/dashboard_screen.dart -> modules/stock/repositories/stock_entry_repository.dart',
   'modules/rapports/ui/dashboard_screen.dart -> modules/stock/repositories/stock_output_repository.dart',
   'modules/rapports/ui/dashboard_screen.dart -> modules/stock/repositories/store_repository.dart',
   'modules/rapports/ui/reports_screen.dart -> modules/stock/models/store.dart',
   'modules/rapports/ui/reports_screen.dart -> modules/stock/repositories/store_repository.dart',
-  'modules/stock/services/inventory_service.dart -> modules/catalogue/repositories/product_repository.dart',
-  'modules/stock/services/stock_import_service.dart -> modules/catalogue/repositories/product_repository.dart',
   'modules/stock/services/stock_import_service.dart -> modules/rapports/repositories/report_repository.dart',
-  'modules/stock/ui/entries_screen.dart -> modules/catalogue/repositories/product_repository.dart',
-  'modules/stock/ui/inventory_screen.dart -> modules/catalogue/repositories/product_repository.dart',
-  'modules/stock/ui/outputs_screen.dart -> modules/catalogue/repositories/product_repository.dart',
-  'modules/stock/ui/transactions_screen.dart -> modules/catalogue/repositories/product_repository.dart',
   'modules/stock/ui/transactions_screen.dart -> modules/parametres/repositories/settings_repository.dart',
   'shared/models/view_models.dart -> modules/catalogue/models/product.dart',
   'shared/models/view_models.dart -> modules/stock/models/store.dart',

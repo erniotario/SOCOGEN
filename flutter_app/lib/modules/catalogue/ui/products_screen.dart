@@ -10,6 +10,7 @@ import 'package:socogen/modules/stock/models/product_stock.dart';
 import 'package:socogen/modules/stock/models/store.dart';
 import 'package:socogen/shared/models/view_models.dart';
 import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/stock/services/stock_service.dart';
 import 'package:socogen/modules/stock/repositories/store_repository.dart';
 import 'package:socogen/core/events/data_refresh_bus.dart';
 import 'package:socogen/modules/stock/services/stock_import_service.dart';
@@ -430,6 +431,7 @@ class _ProductFormDialog extends StatefulWidget {
 
 class _ProductFormDialogState extends State<_ProductFormDialog> {
   final _productRepo = ProductRepository();
+  final _stock = StockService();
   late final TextEditingController _refController;
   late final TextEditingController _desController;
   late final TextEditingController _unitController;
@@ -544,7 +546,8 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
           if (row.original != null) {
             await _productRepo.updateProductStock(row.original!.id, storeId: row.storeId!, initialStock: value);
           } else {
-            await _productRepo.upsertProductStock(productId: existing.product.id, storeId: row.storeId!, initialStock: value);
+            await _stock.definirStockOuverture(
+                articleId: existing.product.id, magasinId: row.storeId!, quantite: value);
           }
         }
         for (final id in _removedStockIds) {
@@ -559,7 +562,8 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
         int productId;
         if (existingProduct != null) {
           productId = existingProduct.id;
-          if (await _productRepo.productStockExists(productId, _storeId!)) {
+          if (await _stock.ligneDeStockExiste(
+              articleId: productId, magasinId: _storeId!)) {
             final storeName = widget.stores.firstWhere((s) => s.id == _storeId!).name;
             setState(() {
               _error = 'Le produit « $ref » a déjà un stock dans le magasin $storeName.';
@@ -570,7 +574,8 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
         } else {
           productId = await _productRepo.createProduct(reference: ref, designation: des, unit: unit);
         }
-        await _productRepo.upsertProductStock(productId: productId, storeId: _storeId!, initialStock: initial);
+        await _stock.definirStockOuverture(
+            articleId: productId, magasinId: _storeId!, quantite: initial);
       }
       if (!mounted) return;
       Navigator.pop(context, true);

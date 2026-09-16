@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:socogen/modules/stock/models/stock_entry.dart';
 import 'package:socogen/modules/stock/models/store.dart';
 import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
 import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
 import 'package:socogen/modules/stock/repositories/store_repository.dart';
 import 'package:socogen/core/events/data_refresh_bus.dart';
@@ -42,7 +42,7 @@ class _EntriesData {
 
 class _EntriesScreenState extends State<EntriesScreen> {
   final _entryRepo = StockEntryRepository();
-  final _productRepo = ProductRepository();
+  final _catalogue = CatalogueService();
   final _storeRepo = StoreRepository();
 
   late Future<_EntriesData> _future;
@@ -70,7 +70,7 @@ class _EntriesScreenState extends State<EntriesScreen> {
   Future<_EntriesData> _load() async {
     final (entries, products, stores) = await (
       _entryRepo.getAll(),
-      _productRepo.getProductOverviews(),
+      _catalogue.listerArticles(),
       _storeRepo.getAllStores(),
     ).wait;
     return _EntriesData(entries: entries, products: products, stores: stores);

@@ -11,7 +11,8 @@ import 'package:socogen/modules/stock/models/stock_entry.dart';
 import 'package:socogen/modules/stock/models/stock_output.dart';
 import 'package:socogen/modules/stock/models/store.dart';
 import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
+import 'package:socogen/modules/stock/services/stock_service.dart';
 import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
@@ -54,7 +55,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   final _transactionRepo = TransactionRepository();
   final _entryRepo = StockEntryRepository();
   final _outputRepo = StockOutputRepository();
-  final _productRepo = ProductRepository();
+  final _catalogue = CatalogueService();
+  final _stock = StockService();
   final _storeRepo = StoreRepository();
   final _settingsRepo = SettingsRepository();
   final _searchController = TextEditingController();
@@ -107,7 +109,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           dateFrom: DateFormat('yyyy-MM-dd').format(_dateFrom),
           dateTo: DateFormat('yyyy-MM-dd').format(_dateTo),
         ),
-        _productRepo.getProductOverviews(),
+        _catalogue.listerArticles(),
         _storeRepo.getAllStores(),
       ).wait;
 
@@ -117,7 +119,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       if (ref != null && sid != null) {
         final overview = products.where((p) => p.product.reference == ref).firstOrNull;
         if (overview != null) {
-          final avList = await _productRepo.getStoreAvailability(ref, overview.product.id);
+          final avList = await _stock.disponibiliteParMagasin(
+              reference: ref, articleId: overview.product.id);
           storeAvailability = avList.where((a) => a.storeId == sid).firstOrNull;
         }
       }
@@ -956,7 +959,7 @@ class _TransactionFormDialog extends StatefulWidget {
 class _TransactionFormDialogState extends State<_TransactionFormDialog> {
   final _entryRepo = StockEntryRepository();
   final _outputRepo = StockOutputRepository();
-  final _productRepo = ProductRepository();
+  final _stock = StockService();
   late final TextEditingController _refController;
   late final TextEditingController _desController;
   late final TextEditingController _counterpartController;
@@ -1032,11 +1035,11 @@ class _TransactionFormDialogState extends State<_TransactionFormDialog> {
     // update lands. Editing history is the one write path that had no
     // stock check at all: raising a sortie, or lowering an entrée, could
     // drive a magasin below zero without a word.
-    final base = await _productRepo.balanceExcluding(
+    final base = await _stock.solde(
       reference: ref,
-      storeId: _storeId!,
-      excludeEntryId: _isEntry ? widget.row.id : null,
-      excludeOutputId: _isEntry ? null : widget.row.id,
+      magasinId: _storeId!,
+      exclureEntreeId: _isEntry ? widget.row.id : null,
+      exclureSortieId: _isEntry ? null : widget.row.id,
     );
     final after = _isEntry ? base + qty : base - qty;
     if (after < 0) {

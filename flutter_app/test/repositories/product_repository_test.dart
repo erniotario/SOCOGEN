@@ -3,6 +3,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:socogen/shared/models/view_models.dart';
 import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/stock/repositories/stock_repository.dart';
 
 import 'test_database.dart';
 
@@ -79,7 +80,7 @@ void main() {
   });
 
   test('getStoreAvailability computes available stock per store for REF1', () async {
-    final availability = await repo.getStoreAvailability('REF1', 1);
+    final availability = await StockRepository(database: db).getStoreAvailability('REF1', 1);
     final storeA = availability.firstWhere((a) => a.storeName == 'StoreA');
     final storeB = availability.firstWhere((a) => a.storeName == 'StoreB');
 
@@ -114,11 +115,11 @@ void main() {
   });
 
   test('upsertProductStock inserts then updates the product_stocks row', () async {
-    await repo.upsertProductStock(productId: 2, storeId: 2, initialStock: 7);
+    await StockRepository(database: db).upsertProductStock(productId: 2, storeId: 2, initialStock: 7);
     var stocks = await repo.getProductStocks(2);
     expect(stocks.firstWhere((s) => s.storeName == 'StoreB').stock.initialStock, 7);
 
-    await repo.upsertProductStock(productId: 2, storeId: 2, initialStock: 9);
+    await StockRepository(database: db).upsertProductStock(productId: 2, storeId: 2, initialStock: 9);
     stocks = await repo.getProductStocks(2);
     final storeBStocks = stocks.where((s) => s.storeName == 'StoreB').toList();
     expect(storeBStocks.length, 1);

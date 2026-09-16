@@ -10,6 +10,11 @@ class CompanySettings {
   final String rccm;
   final String logoPath;
 
+  /// Code ISO de la devise dans laquelle l'entreprise compte — XAF par
+  /// défaut. Elle décide de la façon dont les montants se comptent et
+  /// s'affichent ; voir `core/money`.
+  final String devise;
+
   const CompanySettings({
     this.id = 1,
     this.name = '',
@@ -21,6 +26,7 @@ class CompanySettings {
     this.taxId = '',
     this.rccm = '',
     this.logoPath = '',
+    this.devise = 'XAF',
   });
 
   factory CompanySettings.fromMap(Map<String, Object?> map) {
@@ -35,6 +41,8 @@ class CompanySettings {
       taxId: (map['tax_id'] as String?) ?? '',
       rccm: (map['rccm'] as String?) ?? '',
       logoPath: (map['logo_path'] as String?) ?? '',
+      // Une base d'avant la v4 n'a pas la colonne.
+      devise: (map['devise'] as String?) ?? 'XAF',
     );
   }
 
@@ -50,6 +58,7 @@ class CompanySettings {
       'tax_id': taxId,
       'rccm': rccm,
       'logo_path': logoPath,
+      'devise': devise,
     };
   }
 
@@ -63,6 +72,7 @@ class CompanySettings {
     String? taxId,
     String? rccm,
     String? logoPath,
+    String? devise,
   }) {
     return CompanySettings(
       id: id,
@@ -75,6 +85,7 @@ class CompanySettings {
       taxId: taxId ?? this.taxId,
       rccm: rccm ?? this.rccm,
       logoPath: logoPath ?? this.logoPath,
+      devise: devise ?? this.devise,
     );
   }
 }

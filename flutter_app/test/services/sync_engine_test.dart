@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:socogen/modules/stock/repositories/stock_repository.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:socogen/core/db/schema.dart';
@@ -70,7 +71,7 @@ void main() {
       designation: 'Produit Test',
       unit: 'unité',
     );
-    await ProductRepository(database: dbA).upsertProductStock(
+    await StockRepository(database: dbA).upsertProductStock(
       productId: productId,
       storeId: storeId,
       initialStock: 50,

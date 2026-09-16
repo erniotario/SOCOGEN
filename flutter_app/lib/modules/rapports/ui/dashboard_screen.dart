@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
 import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
 import 'package:socogen/modules/stock/repositories/store_repository.dart';
@@ -41,7 +41,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final _productRepo = ProductRepository();
+  final _catalogue = CatalogueService();
   final _storeRepo = StoreRepository();
   final _entryRepo = StockEntryRepository();
   final _outputRepo = StockOutputRepository();
@@ -66,7 +66,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<_DashboardData> _load() async {
     final (products, stores, totalEntries, totalOutputs) = await (
-      _productRepo.getProductOverviews(),
+      _catalogue.listerArticles(),
       _storeRepo.getAllStores(),
       _entryRepo.getTotalQuantity(),
       _outputRepo.getTotalQuantity(),

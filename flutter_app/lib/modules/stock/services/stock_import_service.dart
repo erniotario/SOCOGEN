@@ -4,7 +4,8 @@ import 'package:socogen/modules/stock/models/stock_entry.dart';
 import 'package:socogen/modules/stock/models/stock_output.dart';
 import 'package:socogen/modules/stock/models/store.dart';
 import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
+import 'package:socogen/modules/stock/services/stock_service.dart';
 import 'package:socogen/modules/rapports/repositories/report_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
@@ -66,18 +67,21 @@ class ImportReport {
 /// then replaying the movements would count them twice.
 class StockImportService {
   StockImportService({
-    ProductRepository? productRepository,
+    CatalogueService? catalogueService,
     StoreRepository? storeRepository,
     StockEntryRepository? entryRepository,
     StockOutputRepository? outputRepository,
     ReportRepository? reportRepository,
-  })  : _products = productRepository ?? ProductRepository(),
+    StockService? stockService,
+  })  : _catalogue = catalogueService ?? CatalogueService(),
+        _stock = stockService ?? StockService(),
         _stores = storeRepository ?? StoreRepository(),
         _entries = entryRepository ?? StockEntryRepository(),
         _outputs = outputRepository ?? StockOutputRepository(),
         _reports = reportRepository ?? ReportRepository();
 
-  final ProductRepository _products;
+  final CatalogueService _catalogue;
+  final StockService _stock;
   final StoreRepository _stores;
   final StockEntryRepository _entries;
   final StockOutputRepository _outputs;
@@ -223,23 +227,26 @@ class StockImportService {
 
       final storeId = _resolveStore(row, storeCol, stores) ?? defaultStoreId;
 
-      final existing = await _products.getByReference(reference);
+      final existing = await _catalogue.chercherParReference(reference);
       final productId = existing?.id ??
-          await _products.createProduct(
+          await _catalogue.creerArticle(
             reference: reference,
             designation: designation,
-            unit: unit,
+            unite: unit,
           );
       if (existing == null) report.products++;
 
-      if (await _products.productStockExists(productId, storeId)) {
+      if (await _stock.ligneDeStockExiste(
+        articleId: productId,
+        magasinId: storeId,
+      )) {
         report.skipped++;
         continue;
       }
-      await _products.upsertProductStock(
-        productId: productId,
-        storeId: storeId,
-        initialStock: openingStock,
+      await _stock.definirStockOuverture(
+        articleId: productId,
+        magasinId: storeId,
+        quantite: openingStock,
       );
       report.stocks++;
     }

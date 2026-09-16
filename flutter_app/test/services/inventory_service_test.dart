@@ -2,7 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/stock/repositories/stock_repository.dart';
+import 'package:socogen/modules/stock/services/stock_service.dart';
 import 'package:socogen/modules/rapports/repositories/report_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
@@ -14,13 +15,13 @@ import '../repositories/test_database.dart';
 void main() {
   late Database db;
   late InventoryService service;
-  late ProductRepository products;
+  late StockRepository stock;
 
   setUp(() async {
     db = await openTestDatabase();
-    products = ProductRepository(database: db);
+    stock = StockRepository(database: db);
     service = InventoryService(
-      productRepository: products,
+      stockService: StockService(stockRepository: stock),
       entryRepository: StockEntryRepository(database: db),
       outputRepository: StockOutputRepository(database: db),
     );
@@ -29,7 +30,7 @@ void main() {
   tearDown(() async => db.close());
 
   Future<int> balance(String reference, int storeId) =>
-      products.balanceExcluding(reference: reference, storeId: storeId);
+      stock.balanceExcluding(reference: reference, storeId: storeId);
 
   InventoryCount count(String reference, int storeId, int counted, {int? theoretical}) =>
       InventoryCount(

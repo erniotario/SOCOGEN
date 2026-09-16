@@ -1,9 +1,12 @@
 import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:socogen/modules/stock/services/stock_service.dart';
+import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:socogen/core/db/schema.dart';
 import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/stock/repositories/stock_repository.dart';
 import 'package:socogen/modules/rapports/repositories/report_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
@@ -32,7 +35,12 @@ Future<Database> _openDb() async {
 }
 
 StockImportService _service(Database db) => StockImportService(
-      productRepository: ProductRepository(database: db),
+      catalogueService: CatalogueService(
+        productRepository: ProductRepository(database: db),
+      ),
+      stockService: StockService(
+        stockRepository: StockRepository(database: db),
+      ),
       storeRepository: StoreRepository(database: db),
       entryRepository: StockEntryRepository(database: db),
       outputRepository: StockOutputRepository(database: db),
@@ -77,12 +85,13 @@ void main() {
       expect(report.stocks, 2);
 
       final products = ProductRepository(database: db);
+      final stock = StockRepository(database: db);
       final art1 = (await products.getByReference('ART-1'))!;
       expect(art1.designation, 'Ciment 42.5');
       expect(art1.unit, 'sac');
 
       final availability =
-          await products.getStoreAvailability('ART-1', art1.id);
+          await stock.getStoreAvailability('ART-1', art1.id);
       expect(availability.single.storeName, 'Magasin Central');
       expect(availability.single.available, 100);
     });
@@ -119,9 +128,10 @@ void main() {
       expect(report.outputs, 1);
 
       final products = ProductRepository(database: db);
+      final stock = StockRepository(database: db);
       final art1 = (await products.getByReference('ART-1'))!;
       final availability =
-          await products.getStoreAvailability('ART-1', art1.id);
+          await stock.getStoreAvailability('ART-1', art1.id);
 
       // 100 d'ouverture + 40 entrées - 25 sorties
       expect(availability.single.available, 115);
@@ -135,9 +145,10 @@ void main() {
       expect(second.outputs, 0, reason: 'sortie déjà présente');
 
       final products = ProductRepository(database: db);
+      final stock = StockRepository(database: db);
       final art1 = (await products.getByReference('ART-1'))!;
       final availability =
-          await products.getStoreAvailability('ART-1', art1.id);
+          await stock.getStoreAvailability('ART-1', art1.id);
       expect(availability.single.available, 115);
     });
 
@@ -156,9 +167,10 @@ void main() {
 
       // The quantity must not have landed in Magasin Central instead.
       final products = ProductRepository(database: db);
+      final stock = StockRepository(database: db);
       final art1 = (await products.getByReference('ART-1'))!;
       final availability =
-          await products.getStoreAvailability('ART-1', art1.id);
+          await stock.getStoreAvailability('ART-1', art1.id);
       expect(availability.single.available, 100);
     });
   });

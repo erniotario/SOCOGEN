@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/stock/repositories/stock_repository.dart';
 import 'package:socogen/modules/rapports/repositories/report_repository.dart';
 
 import 'test_database.dart';
@@ -131,19 +131,19 @@ void main() {
   });
 
   group('balanceExcluding', () {
-    late ProductRepository products;
+    late StockRepository stock;
 
-    setUp(() => products = ProductRepository(database: db));
+    setUp(() => stock = StockRepository(database: db));
 
     test('with nothing excluded it matches the plain balance', () async {
       // REF1/StoreA = 10 initial + 20 entered - 12 taken out.
       expect(
-        await products.balanceExcluding(reference: 'REF1', storeId: 1),
+        await stock.balanceExcluding(reference: 'REF1', storeId: 1),
         18,
       );
       // REF1/StoreB = 5 + 5, untouched by StoreA's movements.
       expect(
-        await products.balanceExcluding(reference: 'REF1', storeId: 2),
+        await stock.balanceExcluding(reference: 'REF1', storeId: 2),
         10,
       );
     });
@@ -151,7 +151,7 @@ void main() {
     test('leaves out the one movement it is told to', () async {
       // Without the +20 entrée (id 1) the store is 10 - 12 = -2.
       expect(
-        await products.balanceExcluding(
+        await stock.balanceExcluding(
           reference: 'REF1',
           storeId: 1,
           excludeEntryId: 1,
@@ -160,7 +160,7 @@ void main() {
       );
       // Without the -12 sortie (id 1) it is 10 + 20 = 30.
       expect(
-        await products.balanceExcluding(
+        await stock.balanceExcluding(
           reference: 'REF1',
           storeId: 1,
           excludeOutputId: 1,
@@ -172,7 +172,7 @@ void main() {
     test('excluding a movement of another store changes nothing', () async {
       // Entry id 2 belongs to StoreB, so asking about StoreA is a no-op.
       expect(
-        await products.balanceExcluding(
+        await stock.balanceExcluding(
           reference: 'REF1',
           storeId: 1,
           excludeEntryId: 2,
@@ -183,11 +183,11 @@ void main() {
 
     test('an unknown reference or store is simply empty, not an error', () async {
       expect(
-        await products.balanceExcluding(reference: 'NOPE', storeId: 1),
+        await stock.balanceExcluding(reference: 'NOPE', storeId: 1),
         0,
       );
       expect(
-        await products.balanceExcluding(reference: 'REF1', storeId: 99),
+        await stock.balanceExcluding(reference: 'REF1', storeId: 99),
         0,
       );
     });
@@ -195,7 +195,7 @@ void main() {
     test('answers what an edit would leave behind', () async {
       // Raising sortie id 1 on REF1/StoreA from 12 to 40: the ledger
       // still holds the old 12, so only excluding it shows the truth.
-      final base = await products.balanceExcluding(
+      final base = await stock.balanceExcluding(
         reference: 'REF1',
         storeId: 1,
         excludeOutputId: 1,
