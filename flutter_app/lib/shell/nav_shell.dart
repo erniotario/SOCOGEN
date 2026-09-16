@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:socogen/core/auth/auth_provider.dart';
+import 'package:socogen/core/auth/permissions.dart';
 import 'package:socogen/modules/rapports/ui/dashboard_screen.dart';
 import 'package:socogen/modules/stock/ui/entries_screen.dart';
 import 'package:socogen/modules/stock/ui/inventory_screen.dart';
@@ -87,15 +88,25 @@ const List<Widget> _screens = [
   SettingsScreen(),
 ];
 
-/// Drops the admin-only entries (Sécurité, Paramètres) for non-admin users.
-List<_NavEntry> _visibleEntries(bool isAdmin) => isAdmin
-    ? _navEntries
-    : _navEntries.sublist(0, _navEntries.length - _adminOnlyCount);
+/// Les deux dernières destinations — Sécurité et Paramètres — demandent
+/// des droits d'administration. Le shell les retire plutôt que de les
+/// afficher désactivées : une entrée de menu qui refuse de s'ouvrir
+/// n'apprend rien à personne.
+bool _peutAdministrer(PermissionGate droits) =>
+    droits.autorise(Permissions.gererUtilisateurs) &&
+    droits.autorise(Permissions.modifierParametres);
 
-/// Drops the admin-only screens (SecurityScreen, SettingsScreen) for
-/// non-admin users, matching [_visibleEntries].
-List<Widget> _visibleScreens(bool isAdmin) =>
-    isAdmin ? _screens : _screens.sublist(0, _screens.length - _adminOnlyCount);
+List<_NavEntry> _visibleEntries(PermissionGate droits) =>
+    _peutAdministrer(droits)
+        ? _navEntries
+        : _navEntries.sublist(0, _navEntries.length - _adminOnlyCount);
+
+/// Doit rester aligné sur [_visibleEntries] : les deux listes sont
+/// positionnelles et un décalage ouvrirait le mauvais écran.
+List<Widget> _visibleScreens(PermissionGate droits) =>
+    _peutAdministrer(droits)
+        ? _screens
+        : _screens.sublist(0, _screens.length - _adminOnlyCount);
 
 /// Adaptive application shell.
 ///
@@ -114,10 +125,11 @@ class NavShell extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final size = AppBreakpoints.of(constraints.maxWidth);
-          final isAdmin =
-              context.watch<AuthProvider>().currentUser?.isAdmin ?? false;
-          final entries = _visibleEntries(isAdmin);
-          final screens = _visibleScreens(isAdmin);
+          final droits = PermissionGate(
+            context.watch<AuthProvider>().currentUser?.role,
+          );
+          final entries = _visibleEntries(droits);
+          final screens = _visibleScreens(droits);
           final selected = context.watch<NavigationController>().selectedIndex;
           final index = selected < screens.length ? selected : 0;
 
