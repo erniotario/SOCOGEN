@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -27,7 +29,10 @@ void main() {
     final user = await repo.createUser(username: 'admin', password: 'secret123');
 
     expect(await repo.hasUsers(), isTrue);
-    expect(user.passwordHash.length, 64);
+    // Le condensat porte son algorithme et son coût, et n'est plus un
+    // simple SHA-256 hexadécimal de 64 caractères.
+    expect(user.passwordHash, startsWith('pbkdf2_sha256\$'));
+    expect(user.passwordHash, isNot(matches(RegExp(r'^[0-9a-f]{64}$'))));
     expect(user.passwordSalt.length, 32);
     expect(user.isAdmin, isTrue);
 
@@ -91,4 +96,50 @@ void main() {
 
     expect(await repo.findByUsername('bernard'), isNull);
   });
+
+  test('un compte hérité se connecte et repart au format courant', () async {
+    // Le cas réel : la base installée chez le client contient des
+    // condensats SHA-256 à un tour, et personne ne connaît les mots de
+    // passe. La seule occasion de les réécrire est une connexion réussie.
+    const sel = 'abcdef0123456789abcdef0123456789';
+    final ancien = sha256.convert(utf8.encode('${sel}secret123')).toString();
+    await db.insert('users', {
+      'username': 'olivier',
+      'password_hash': ancien,
+      'password_salt': sel,
+      'role': 'magasinier',
+    });
+
+    final connecte = await repo.authenticate('olivier', 'secret123');
+    expect(connecte, isNotNull, reason: 'un compte hérité doit pouvoir entrer');
+
+    final apres = await repo.findByUsername('olivier');
+    expect(
+      apres!.passwordHash,
+      startsWith('pbkdf2_sha256\$'),
+      reason: 'le condensat doit avoir été réécrit à la connexion',
+    );
+    expect(apres.passwordSalt, isNot(sel), reason: 'un nouveau sel est tiré');
+
+    // Et le mot de passe fonctionne toujours, sous la nouvelle forme.
+    expect(await repo.authenticate('olivier', 'secret123'), isNotNull);
+    expect(await repo.authenticate('olivier', 'mauvais'), isNull);
+  });
+
+  test('un mauvais mot de passe ne déclenche aucune réécriture', () async {
+    const sel = 'abcdef0123456789abcdef0123456789';
+    final ancien = sha256.convert(utf8.encode('${sel}secret123')).toString();
+    await db.insert('users', {
+      'username': 'olivier',
+      'password_hash': ancien,
+      'password_salt': sel,
+      'role': 'magasinier',
+    });
+
+    expect(await repo.authenticate('olivier', 'mauvais'), isNull);
+
+    final apres = await repo.findByUsername('olivier');
+    expect(apres!.passwordHash, ancien, reason: 'rien ne doit avoir bougé');
+  });
+
 }

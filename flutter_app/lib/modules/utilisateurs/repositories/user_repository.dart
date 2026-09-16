@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 import 'package:socogen/core/auth/password_hasher.dart';
+import 'package:socogen/core/errors/messages.dart';
 import 'package:socogen/core/db/database_service.dart';
 import 'package:socogen/modules/utilisateurs/models/user.dart';
 
@@ -57,8 +58,26 @@ class UserRepository {
   Future<AppUser?> authenticate(String username, String password) async {
     final user = await findByUsername(username);
     if (user == null) return null;
-    final ok = PasswordHasher.verify(password, user.passwordSalt, user.passwordHash);
-    return ok ? user : null;
+    final ok =
+        PasswordHasher.verify(password, user.passwordSalt, user.passwordHash);
+    if (!ok) return null;
+
+    // Une connexion réussie est le seul moment où le mot de passe en
+    // clair existe, donc le seul où un condensat hérité peut être
+    // réécrit au format courant. Personne ne connaît les mots de passe
+    // des comptes déjà créés : sans cela ils resteraient en SHA-256 à un
+    // tour pour toujours.
+    if (PasswordHasher.needsRehash(user.passwordHash)) {
+      try {
+        return await updatePassword(user.id, password);
+      } catch (e) {
+        // Une connexion ne doit pas échouer parce que la mise à niveau
+        // a échoué : le mot de passe est bon, l'utilisateur entre. Le
+        // condensat sera repris à la prochaine occasion.
+        journaliser(e);
+      }
+    }
+    return user;
   }
 
   /// All accounts, used by the admin-only "Gestion des utilisateurs" panel.
