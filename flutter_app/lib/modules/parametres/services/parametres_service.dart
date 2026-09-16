@@ -1,8 +1,8 @@
 import 'package:socogen/core/money/montant.dart';
 import 'package:socogen/modules/parametres/models/company_settings.dart';
-import 'package:socogen/modules/parametres/models/taux_tva.dart';
 import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
 import 'package:socogen/modules/parametres/repositories/tva_repository.dart';
+import 'package:socogen/shared/models/taux_tva.dart';
 
 /// Ce que les autres modules ont le droit de demander aux paramètres.
 ///

@@ -108,6 +108,29 @@ class Montant implements Comparable<Montant> {
   factory Montant.depuisUnite(num valeur, {Devise devise = Devise.xaf}) =>
       Montant((valeur * devise.facteur).round(), devise: devise);
 
+  /// Lit un montant tapé à la main : « 15 000 », « 15000 », « 15,50 ».
+  ///
+  /// Rend null si la saisie est vide ou illisible — c'est à l'appelant de
+  /// décider si cela veut dire « pas de prix » ou « corrigez la saisie ».
+  /// Les deux existent : une case vide signifie un article non tarifé, un
+  /// « abc » signifie une faute de frappe.
+  ///
+  /// Accepte la virgule comme séparateur décimal, parce que c'est ce
+  /// qu'un clavier français produit, et ignore les espaces de milliers, y
+  /// compris l'espace fine insécable qu'insère le formatage français.
+  static Montant? depuisSaisie(String texte, {Devise devise = Devise.xaf}) {
+    final nettoye = texte
+        .replaceAll(' ', '')
+        .replaceAll(' ', '')
+        .replaceAll(' ', '')
+        .replaceAll(',', '.')
+        .trim();
+    if (nettoye.isEmpty) return null;
+    final valeur = double.tryParse(nettoye);
+    if (valeur == null) return null;
+    return Montant((valeur * devise.facteur).round(), devise: devise);
+  }
+
   bool get estZero => unites == 0;
   bool get estNegatif => unites < 0;
 

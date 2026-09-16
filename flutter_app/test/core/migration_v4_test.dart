@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -298,4 +300,59 @@ void main() {
       expect(noms(migree), noms(colonnesNeuves));
     });
   });
+
+  group("installation neuve : le seed en v1 monte jusqu'en v4", () {
+    test('toute la chaîne de migrations passe sur le schéma livré', () async {
+      // C'est le parcours de chaque nouveau client : la base livrée est
+      // en v1 et grimpe par migrations successives. Il ne se distingue
+      // du parcours d'une mise à jour que par le nombre d'étapes, ce qui
+      // suffit à faire diverger les deux si personne ne regarde.
+      final schemaLivre = File('../scripts/schema.sql');
+      expect(
+        schemaLivre.existsSync(),
+        isTrue,
+        reason: 'scripts/schema.sql est la source de la base livrée',
+      );
+
+      final neuve = await databaseFactoryFfi.openDatabase(
+        inMemoryDatabasePath,
+        options: OpenDatabaseOptions(version: 1, singleInstance: false),
+      );
+      // Les commentaires se retirent ligne à ligne : découper sur « ; »
+      // laisse le commentaire qui précède une instruction collé devant
+      // elle, et jeter le morceau entier ferait disparaître la table.
+      final sansCommentaires = schemaLivre
+          .readAsStringSync()
+          .split('\n')
+          .where((l) => !l.trimLeft().startsWith('--'))
+          .join('\n');
+      for (final sql in sansCommentaires
+          .split(';')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)) {
+        await neuve.execute(sql);
+      }
+
+      for (final sql in [
+        ...AppSchema.migrationV1ToV2,
+        ...AppSchema.migrationV3ToV4,
+        ...AppSchema.tauxTvaParDefaut,
+        ...AppSchema.createIndexStatements,
+      ]) {
+        await neuve.execute(sql);
+      }
+
+      final colonnes = (await neuve.rawQuery('PRAGMA table_info(products)'))
+          .map((c) => c['name'] as String)
+          .toSet();
+      expect(
+        colonnes,
+        containsAll(['prix_vente', 'prix_achat', 'tva_id', 'famille_id',
+            'code_barre', 'actif']),
+      );
+      expect(await neuve.query('taux_tva'), hasLength(2));
+      await neuve.close();
+    });
+  });
+
 }

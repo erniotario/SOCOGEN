@@ -2,10 +2,15 @@ import 'package:socogen/core/money/montant.dart';
 
 /// Un taux de TVA tel que l'entreprise l'applique.
 ///
-/// Il vit dans les paramètres et non dans le catalogue : c'est une règle
-/// de l'entreprise, pas une propriété d'un article. Le catalogue s'y
-/// réfère par identifiant, les ventes s'en serviront pour ventiler une
-/// facture, et la comptabilité y accrochera plus tard un compte.
+/// Le module paramètres en est **propriétaire** — c'est lui qui les lit,
+/// les écrit et décide lequel s'applique par défaut. Mais leur *forme*
+/// est du vocabulaire partagé : le catalogue en affiche la liste, les
+/// ventes ventileront une facture dessus, la comptabilité y accrochera
+/// un compte. D'où ce fichier ici plutôt que dans le module : la
+/// possession reste à `parametres`, la définition est commune.
+///
+/// C'est le test d'architecture qui a imposé ce découpage, en refusant
+/// que l'écran Produits atteigne l'intérieur des paramètres.
 ///
 /// Le taux est stocké en dix-millièmes, comme [Taux], pour que 19,25 %
 /// reste exact — voir `core/money` pour la raison.

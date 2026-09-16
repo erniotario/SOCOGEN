@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:socogen/core/db/database_service.dart';
 import 'package:socogen/core/db/sync_columns.dart';
 import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/modules/parametres/models/taux_tva.dart';
+import 'package:socogen/shared/models/taux_tva.dart';
 
 /// Les taux de TVA de l'entreprise.
 class TvaRepository {

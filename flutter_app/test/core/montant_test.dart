@@ -158,4 +158,42 @@ void main() {
       );
     });
   });
+
+  group("lecture d'une saisie", () {
+    test('un prix tapé simplement', () {
+      expect(Montant.depuisSaisie('15000'), const Montant(15000));
+    });
+
+    test('les espaces de milliers sont ignorés, fine insécable comprise', () {
+      // L'utilisateur recopie souvent un montant déjà affiché par
+      // l'application, qui l'a formaté avec une espace fine.
+      expect(Montant.depuisSaisie('15 000'), const Montant(15000));
+      expect(Montant.depuisSaisie('15 000'), const Montant(15000));
+    });
+
+    test('la virgule décimale du clavier français', () {
+      expect(
+        Montant.depuisSaisie('15,50', devise: Devise.eur),
+        const Montant(1550, devise: Devise.eur),
+      );
+    });
+
+    test('une case vide veut dire « pas de prix », pas zéro', () {
+      expect(Montant.depuisSaisie(''), isNull);
+      expect(Montant.depuisSaisie('   '), isNull);
+    });
+
+    test("une saisie illisible rend null plutôt qu'un montant faux", () {
+      expect(Montant.depuisSaisie('abc'), isNull);
+      expect(Montant.depuisSaisie('12abc'), isNull);
+    });
+
+    test('un montant affiché se relit tel quel', () {
+      // La boucle qui compte : ce que l'application écrit, elle doit
+      // savoir le relire.
+      const original = Montant(1234567);
+      expect(Montant.depuisSaisie(original.formate(avecSymbole: false)), original);
+    });
+  });
+
 }

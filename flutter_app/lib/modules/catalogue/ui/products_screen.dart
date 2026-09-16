@@ -9,6 +9,11 @@ import 'package:flutter/services.dart';
 import 'package:socogen/modules/stock/models/product_stock.dart';
 import 'package:socogen/modules/stock/models/store.dart';
 import 'package:socogen/shared/models/view_models.dart';
+import 'package:socogen/core/money/montant.dart';
+import 'package:socogen/modules/catalogue/models/famille.dart';
+import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
+import 'package:socogen/shared/models/taux_tva.dart';
+import 'package:socogen/modules/parametres/services/parametres_service.dart';
 import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
 import 'package:socogen/modules/stock/services/stock_service.dart';
 import 'package:socogen/modules/stock/repositories/store_repository.dart';
@@ -38,11 +43,26 @@ class _ProductsData {
   final List<ProductOverview> products;
   final List<Store> stores;
 
-  const _ProductsData({required this.products, required this.stores});
+  /// Chargés une fois pour l'écran entier : la devise sert à formater
+  /// chaque ligne, les taux et les familles à remplir les listes du
+  /// formulaire. Les relire par article ferait une requête par ligne.
+  final Devise devise;
+  final List<TauxTva> tauxTva;
+  final List<Famille> familles;
+
+  const _ProductsData({
+    required this.products,
+    required this.stores,
+    required this.devise,
+    required this.tauxTva,
+    required this.familles,
+  });
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
   final _productRepo = ProductRepository();
+  final _catalogue = CatalogueService();
+  final _parametres = ParametresService();
   final _storeRepo = StoreRepository();
   final _searchController = TextEditingController();
 
@@ -76,13 +96,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   Future<void> _load() async {
     try {
-      final (products, stores) = await (
+      final (products, stores, devise, taux, familles) = await (
         _productRepo.getProductOverviews(search: _search),
         _storeRepo.getAllStores(),
+        _parametres.devise(),
+        _parametres.tauxTva(),
+        _catalogue.listerFamilles(),
       ).wait;
       if (!mounted) return;
       setState(() {
-        _data = _ProductsData(products: products, stores: stores);
+        _data = _ProductsData(
+          products: products,
+          stores: stores,
+          devise: devise,
+          tauxTva: taux,
+          familles: familles,
+        );
         _error = null;
       });
     } catch (e) {
@@ -200,7 +229,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
     if (data == null) return;
     final saved = await showDialog<bool>(
       context: context,
-      builder: (context) => _ProductFormDialog(stores: data.stores),
+      builder: (context) => _ProductFormDialog(
+        stores: data.stores,
+        devise: data.devise,
+        tauxTva: data.tauxTva,
+        familles: data.familles,
+      ),
     );
     if (saved == true) _onChanged();
   }
@@ -212,7 +246,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
     if (!mounted) return;
     final saved = await showDialog<bool>(
       context: context,
-      builder: (context) => _ProductFormDialog(stores: data.stores, existing: overview, existingStocks: stocks),
+      builder: (context) => _ProductFormDialog(
+        stores: data.stores,
+        devise: data.devise,
+        tauxTva: data.tauxTva,
+        familles: data.familles,
+        existing: overview,
+        existingStocks: stocks,
+      ),
     );
     if (saved == true) _onChanged();
   }
@@ -327,22 +368,43 @@ class _ProductsScreenState extends State<ProductsScreen> {
       backgroundColor: AppColors.surface,
       child: Padding(
         padding: EdgeInsets.fromLTRB(gutter, 0, gutter, gutter),
-        child: _table(data.products),
+        child: _table(data.products, data.devise),
       ),
     );
   }
 
-  Widget _table(List<ProductOverview> rows) {
+  /// Le prix tel qu'il se lit dans une colonne.
+  ///
+  /// Null n'est pas zéro : un tiret dit « pas encore tarifé », un
+  /// « 0 FCFA » dirait « gratuit ». Les 723 articles hérités sont dans
+  /// le premier cas, et la nuance décide de ce qui est vendable.
+  static Widget _cellulePrix(int? unites, Devise devise) {
+    if (unites == null) {
+      return const Text(
+        '—',
+        textAlign: TextAlign.right,
+        style: TextStyle(color: AppColors.textMuted),
+      );
+    }
+    return Text(
+      Montant(unites, devise: devise).formate(),
+      textAlign: TextAlign.right,
+      style: AppTextStyles.numeric,
+    );
+  }
+
+  Widget _table(List<ProductOverview> rows, Devise devise) {
     return AdaptiveTable(
-      actionsColumn: 6,
+      actionsColumn: 7,
       columns: const [
         AppColumn('RÉFÉRENCE', flex: 11),
-        AppColumn('DÉSIGNATION', flex: 20),
-        AppColumn('UNITÉ', flex: 7),
-        AppColumn('MAGASINS', flex: 13),
-        AppColumn.number('STOCK INITIAL', flex: 10),
-        AppColumn.number('STOCK ACTUEL', flex: 10),
-        AppColumn.actions(flex: 11),
+        AppColumn('DÉSIGNATION', flex: 19),
+        AppColumn('UNITÉ', flex: 6),
+        AppColumn('MAGASINS', flex: 12),
+        AppColumn.number('PRIX DE VENTE', flex: 11),
+        AppColumn.number('STOCK INITIAL', flex: 9),
+        AppColumn.number('STOCK ACTUEL', flex: 9),
+        AppColumn.actions(flex: 10),
       ],
       empty: AppEmptyState(
         icon: _search.isEmpty
@@ -376,6 +438,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
               overview.storeNames.isEmpty
                   ? Cells.blank
                   : Cells.muted(overview.storeNames),
+              // Un article sans prix affiche un tiret, pas « 0 FCFA » :
+              // il n'est pas gratuit, il n'est pas encore tarifé.
+              _cellulePrix(overview.product.prixVenteUnites, devise),
               Cells.number(
                 overview.initialStock,
                 color: AppColors.textSecondary,
@@ -422,8 +487,18 @@ class _ProductFormDialog extends StatefulWidget {
   final List<Store> stores;
   final ProductOverview? existing;
   final List<({ProductStock stock, String storeName})> existingStocks;
+  final Devise devise;
+  final List<TauxTva> tauxTva;
+  final List<Famille> familles;
 
-  const _ProductFormDialog({required this.stores, this.existing, this.existingStocks = const []});
+  const _ProductFormDialog({
+    required this.stores,
+    required this.devise,
+    required this.tauxTva,
+    required this.familles,
+    this.existing,
+    this.existingStocks = const [],
+  });
 
   @override
   State<_ProductFormDialog> createState() => _ProductFormDialogState();
@@ -436,6 +511,11 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
   late final TextEditingController _desController;
   late final TextEditingController _unitController;
   late final TextEditingController _initialController;
+  late final TextEditingController _prixVenteController;
+  late final TextEditingController _prixAchatController;
+  late final TextEditingController _codeBarreController;
+  int? _tvaId;
+  int? _familleId;
   int? _storeId;
   late List<_StockRowEdit> _rows;
   final List<int> _removedStockIds = [];
@@ -452,6 +532,27 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
     _desController = TextEditingController(text: existing?.product.designation ?? '');
     _unitController = TextEditingController(text: existing?.product.unit ?? 'unité');
     _initialController = TextEditingController(text: '${existing?.firstStoreInitialStock ?? 0}');
+
+    // Une case vide veut dire « pas de prix ». Y mettre 0 par défaut
+    // transformerait chaque article non tarifé en article gratuit au
+    // premier enregistrement.
+    final article = existing?.product;
+    _prixVenteController = TextEditingController(
+      text: article?.prixVenteUnites == null
+          ? ''
+          : Montant(article!.prixVenteUnites!, devise: widget.devise)
+              .formate(avecSymbole: false),
+    );
+    _prixAchatController = TextEditingController(
+      text: article?.prixAchatUnites == null
+          ? ''
+          : Montant(article!.prixAchatUnites!, devise: widget.devise)
+              .formate(avecSymbole: false),
+    );
+    _codeBarreController = TextEditingController(text: article?.codeBarre ?? '');
+    _tvaId = article?.tvaId ??
+        (widget.tauxTva.where((t) => t.estDefaut).firstOrNull)?.id;
+    _familleId = article?.familleId;
     _storeId = existing?.firstStoreId ?? (widget.stores.isNotEmpty ? widget.stores.first.id : null);
 
     _rows = widget.existingStocks
@@ -468,6 +569,9 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
     _desController.dispose();
     _unitController.dispose();
     _initialController.dispose();
+    _prixVenteController.dispose();
+    _prixAchatController.dispose();
+    _codeBarreController.dispose();
     for (final row in _rows) {
       row.controller.dispose();
     }
@@ -538,8 +642,29 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
           });
           return;
         }
+        final prixVente =
+            Montant.depuisSaisie(_prixVenteController.text, devise: widget.devise);
+        final prixAchat =
+            Montant.depuisSaisie(_prixAchatController.text, devise: widget.devise);
+        final codeBarre = _codeBarreController.text.trim();
         await _productRepo.updateProduct(
-          existing.product.copyWith(reference: ref, designation: des, unit: unit),
+          existing.product.copyWith(
+            reference: ref,
+            designation: des,
+            unit: unit,
+            // Une case vidée retire le prix ; sans ces drapeaux, null
+            // voudrait dire « ne change rien » et le prix resterait.
+            prixVenteUnites: prixVente?.unites,
+            effacerPrixVente: prixVente == null,
+            prixAchatUnites: prixAchat?.unites,
+            effacerPrixAchat: prixAchat == null,
+            tvaId: _tvaId,
+            effacerTva: _tvaId == null,
+            familleId: _familleId,
+            effacerFamille: _familleId == null,
+            codeBarre: codeBarre.isEmpty ? null : codeBarre,
+            effacerCodeBarre: codeBarre.isEmpty,
+          ),
         );
         for (final row in _rows) {
           final value = int.tryParse(row.controller.text.trim()) ?? 0;
@@ -572,7 +697,23 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
             return;
           }
         } else {
-          productId = await _productRepo.createProduct(reference: ref, designation: des, unit: unit);
+          final codeBarre = _codeBarreController.text.trim();
+          productId = await _productRepo.createProduct(
+            reference: ref,
+            designation: des,
+            unit: unit,
+            familleId: _familleId,
+            tvaId: _tvaId,
+            prixVenteUnites: Montant.depuisSaisie(
+              _prixVenteController.text,
+              devise: widget.devise,
+            )?.unites,
+            prixAchatUnites: Montant.depuisSaisie(
+              _prixAchatController.text,
+              devise: widget.devise,
+            )?.unites,
+            codeBarre: codeBarre.isEmpty ? null : codeBarre,
+          );
         }
         await _stock.definirStockOuverture(
             articleId: productId, magasinId: _storeId!, quantite: initial);
@@ -605,6 +746,81 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
             TextField(
               controller: _desController,
               decoration: const InputDecoration(labelText: 'Désignation *', hintText: 'Ex : Ciment Portland'),
+            ),
+            const SizedBox(height: 16),
+            const Text('Tarif', style: AppTextStyles.sectionLabel),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _prixVenteController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Prix de vente',
+                      suffixText: widget.devise.symbole,
+                      // Laisser vide se lit, et se dit.
+                      hintText: 'Laisser vide si inconnu',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _prixAchatController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: "Prix d'achat",
+                      suffixText: widget.devise.symbole,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int?>(
+              initialValue: _tvaId,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'TVA'),
+              items: [
+                const DropdownMenuItem<int?>(
+                  value: null,
+                  child: Text('Aucune'),
+                ),
+                for (final taux in widget.tauxTva)
+                  DropdownMenuItem<int?>(
+                    value: taux.id,
+                    child: Text(taux.libelle, overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: (v) => setState(() => _tvaId = v),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int?>(
+              initialValue: _familleId,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Famille'),
+              items: [
+                const DropdownMenuItem<int?>(
+                  value: null,
+                  child: Text('Non classé'),
+                ),
+                for (final famille in widget.familles)
+                  DropdownMenuItem<int?>(
+                    value: famille.id,
+                    child: Text(famille.nom, overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: (v) => setState(() => _familleId = v),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _codeBarreController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Code-barres',
+                hintText: 'Ex : 6161100000123',
+              ),
             ),
             const SizedBox(height: 12),
             if (_isEdit) ...[
