@@ -2,15 +2,15 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'app.dart';
-import 'auth/auth_provider.dart';
-import 'data/db/database_service.dart';
-import 'theme/app_colors.dart';
-import 'theme/app_spacing.dart';
-import 'theme/app_branding.dart';
-import 'theme/app_text_styles.dart';
-import 'theme/app_theme.dart';
-import 'widgets/logo_mark.dart';
+import 'package:socogen/app.dart';
+import 'package:socogen/core/auth/auth_provider.dart';
+import 'package:socogen/core/db/database_service.dart';
+import 'package:socogen/shared/ui/theme/app_colors.dart';
+import 'package:socogen/shared/ui/theme/app_spacing.dart';
+import 'package:socogen/shared/ui/theme/app_branding.dart';
+import 'package:socogen/shared/ui/theme/app_text_styles.dart';
+import 'package:socogen/shared/ui/theme/app_theme.dart';
+import 'package:socogen/shared/ui/widgets/logo_mark.dart';
 
 void main() {
   runApp(const StockApp());

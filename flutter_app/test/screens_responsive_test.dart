@@ -3,20 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/auth/auth_provider.dart';
-import 'package:socogen/data/db/database_service.dart';
-import 'package:socogen/screens/company_setup_screen.dart';
-import 'package:socogen/screens/dashboard_screen.dart';
-import 'package:socogen/screens/entries_screen.dart';
-import 'package:socogen/screens/inventory_screen.dart';
-import 'package:socogen/screens/outputs_screen.dart';
-import 'package:socogen/screens/products_screen.dart';
-import 'package:socogen/screens/reports_screen.dart';
-import 'package:socogen/screens/security_screen.dart';
-import 'package:socogen/screens/settings_screen.dart';
-import 'package:socogen/screens/stores_screen.dart';
-import 'package:socogen/screens/transactions_screen.dart';
-import 'package:socogen/theme/app_theme.dart';
+import 'package:socogen/core/auth/auth_provider.dart';
+import 'package:socogen/core/db/database_service.dart';
+import 'package:socogen/modules/parametres/ui/company_setup_screen.dart';
+import 'package:socogen/modules/rapports/ui/dashboard_screen.dart';
+import 'package:socogen/modules/stock/ui/entries_screen.dart';
+import 'package:socogen/modules/stock/ui/inventory_screen.dart';
+import 'package:socogen/modules/stock/ui/outputs_screen.dart';
+import 'package:socogen/modules/catalogue/ui/products_screen.dart';
+import 'package:socogen/modules/rapports/ui/reports_screen.dart';
+import 'package:socogen/modules/utilisateurs/ui/security_screen.dart';
+import 'package:socogen/modules/parametres/ui/settings_screen.dart';
+import 'package:socogen/modules/stock/ui/stores_screen.dart';
+import 'package:socogen/modules/stock/ui/transactions_screen.dart';
+import 'package:socogen/shared/ui/theme/app_theme.dart';
 
 import 'repositories/test_database.dart';
 

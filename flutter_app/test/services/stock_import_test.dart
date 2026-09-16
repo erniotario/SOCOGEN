@@ -2,13 +2,13 @@ import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/data/db/schema.dart';
-import 'package:socogen/data/repositories/product_repository.dart';
-import 'package:socogen/data/repositories/report_repository.dart';
-import 'package:socogen/data/repositories/stock_entry_repository.dart';
-import 'package:socogen/data/repositories/stock_output_repository.dart';
-import 'package:socogen/data/repositories/store_repository.dart';
-import 'package:socogen/services/excel/stock_import_service.dart';
+import 'package:socogen/core/db/schema.dart';
+import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
+import 'package:socogen/modules/rapports/repositories/report_repository.dart';
+import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
+import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
+import 'package:socogen/modules/stock/repositories/store_repository.dart';
+import 'package:socogen/modules/stock/services/stock_import_service.dart';
 
 /// An empty database with only the two magasins, so the counts a test
 /// asserts belong to the import and not to a fixture.

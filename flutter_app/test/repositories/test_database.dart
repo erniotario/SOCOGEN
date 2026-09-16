@@ -1,6 +1,6 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/data/db/schema.dart';
+import 'package:socogen/core/db/schema.dart';
 
 /// Builds an in-memory SQLite database pre-populated with a small,
 /// hand-computed fixture dataset shared by the repository unit tests.

@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/data/db/schema.dart';
-import 'package:socogen/data/db/sync_columns.dart';
-import 'package:socogen/services/sync/sync_engine.dart';
-import 'package:socogen/services/sync/sync_models.dart';
+import 'package:socogen/core/db/schema.dart';
+import 'package:socogen/core/db/sync_columns.dart';
+import 'package:socogen/core/sync/sync_engine.dart';
+import 'package:socogen/core/sync/sync_models.dart';
 
 /// A device belongs to one business, and the sync merge runs on natural
 /// keys -- a store by its name, a product by its reference. Two businesses

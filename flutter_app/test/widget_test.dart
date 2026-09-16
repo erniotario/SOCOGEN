@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:socogen/main.dart';
-import 'package:socogen/theme/app_branding.dart';
+import 'package:socogen/shared/ui/theme/app_branding.dart';
 
 void main() {
   testWidgets('App boots and shows the product name', (WidgetTester tester) async {

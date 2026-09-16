@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/data/models/stock_entry.dart';
-import 'package:socogen/data/repositories/stock_entry_repository.dart';
+import 'package:socogen/modules/stock/models/stock_entry.dart';
+import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
 
 import 'test_database.dart';
 

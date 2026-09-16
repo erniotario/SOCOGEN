@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/data/db/database_service.dart';
-import 'package:socogen/services/sync/sync_server.dart';
+import 'package:socogen/core/db/database_service.dart';
+import 'package:socogen/core/sync/sync_server.dart';
 
 import 'repositories/test_database.dart';
 
