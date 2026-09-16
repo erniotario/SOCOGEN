@@ -65,6 +65,9 @@ class DatabaseService {
         for (final statement in AppSchema.createIndexStatements) {
           await db.execute(statement);
         }
+        for (final statement in AppSchema.tauxTvaParDefaut) {
+          await db.execute(statement);
+        }
         final now = nowIso();
         for (final name in AppSchema.defaultStores) {
           await db.insert('stores', {'name': name, 'updated_at': now});
@@ -80,6 +83,9 @@ class DatabaseService {
         }
         if (oldVersion < 3) {
           await _migrateToV3(db);
+        }
+        if (oldVersion < 4) {
+          await _migrateToV4(db);
         }
       },
     );
@@ -115,6 +121,23 @@ class DatabaseService {
       } catch (_) {
         // Keep the platform default for this one.
       }
+    }
+  }
+
+  /// Ajoute le catalogue tarifé : familles, taux de TVA, prix et code
+  /// barres sur les articles, devise sur la société.
+  ///
+  /// Les index sont réappliqués ensuite parce que deux d'entre eux
+  /// portent sur des colonnes qui viennent seulement d'exister.
+  Future<void> _migrateToV4(Database db) async {
+    for (final statement in AppSchema.migrationV3ToV4) {
+      await db.execute(statement);
+    }
+    for (final statement in AppSchema.tauxTvaParDefaut) {
+      await db.execute(statement);
+    }
+    for (final statement in AppSchema.createIndexStatements) {
+      await db.execute(statement);
     }
   }
 

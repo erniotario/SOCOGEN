@@ -7,7 +7,7 @@
 class AppSchema {
   AppSchema._();
 
-  static const int version = 3;
+  static const int version = 4;
 
   static const List<String> createStatements = [
     '''
@@ -32,6 +32,32 @@ class AppSchema {
       reference TEXT NOT NULL UNIQUE,
       designation TEXT NOT NULL,
       unit TEXT DEFAULT 'unité',
+      famille_id INTEGER REFERENCES familles(id) ON DELETE SET NULL,
+      tva_id INTEGER REFERENCES taux_tva(id) ON DELETE SET NULL,
+      prix_achat INTEGER,
+      prix_vente INTEGER,
+      code_barre TEXT,
+      actif INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT
+    )
+    ''',
+    '''
+    CREATE TABLE familles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      nom TEXT NOT NULL,
+      parent_id INTEGER REFERENCES familles(id) ON DELETE SET NULL,
+      ordre INTEGER DEFAULT 0,
+      updated_at TEXT
+    )
+    ''',
+    '''
+    CREATE TABLE taux_tva (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      libelle TEXT NOT NULL,
+      pour_dix_mille INTEGER NOT NULL,
+      is_defaut INTEGER DEFAULT 0,
       updated_at TEXT
     )
     ''',
@@ -83,7 +109,8 @@ class AppSchema {
       website TEXT DEFAULT '',
       tax_id TEXT DEFAULT '',
       rccm TEXT DEFAULT '',
-      logo_path TEXT DEFAULT ''
+      logo_path TEXT DEFAULT '',
+      devise TEXT NOT NULL DEFAULT 'XAF'
     )
     ''',
     '''
@@ -130,6 +157,63 @@ class AppSchema {
     ''',
   ];
 
+  /// Applied via `onUpgrade` on a database created before the catalogue
+  /// carried prices.
+  ///
+  /// Les prix arrivent **nullables** et c'est délibéré : les 723 articles
+  /// déjà en base n'ont pas de prix, et zéro voudrait dire « gratuit ».
+  /// La même distinction que celle entre un stock nul et un stock
+  /// négatif — quand la valeur est inconnue, on le dit au lieu d'en
+  /// inventer une.
+  ///
+  /// `ALTER TABLE ... ADD COLUMN` ne retourne aucune ligne, donc passe
+  /// par `execute` sans tomber sur la règle Android qui interdit les
+  /// requêtes répondantes.
+  static const List<String> migrationV3ToV4 = [
+    '''
+    CREATE TABLE IF NOT EXISTS familles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      nom TEXT NOT NULL,
+      parent_id INTEGER REFERENCES familles(id) ON DELETE SET NULL,
+      ordre INTEGER DEFAULT 0,
+      updated_at TEXT
+    )
+    ''',
+    '''
+    CREATE TABLE IF NOT EXISTS taux_tva (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      libelle TEXT NOT NULL,
+      pour_dix_mille INTEGER NOT NULL,
+      is_defaut INTEGER DEFAULT 0,
+      updated_at TEXT
+    )
+    ''',
+    'ALTER TABLE products ADD COLUMN famille_id INTEGER REFERENCES familles(id)',
+    'ALTER TABLE products ADD COLUMN tva_id INTEGER REFERENCES taux_tva(id)',
+    'ALTER TABLE products ADD COLUMN prix_achat INTEGER',
+    'ALTER TABLE products ADD COLUMN prix_vente INTEGER',
+    'ALTER TABLE products ADD COLUMN code_barre TEXT',
+    'ALTER TABLE products ADD COLUMN actif INTEGER NOT NULL DEFAULT 1',
+    "ALTER TABLE company_settings ADD COLUMN devise TEXT NOT NULL DEFAULT 'XAF'",
+  ];
+
+  /// Les taux servis à une base neuve comme à une base migrée.
+  ///
+  /// Ceux du Cameroun, parce que c'est le marché de cette application :
+  /// 19,25 % est le taux normal — 17,5 % plus 1,75 % de centimes
+  /// additionnels communaux — et l'exonération existe pour les produits
+  /// de première nécessité, qui sont le quotidien d'un grossiste
+  /// alimentaire. Tous deux sont modifiables ; ce sont des valeurs de
+  /// départ, pas une règle figée.
+  static const List<String> tauxTvaParDefaut = [
+    "INSERT OR IGNORE INTO taux_tva (code, libelle, pour_dix_mille, is_defaut) "
+        "VALUES ('NORMAL', 'TVA 19,25 %', 1925, 1)",
+    "INSERT OR IGNORE INTO taux_tva (code, libelle, pour_dix_mille, is_defaut) "
+        "VALUES ('EXONERE', 'Exonéré', 0, 0)",
+  ];
+
   /// Movements are matched to products by `reference`, not by id, and the
   /// Rapports screen sums them per (reference, store). Without these the
   /// report scans both movement tables once per product/store pair, which
@@ -146,6 +230,10 @@ class AppSchema {
     'CREATE INDEX IF NOT EXISTS idx_stock_outputs_date ON stock_outputs(date)',
     'CREATE INDEX IF NOT EXISTS idx_product_stocks_store '
         'ON product_stocks(store_id)',
+    'CREATE INDEX IF NOT EXISTS idx_products_famille ON products(famille_id)',
+    'CREATE INDEX IF NOT EXISTS idx_products_code_barre '
+        'ON products(code_barre)',
+    'CREATE INDEX IF NOT EXISTS idx_familles_parent ON familles(parent_id)',
   ];
 
   /// Deliberately empty. A database starts with no magasins: a business

@@ -229,18 +229,52 @@ class ProductRepository {
     return (rows.first['balance'] as num?)?.toInt() ?? 0;
   }
 
+  /// Crée un article.
+  ///
+  /// Tout ce qui touche au tarif est facultatif : un article importé de
+  /// Sage arrive sans prix, et lui en inventer un serait pire que de
+  /// laisser la case vide. `estTarife` dira plus tard s'il est vendable.
   Future<int> createProduct({
     required String reference,
     required String designation,
     required String unit,
+    int? familleId,
+    int? tvaId,
+    int? prixAchatUnites,
+    int? prixVenteUnites,
+    String? codeBarre,
+    bool actif = true,
   }) async {
     final db = await _db;
     return db.insert('products', {
       'reference': reference,
       'designation': designation,
       'unit': unit,
+      'famille_id': familleId,
+      'tva_id': tvaId,
+      'prix_achat': prixAchatUnites,
+      'prix_vente': prixVenteUnites,
+      'code_barre': codeBarre,
+      'actif': actif ? 1 : 0,
       'updated_at': nowIso(),
     });
+  }
+
+  /// Retrouve un article par son code-barres, pour la douchette de caisse.
+  ///
+  /// Le code-barres n'est pas unique en base : plusieurs articles peuvent
+  /// n'en avoir aucun, et `NULL` ne se compare pas. La contrainte
+  /// d'unicité viendra quand la caisse en dépendra ; en attendant, le
+  /// premier trouvé suffit et l'absence de résultat se dit franchement.
+  Future<Product?> getByCodeBarre(String codeBarre) async {
+    final db = await _db;
+    final rows = await db.query(
+      'products',
+      where: 'code_barre = ?',
+      whereArgs: [codeBarre],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : Product.fromMap(rows.first);
   }
 
   Future<void> updateProduct(Product product) async {
