@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~192 tests across 23 files
+flutter test                 # ~244 tests across 28 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -48,6 +48,63 @@ Python tooling, from the repository root:
 .venv/Scripts/python.exe scripts/build_clean_seed_db.py  # -> flutter_app/assets/db/socogen_seed.db
 .venv/Scripts/python.exe scripts/gcm_to_excel.py <file.gcm>
 ```
+
+## Architecture
+
+`lib/` est rangé par domaine, pas par nature technique. L'application
+évolue vers un système de gestion commerciale (catalogue, tiers, ventes,
+POS, achats, comptabilité) : un classement en `data/` + `screens/` ne
+disait plus rien une fois passé le premier domaine.
+
+```
+lib/
+├── core/        noyau sans métier : db, auth, sync, events, money, errors
+├── modules/     un dossier par domaine, chacun models/ repositories/
+│                services/ ui/  (catalogue, stock, utilisateurs,
+│                parametres, rapports)
+├── shared/      design system et vocabulaire échangé entre modules
+└── shell/       racine de composition — le seul endroit autorisé à
+                 connaître tous les modules à la fois
+```
+
+**Un module n'atteint d'un autre que son dossier `services/`**, jamais
+ses `models/` ni ses `repositories/`. `core/` et `shared/` n'importent
+aucun module. Dart ne sait pas imposer ça, donc
+`test/architecture_test.dart` le vérifie en lisant les imports, et c'est
+la seule chose qui distingue cette arborescence d'un rangement de
+dossiers. Son `_detteConnue` gèle les 27 manquements hérités : la liste
+ne peut que rétrécir, une entrée devenue inutile fait échouer le test au
+même titre qu'un manquement nouveau. Chaque phase qui crée un service en
+retire les lignes correspondantes.
+
+Tous les imports intra-`lib/` sont en `package:socogen/…`. Les chemins
+relatifs devenaient illisibles à trois niveaux d'imbrication, et un
+chemin absolu est inspectable par le test ci-dessus.
+
+### Ce que le noyau fournit déjà
+
+- **`core/money`** — l'argent est un entier d'unités minimales plus sa
+  devise, jamais un `double`. Le franc CFA n'a pas de subdivision. Les
+  taux sont en dix-millièmes parce que la TVA camerounaise vaut 19,25 %.
+  `horsTaxe()` divise par 1,1925 ; retirer 19,25 % d'un TTC ne redonne
+  pas le HT, et confondre les deux est l'erreur classique sur un ticket
+  saisi TTC. L'arrondi éloigne les demis de zéro dans les deux sens, pour
+  qu'un remboursement rende exactement ce que la vente a encaissé.
+- **`core/errors`** — `messagePour()` traduit une erreur technique en
+  phrase actionnable ; aucun texte d'exception ne doit atteindre un
+  écran. `ErreurUtilisateur` sert aux services à lever une cause métier
+  déjà rédigée.
+- **`core/auth/permissions`** — `PermissionGate` répond aux questions de
+  droits. Il reproduit aujourd'hui le comportement des deux rôles en dur
+  et sera remplacé en phase 4 sans toucher aux appelants. **Sans serveur,
+  une permission cache un écran ; elle ne protège pas le fichier SQLite.**
+- **`core/auth/password_hasher`** — PBKDF2-HMAC-SHA256, 12 000 tours,
+  écrit avec `crypto` (aucune dépendance ajoutée). Les condensats hérités
+  en SHA-256 à un tour restent vérifiables et sont réécrits à la
+  prochaine connexion réussie, seul instant où le mot de passe en clair
+  existe. Le nombre d'itérations est inscrit dans chaque condensat :
+  relevable sans invalider l'existant, et il le faudra le jour où un
+  hachage natif remplacera le Dart pur.
 
 ## Build traps
 
@@ -279,6 +336,10 @@ layout on the UI thread is an ANR on Android and a watchdog kill on iOS.
   device syncing with itself and every assertion about the peer passes
   because the row never went anywhere. `sync_engine_test.dart` and
   `sync_tenant_test.dart` both set it.
+- `architecture_test.dart` lit les imports et refuse qu'un module
+  atteigne l'intérieur d'un autre. Il échoue aussi quand une entrée de
+  `_detteConnue` n'a plus de raison d'être, ce qui force à la retirer
+  plutôt qu'à la laisser couvrir autre chose.
 - Anything that can only fail on a device (the sqflite rule above, print
   dialogs) cannot be caught here. Say so rather than implying a green
   suite covers it.
