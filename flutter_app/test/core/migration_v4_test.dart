@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'package:socogen/core/db/database_service.dart';
 import 'package:socogen/core/db/schema.dart';
 import 'package:socogen/modules/catalogue/models/product.dart';
 
@@ -147,17 +148,10 @@ Future<Database> _ouvrirV3AvecDonnees() async {
   return db;
 }
 
-Future<void> _migrer(Database db) async {
-  for (final sql in AppSchema.migrationV3ToV4) {
-    await db.execute(sql);
-  }
-  for (final sql in AppSchema.tauxTvaParDefaut) {
-    await db.execute(sql);
-  }
-  for (final sql in AppSchema.createIndexStatements) {
-    await db.execute(sql);
-  }
-}
+/// Monte la base par le chemin de l'application, pas par une copie de
+/// ses étapes : c'est l'ordre réel qu'on veut vérifier.
+Future<void> _migrer(Database db) async =>
+    DatabaseService.migrer(db, 3);
 
 void main() {
   late Database db;
@@ -301,7 +295,36 @@ void main() {
     });
   });
 
-  group("installation neuve : le seed en v1 monte jusqu'en v4", () {
+  group('la chaîne, dans son ordre', () {
+    test('une base en v3 reçoit tous les index, ceux de la v5 compris',
+        () async {
+      // Le défaut que ceci empêche : chaque étape réappliquait la liste
+      // complète des index, donc `_migrateToV4` — qui tourne sur une
+      // base encore en v3 — tentait un index sur `tiers`, table que
+      // seule la v5 apporte. La migration levait, et l'application
+      // n'ouvrait plus sa base du tout. Une base à jour ne voyait rien :
+      // il fallait venir de loin pour tomber dessus.
+      await DatabaseService.migrer(db, 3);
+
+      final index = (await db.rawQuery(
+              "SELECT name FROM sqlite_master WHERE type = 'index'"))
+          .map((r) => r['name'])
+          .toSet();
+      expect(index, containsAll(['idx_tiers_nom', 'idx_products_famille']));
+    });
+
+    test("remonter deux versions d'un coup aboutit au même schéma", () async {
+      await DatabaseService.migrer(db, 3);
+
+      final tables = (await db.rawQuery(
+              "SELECT name FROM sqlite_master WHERE type = 'table'"))
+          .map((r) => r['name'])
+          .toSet();
+      expect(tables, containsAll(['familles', 'taux_tva', 'tiers']));
+    });
+  });
+
+  group("installation neuve : le seed en v1 monte jusqu'au schéma courant", () {
     test('toute la chaîne de migrations passe sur le schéma livré', () async {
       // C'est le parcours de chaque nouveau client : la base livrée est
       // en v1 et grimpe par migrations successives. Il ne se distingue
@@ -333,14 +356,7 @@ void main() {
         await neuve.execute(sql);
       }
 
-      for (final sql in [
-        ...AppSchema.migrationV1ToV2,
-        ...AppSchema.migrationV3ToV4,
-        ...AppSchema.tauxTvaParDefaut,
-        ...AppSchema.createIndexStatements,
-      ]) {
-        await neuve.execute(sql);
-      }
+      await DatabaseService.migrer(neuve, 1);
 
       final colonnes = (await neuve.rawQuery('PRAGMA table_info(products)'))
           .map((c) => c['name'] as String)

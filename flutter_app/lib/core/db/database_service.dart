@@ -77,17 +77,8 @@ class DatabaseService {
         // identity on every other customer's reports.
         await db.insert('company_settings', {'id': 1, 'name': ''});
       },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          await _migrateToV2(db);
-        }
-        if (oldVersion < 3) {
-          await _migrateToV3(db);
-        }
-        if (oldVersion < 4) {
-          await _migrateToV4(db);
-        }
-      },
+      onUpgrade: (db, oldVersion, newVersion) async =>
+          migrer(db, oldVersion),
     );
   }
 
@@ -124,28 +115,55 @@ class DatabaseService {
     }
   }
 
+  /// Fait monter une base de [versionActuelle] jusqu'au schéma courant.
+  ///
+  /// Publique et statique parce que l'ordre des étapes est lui-même une
+  /// règle à vérifier, et qu'un test qui recopierait cet ordre
+  /// passerait encore le jour où il change ici.
+  static Future<void> migrer(Database db, int versionActuelle) async {
+    if (versionActuelle < 2) {
+      await _migrateToV2(db);
+    }
+    if (versionActuelle < 4) {
+      await _migrateToV4(db);
+    }
+    if (versionActuelle < 5) {
+      await _migrateToV5(db);
+    }
+    // Les index viennent en dernier, une seule fois, et non dans chaque
+    // étape. Une étape qui les réapplique les crée sur le schéma de son
+    // époque : `_migrateToV4`, lancée sur une base en v3, tentait un
+    // index sur `tiers` — table que seule la v5 apporte. La migration
+    // échouait, et l'application n'ouvrait plus sa base du tout. Ici
+    // toutes les tables existent.
+    //
+    // C'est aussi ce qui dote une base en v3 de ses index : elle n'a
+    // plus d'étape à elle, elle passe par ce bloc comme les autres.
+    for (final statement in AppSchema.createIndexStatements) {
+      await db.execute(statement);
+    }
+  }
+
   /// Ajoute le catalogue tarifé : familles, taux de TVA, prix et code
   /// barres sur les articles, devise sur la société.
-  ///
-  /// Les index sont réappliqués ensuite parce que deux d'entre eux
-  /// portent sur des colonnes qui viennent seulement d'exister.
-  Future<void> _migrateToV4(Database db) async {
+  static Future<void> _migrateToV4(Database db) async {
     for (final statement in AppSchema.migrationV3ToV4) {
       await db.execute(statement);
     }
     for (final statement in AppSchema.tauxTvaParDefaut) {
       await db.execute(statement);
     }
-    for (final statement in AppSchema.createIndexStatements) {
-      await db.execute(statement);
-    }
   }
 
-  /// Creates the query indexes. The seeded asset database ships without
-  /// them and every database created before v3 lacks them, so this runs
-  /// as an upgrade step rather than only at creation.
-  Future<void> _migrateToV3(Database db) async {
-    for (final statement in AppSchema.createIndexStatements) {
+  /// Ajoute les tiers et reprend ceux déjà saisis en texte libre.
+  ///
+  /// La reprise vient après la création des colonnes, et elle est
+  /// rejouable : une base sans mouvements n'y trouve rien à faire.
+  static Future<void> _migrateToV5(Database db) async {
+    for (final statement in AppSchema.migrationV4ToV5) {
+      await db.execute(statement);
+    }
+    for (final statement in AppSchema.reprisesTiersDepuisTexte) {
       await db.execute(statement);
     }
   }
@@ -154,7 +172,7 @@ class DatabaseService {
   /// `sync_meta` tables used by the local Wi-Fi synchronisation feature,
   /// then backfills existing rows so they are treated as "changed now"
   /// the first time a sync runs.
-  Future<void> _migrateToV2(Database db) async {
+  static Future<void> _migrateToV2(Database db) async {
     for (final statement in AppSchema.migrationV1ToV2) {
       await db.execute(statement);
     }

@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~244 tests across 28 files
+flutter test                 # ~300 tests across 32 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -60,8 +60,8 @@ disait plus rien une fois passé le premier domaine.
 lib/
 ├── core/        noyau sans métier : db, auth, sync, events, money, errors
 ├── modules/     un dossier par domaine, chacun models/ repositories/
-│                services/ ui/  (catalogue, stock, utilisateurs,
-│                parametres, rapports)
+│                services/ ui/  (catalogue, stock, tiers,
+│                utilisateurs, parametres, rapports)
 ├── shared/      design system et vocabulaire échangé entre modules
 └── shell/       racine de composition — le seul endroit autorisé à
                  connaître tous les modules à la fois
@@ -72,7 +72,7 @@ ses `models/` ni ses `repositories/`. `core/` et `shared/` n'importent
 aucun module. Dart ne sait pas imposer ça, donc
 `test/architecture_test.dart` le vérifie en lisant les imports, et c'est
 la seule chose qui distingue cette arborescence d'un rangement de
-dossiers. Son `_detteConnue` gèle les 27 manquements hérités : la liste
+dossiers. Son `_detteConnue` gèle les manquements hérités : la liste
 ne peut que rétrécir, une entrée devenue inutile fait échouer le test au
 même titre qu'un manquement nouveau. Chaque phase qui crée un service en
 retire les lignes correspondantes.
@@ -154,6 +154,26 @@ reports an unreadable date rather than assuming one — a movement in the
 wrong store silently corrupts that store's balance, and a silent
 corruption is worse than a rejected row. Hold that line everywhere:
 where the right answer is unknown, say so and let the operator decide.
+
+**A partner is a record; the text on the movement is history.**
+`tiers` holds clients and fournisseurs — one fiche can be both, because
+a wholesaler sometimes buys from whoever it sells to. Movements gained a
+`tiers_id`, but they keep their `supplier` / `destination` text: a past
+line must go on saying what was typed that day, even after the fiche is
+renamed or merged. Schema v5 reconciled the real data — 129 suppliers
+and 3 destinations typed by hand across 5 201 movements, all of them
+linked, in 197 ms.
+
+The reconciliation matches on **exact equality and nothing else**, which
+is the same refusal as above applied to names. The live data holds `BMC`
+alongside `BCM` — two letters swapped, 4 563 movements against 5 — and
+`DADA` alongside `DADA EKOUNOU`. Guessing would be spelling correction
+disguised as a migration; leaving them apart makes them visible, and
+`TiersRepository.fusionner` is the deliberate, human act that settles
+one. It moves the movements, deactivates the source, and never deletes:
+a fiche with history behind it is not erasable. The reprise also never
+reclassifies a fiche it did not just create, since someone may have
+corrected the rôle by hand since.
 
 **A database belongs to one business, and says so.** `sync_meta` carries a
 `tenant_id`, minted on first sync rather than at creation — stamping on
@@ -272,6 +292,25 @@ The seed asset is schema **v1** and ships without indexes, so a schema
 change needs an `onUpgrade` step and not only an `onCreate` one — a fresh
 install runs the migrations too. Indexes live in
 `AppSchema.createIndexStatements` and are applied both ways.
+
+**The index pass runs once, after the whole chain — never inside a
+step.** `createIndexStatements` is the index list for the *current*
+schema, so a step that reapplies it builds today's indexes on its own
+era's tables: `_migrateToV4`, running on a v3 database, reached for an
+index on `tiers`, a table only v5 creates. The migration threw and the
+app could not open its database at all — invisible to anyone already up
+to date, fatal to anyone arriving from a version behind. The chain lives
+in `DatabaseService.migrer`, public and static precisely so a test can
+run it in its real order; a test that recopied the order would still
+pass the day the order changed. `migration_v4_test.dart` pins it.
+
+**A migration either lands whole or not at all.** sqflite runs
+`onUpgrade` inside an exclusive transaction and writes the new version
+number inside that same transaction (`sqflite_common`,
+`database_mixin.dart`), so a half-migrated database is not a state that
+can exist and DDL does not need to be replay-safe. Data *reprises* still
+should be — not for interrupted migrations, but because rattaching rows
+is the kind of maintenance someone reruns later.
 
 Queries that fan out per row are the performance trap here: the report
 once ran two correlated subqueries per (product × store) and took ~3 s on
