@@ -55,6 +55,7 @@ public class SgWin {
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
   [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr h, int x, int y, int w, int t, bool repaint);
   [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref POINT p);
@@ -100,6 +101,25 @@ function Get-FrameOffset($hw) {
   $origin.X = 0; $origin.Y = 0
   [void][SgWin]::ClientToScreen($hw, [ref]$origin)
   return @{ X = $origin.X - $wr.Left; Y = $origin.Y - $wr.Top }
+}
+
+# Windows refuses SetForegroundWindow to a process that has not
+# recently received input: with a person typing, the call returns and
+# the window stays in the background. SendKeys then goes to *their*
+# foreground window -- an editor, a terminal -- and a "^a" followed by
+# "{DEL}" typed there is not a failed test, it is someone else's work
+# destroyed. So take the foreground, verify it, and stop if it did not
+# happen.
+function Assert-Foreground($hw) {
+  for ($i = 0; $i -lt 6; $i++) {
+    [void][SgWin]::SetForegroundWindow($hw)
+    Start-Sleep -Milliseconds 250
+    if ([SgWin]::GetForegroundWindow() -eq $hw) { return }
+  }
+  Write-Error ("could not bring SM to the foreground -- something else " +
+    "holds it (a person at the keyboard, a modal dialog). Refusing to " +
+    "send input, because it would land in that window instead.")
+  exit 3
 }
 
 switch ($Action) {
@@ -165,11 +185,11 @@ switch ($Action) {
     Write-Output "saved $Out (${width}x${height})"
   }
 
+
   "click" {
     # -X/-Y are coordinates read off a capture; converted here.
     $hw = Get-AppWindow
-    [void][SgWin]::SetForegroundWindow($hw)
-    Start-Sleep -Milliseconds 250
+    Assert-Foreground $hw
     $off = Get-FrameOffset $hw
     $pt = New-Object SgWin+POINT
     $pt.X = $X - $off.X
@@ -190,8 +210,7 @@ switch ($Action) {
     # SendKeys treats + ^ % ~ ( ) { } [ ] as control characters; brace
     # them ("{+}") if a value needs them.
     $hw = Get-AppWindow
-    [void][SgWin]::SetForegroundWindow($hw)
-    Start-Sleep -Milliseconds 250
+    Assert-Foreground $hw
     [System.Windows.Forms.SendKeys]::SendWait($Text)
     Write-Output "typed: $Text"
   }

@@ -134,7 +134,7 @@ reload attached. Fine for a person at the keyboard; useless for an agent
 
 ```bash
 cd flutter_app && flutter analyze   # keep at zero
-cd flutter_app && flutter test      # ~193 tests
+cd flutter_app && flutter test      # ~300 tests
 ```
 
 Don't run the suite while a driven app is up: `web_report_test.dart`
@@ -147,6 +147,23 @@ serving its Wi-Fi sync.
   into a child HWND; a normal screen grab, or flag 0, returns a solid
   blank rectangle. Flag 2 also captures without the window being
   foreground.
+- **The driver refuses to type when it cannot take the foreground, and
+  that refusal is the point.** Windows blocks `SetForegroundWindow` for a
+  process that has not recently received input, so while a person is
+  typing, the call returns, the window stays behind, and `SendKeys` goes
+  to *their* foreground window. A `^a` followed by `{DEL}` sent into
+  someone's editor is not a failed step, it is their work deleted.
+  `Assert-Foreground` now retries for ~1.5 s and exits 3 rather than
+  send input blind — check `$LASTEXITCODE` in your wrapper and stop.
+- **`^a` does not select-all in these text fields.** The typed text is
+  appended instead of replacing, so `admin` + `verif` becomes
+  `adminverif` and the login fails for a reason the screenshot explains
+  only if you read it. Clear with `{END}{BS 40}`.
+- **Re-capture before every click, not once per sequence.** A click that
+  navigates changes the layout under the coordinates you read a moment
+  ago, and the next blind click lands on whatever moved into that spot —
+  here it opened an edit dialog on a real movement. Nothing was saved,
+  but `Annuler` and `Enregistrer` sit side by side.
 - **Clipboard paste does not reach Flutter's text fields.**
   `Set-Clipboard` + `SendKeys ^v` leaves the field empty and the login
   reports "Renseignez le nom et le mot de passe." Use
