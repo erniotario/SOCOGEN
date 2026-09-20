@@ -581,6 +581,19 @@ rewrites those targets relative after saving; this is the reason the
 .gcm route had never actually worked end to end, and nothing short of
 importing a produced file would have revealed it.
 
+`scripts/prix_a_valider.py` handles what is left. Of the 723 articles,
+87 match by reference and 54 more by exact designation; of the 583 with
+no price, **only 211 actually hold stock** — the rest cannot be sold
+anyway, so their missing price blocks nothing. For those 211 the match
+can only be approximate, and an approximate match applied unreviewed is
+precisely what this repository refuses everywhere else: "PARLE G 14G"
+and "PARLE G 18G" share 78 % of their words and are different products.
+So it writes a **proposals sheet** — the app's own reference in the
+columns the importer reads, the two designations side by side for a
+human to judge, biggest stock first, doubtful rows highlighted. Delete
+the wrong lines, then import. A wrong price corrupts no balance, but it
+manufactures a turnover figure that looks right.
+
 **It covers far less of the live catalogue than it looks.** The 2025
 file holds 3 083 articles, 1 745 of them priced, but only **87 of the
 app's 723 references** appear in it — and matching on designation finds
