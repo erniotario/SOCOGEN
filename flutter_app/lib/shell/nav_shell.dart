@@ -22,6 +22,41 @@ import 'package:socogen/shared/ui/theme/app_spacing.dart';
 import 'package:socogen/shared/ui/theme/app_text_styles.dart';
 import 'package:socogen/core/auth/ui/change_password_dialog.dart';
 import 'package:socogen/shared/ui/widgets/logo_mark.dart';
+import 'package:socogen/modules/utilisateurs/services/utilisateurs_service.dart';
+
+/// Les droits de la personne connectée, relus quand elle change.
+///
+/// Un `ChangeNotifier` plutôt qu'un `FutureBuilder` dans le shell :
+/// les droits sont consultés à chaque reconstruction de la barre de
+/// navigation, et relancer la requête à chaque frame ferait une lecture
+/// de base par image.
+///
+/// Tant que la réponse n'est pas là, le gate est [PermissionGate.aucun]
+/// — rien n'est permis. Le sens de l'erreur est le bon : une seconde
+/// sans les écrans d'administration se rattrape, un écran ouvert à qui
+/// n'y a pas droit ne se rattrape pas.
+class DroitsCourants extends ChangeNotifier {
+  DroitsCourants({UtilisateursService? service})
+      : _service = service ?? UtilisateursService();
+
+  final UtilisateursService _service;
+
+  PermissionGate _gate = PermissionGate.aucun;
+  String? _roleCharge;
+
+  PermissionGate get gate => _gate;
+
+  /// Appelé quand la personne connectée change. Ne relit rien si le rôle
+  /// est le même — c'est le cas courant, à chaque reconstruction.
+  Future<void> pour(String? roleCode) async {
+    if (roleCode == _roleCharge) return;
+    _roleCharge = roleCode;
+    final gate = await _service.droitsDe(roleCode);
+    if (_roleCharge != roleCode) return; // un autre chargement a suivi
+    _gate = gate;
+    notifyListeners();
+  }
+}
 
 class NavigationController extends ChangeNotifier {
   int _selectedIndex = 0;
@@ -129,14 +164,25 @@ class NavShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => NavigationController(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => NavigationController()),
+        ChangeNotifierProvider(create: (_) => DroitsCourants()),
+      ],
       child: LayoutBuilder(
         builder: (context, constraints) {
           final size = AppBreakpoints.of(constraints.maxWidth);
-          final droits = PermissionGate(
-            context.watch<AuthProvider>().currentUser?.role,
-          );
+          // Les droits viennent de la base, et la lecture est
+          // asynchrone : le temps qu'elle revienne, on n'affiche que ce
+          // que tout le monde peut voir. Montrer d'abord tout puis
+          // retirer ferait clignoter des écrans auxquels la personne
+          // n'a pas droit — et laisserait le temps d'en ouvrir un.
+          // Demander la relecture ici plutôt que dans un initState :
+          // le rôle vit dans AuthProvider, au-dessus, et `pour` ne fait
+          // rien quand il n'a pas changé.
+          final role = context.watch<AuthProvider>().currentUser?.role;
+          context.read<DroitsCourants>().pour(role);
+          final droits = context.watch<DroitsCourants>().gate;
           final entries = _visibleEntries(droits);
           final screens = _visibleScreens(droits);
           final selected = context.watch<NavigationController>().selectedIndex;

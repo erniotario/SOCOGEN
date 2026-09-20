@@ -68,6 +68,12 @@ class DatabaseService {
         for (final statement in AppSchema.tauxTvaParDefaut) {
           await db.execute(statement);
         }
+        for (final statement in AppSchema.rolesParDefaut) {
+          await db.execute(statement);
+        }
+        for (final statement in AppSchema.droitsParDefaut()) {
+          await db.execute(statement);
+        }
         final now = nowIso();
         for (final name in AppSchema.defaultStores) {
           await db.insert('stores', {'name': name, 'updated_at': now});
@@ -139,6 +145,9 @@ class DatabaseService {
     if (versionActuelle < 8) {
       await _migrateToV8(db);
     }
+    if (versionActuelle < 9) {
+      await _migrateToV9(db);
+    }
     // Les index viennent en dernier, une seule fois, et non dans chaque
     // étape. Une étape qui les réapplique les crée sur le schéma de son
     // époque : `_migrateToV4`, lancée sur une base en v3, tentait un
@@ -160,6 +169,19 @@ class DatabaseService {
       await db.execute(statement);
     }
     for (final statement in AppSchema.tauxTvaParDefaut) {
+      await db.execute(statement);
+    }
+  }
+
+  /// Fait des rôles et de leurs droits des données.
+  static Future<void> _migrateToV9(Database db) async {
+    for (final statement in AppSchema.migrationV8ToV9) {
+      await db.execute(statement);
+    }
+    for (final statement in AppSchema.rolesParDefaut) {
+      await db.execute(statement);
+    }
+    for (final statement in AppSchema.droitsParDefaut()) {
       await db.execute(statement);
     }
   }

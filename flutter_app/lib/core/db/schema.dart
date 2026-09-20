@@ -1,3 +1,5 @@
+import 'package:socogen/core/auth/permissions.dart';
+
 /// Clean schema (mirrors scripts/schema.sql, plus the v2 sync
 /// columns/tables added for the local Wi-Fi synchronisation feature).
 ///
@@ -7,7 +9,7 @@
 class AppSchema {
   AppSchema._();
 
-  static const int version = 8;
+  static const int version = 9;
 
   static const List<String> createStatements = [
     '''
@@ -24,6 +26,31 @@ class AppSchema {
       password_hash TEXT NOT NULL,
       password_salt TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'magasinier'
+    )
+    ''',
+    '''
+    CREATE TABLE roles (
+      -- Le code est la clé : c'est lui que `users.role` porte déjà, et
+      -- le garder évite de réécrire tous les comptes existants.
+      code TEXT PRIMARY KEY,
+      libelle TEXT NOT NULL,
+      -- Un rôle intégré ne se supprime pas. Sans administrateur, plus
+      -- personne ne peut rendre les droits à qui que ce soit.
+      integre INTEGER NOT NULL DEFAULT 0,
+      sync_id TEXT,
+      updated_at TEXT
+    )
+    ''',
+    '''
+    CREATE TABLE role_permissions (
+      role_code TEXT NOT NULL REFERENCES roles(code) ON DELETE CASCADE,
+      -- Le code de la permission, pas une clé étrangère : les
+      -- permissions sont déclarées dans le code et non en base. Une
+      -- ligne qui nomme une permission disparue est simplement ignorée
+      -- à la lecture, ce qui vaut mieux qu'un échec au démarrage.
+      permission_code TEXT NOT NULL,
+      updated_at TEXT,
+      PRIMARY KEY (role_code, permission_code)
     )
     ''',
     '''
@@ -360,6 +387,74 @@ class AppSchema {
         "(SELECT id FROM tiers WHERE tiers.nom = TRIM(stock_outputs.destination)) "
         "WHERE tiers_id IS NULL AND TRIM(COALESCE(destination,'')) <> ''",
   ];
+
+  /// Les rôles et leurs droits deviennent des données.
+  ///
+  /// `PermissionGate` répondait par une règle en dur : l'administrateur
+  /// peut tout, les autres tout sauf ce qui est marqué `adminSeul`. La
+  /// reprise **reproduit exactement cette règle** — c'était la promesse
+  /// faite quand le point de décision a été posé : le rendre modifiable
+  /// ne doit rien changer pour personne le jour de la mise à jour.
+  ///
+  /// Les permissions elles-mêmes restent déclarées dans le code. Une
+  /// table les décrivant serait une table que le code doit connaître
+  /// quand même, et qui se désynchronise à la première version qui en
+  /// ajoute une.
+  static const List<String> migrationV8ToV9 = [
+    '''
+    CREATE TABLE IF NOT EXISTS roles (
+      code TEXT PRIMARY KEY,
+      libelle TEXT NOT NULL,
+      integre INTEGER NOT NULL DEFAULT 0,
+      sync_id TEXT,
+      updated_at TEXT
+    )
+    ''',
+    '''
+    CREATE TABLE IF NOT EXISTS role_permissions (
+      role_code TEXT NOT NULL REFERENCES roles(code) ON DELETE CASCADE,
+      permission_code TEXT NOT NULL,
+      updated_at TEXT,
+      PRIMARY KEY (role_code, permission_code)
+    )
+    ''',
+  ];
+
+  /// Les deux rôles d'origine, servis à une base neuve comme à une base
+  /// migrée.
+  ///
+  /// Intégrés tous les deux : `admin` parce que sans lui personne ne
+  /// peut plus rendre de droits, `magasinier` parce que c'est le rôle
+  /// par défaut de la table `users` et qu'un compte pointant un rôle
+  /// disparu n'aurait plus aucun droit du jour au lendemain.
+  static const List<String> rolesParDefaut = [
+    "INSERT OR IGNORE INTO roles (code, libelle, integre, updated_at) "
+        "VALUES ('admin', 'Administrateur', 1, "
+        "strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+    "INSERT OR IGNORE INTO roles (code, libelle, integre, updated_at) "
+        "VALUES ('magasinier', 'Magasinier', 1, "
+        "strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+  ];
+
+  /// Les droits servis au rôle `magasinier`, reproduisant la règle qui
+  /// était en dur : tout sauf ce qui est réservé à l'administrateur.
+  ///
+  /// Construits depuis [Permissions.toutes] plutôt qu'écrits à la main :
+  /// une permission ajoutée au code se retrouve ainsi servie d'office à
+  /// une base neuve, au lieu d'attendre qu'on pense à la recopier ici.
+  ///
+  /// `admin` n'en reçoit aucun, et c'est voulu — ce rôle répond oui à
+  /// tout par construction. Lui donner des lignes ouvrirait la porte à
+  /// un administrateur qui se retire le droit de gérer les droits, et
+  /// plus personne ne rattraperait rien.
+  static List<String> droitsParDefaut() => [
+        for (final permission in Permissions.toutes)
+          if (!permission.adminSeul)
+            "INSERT OR IGNORE INTO role_permissions "
+                "(role_code, permission_code, updated_at) "
+                "VALUES ('magasinier', '${permission.code}', "
+                "strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+      ];
 
   /// Un mouvement porte enfin son auteur.
   ///

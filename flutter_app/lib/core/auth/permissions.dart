@@ -27,12 +27,13 @@ class Permission {
   /// Ce que lira un administrateur dans l'écran des rôles.
   final String libelle;
 
-  /// Réservé à l'administrateur tant que les rôles sont les deux rôles
-  /// en dur d'aujourd'hui — `admin` et `magasinier`.
+  /// Ce droit n'est pas servi d'office à un rôle non administrateur.
   ///
-  /// Ce drapeau est la règle provisoire, pas la règle définitive : la
-  /// phase 4 le remplacera par une table de permissions par rôle. Les
-  /// appels aux permissions, eux, ne bougeront pas.
+  /// C'est un **défaut de service**, pas un interdit : un administrateur
+  /// peut l'accorder à un rôle s'il le décide — un responsable de
+  /// magasin qui crée les comptes de son équipe est un besoin légitime.
+  /// Le drapeau dit seulement ce qu'on ne donne pas sans qu'on l'ait
+  /// demandé.
   final bool adminSeul;
 
   const Permission(this.code, this.libelle, {this.adminSeul = false});
@@ -100,32 +101,43 @@ class Permissions {
 
 /// Répond aux questions de droits pour la personne connectée.
 ///
-/// Prend le rôle plutôt que l'utilisateur : le noyau n'a pas à connaître
-/// le modèle d'un module pour répondre « oui » ou « non ».
+/// Prend le rôle et les droits qui lui sont accordés, plutôt que
+/// l'utilisateur : le noyau n'a pas à connaître le modèle d'un module
+/// pour répondre « oui » ou « non », ni à savoir d'où viennent les
+/// droits. Les charger est l'affaire du module des utilisateurs.
 class PermissionGate {
   /// Le rôle de la personne connectée, ou null si personne ne l'est.
   final String? role;
 
-  const PermissionGate(this.role);
+  /// Les codes de permission accordés à ce rôle, tels que lus en base.
+  ///
+  /// Un code inconnu du programme y est sans effet : une base écrite par
+  /// une version plus récente ne doit pas faire échouer celle-ci.
+  final Set<String> accordees;
+
+  const PermissionGate(this.role, {this.accordees = const {}});
 
   /// Personne n'est connecté : rien n'est permis.
   static const PermissionGate aucun = PermissionGate(null);
 
   bool get estConnecte => role != null;
 
-  bool get estAdmin => role == 'admin';
+  bool get estAdmin => role == roleAdmin;
+
+  /// Le rôle qui peut tout, par construction et non par données.
+  static const String roleAdmin = 'admin';
 
   /// Vrai si la personne connectée a le droit [permission].
   ///
-  /// Règle d'aujourd'hui, appelée à être remplacée en phase 4 : un
-  /// administrateur peut tout, les autres peuvent tout sauf ce qui est
-  /// marqué [Permission.adminSeul]. Elle reproduit exactement le
-  /// comportement que l'application avait déjà, pour que l'introduction
-  /// de ce point de décision ne change rien pour personne.
+  /// L'administrateur répond oui à tout **sans consulter la base**, et
+  /// c'est délibéré : si ses droits étaient des données, un
+  /// administrateur pourrait se retirer celui de gérer les droits, et
+  /// plus personne ne rattraperait rien. Les autres rôles répondent par
+  /// ce qui leur est accordé, et rien d'autre.
   bool autorise(Permission permission) {
     if (!estConnecte) return false;
-    if (permission.adminSeul) return estAdmin;
-    return true;
+    if (estAdmin) return true;
+    return accordees.contains(permission.code);
   }
 
   /// L'inverse, quand c'est ce qui se lit le mieux à l'appel.

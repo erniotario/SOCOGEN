@@ -2,15 +2,26 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:socogen/core/auth/permissions.dart';
 
-/// Le point de décision des droits, introduit avant les rôles.
+/// Le point de décision des droits, maintenant qu'il répond par des
+/// données.
 ///
-/// Sa valeur aujourd'hui tient en une phrase : il ne change rien. Les
-/// deux rôles en dur continuent de voir exactement ce qu'ils voyaient.
-/// Ce que ces tests protègent, c'est cette équivalence — le jour où la
-/// phase 4 remplacera la règle, ils diront si le remplacement a dérivé.
+/// Deux règles opposées à tenir. L'administrateur répond oui à tout
+/// **sans rien consulter** : si ses droits étaient des données, il
+/// pourrait se retirer celui de gérer les droits et plus personne ne
+/// rattraperait rien. Tous les autres rôles répondent par ce qui leur
+/// est accordé, **et rien d'autre** — l'absence de droits n'est pas une
+/// permission par défaut.
+///
+/// Que les droits servis à l'installation reproduisent l'ancienne règle
+/// est une question de données, et se vérifie dans
+/// `roles_test.dart` sur une base réelle.
 void main() {
   const admin = PermissionGate('admin');
-  const magasinier = PermissionGate('magasinier');
+  // Un magasinier tel que la base le sert : tout sauf l'administration.
+  final magasinier = PermissionGate('magasinier', accordees: {
+    for (final p in Permissions.toutes)
+      if (!p.adminSeul) p.code,
+  });
 
   group('comportement reproduit à l\'identique', () {
     test('un administrateur garde accès à tout', () {
@@ -41,15 +52,31 @@ void main() {
       }
     });
 
-    test('un rôle inconnu est traité comme un rôle sans privilège', () {
-      // Un rôle ajouté en base à la main, ou lu depuis une version plus
-      // récente : il entre, mais rien de réservé ne s'ouvre à lui.
-      const inconnu = PermissionGate('comptable');
+    test('un rôle sans droits accordés ne peut rien', () {
+      // Un rôle créé et pas encore réglé. Il entre — la session existe —
+      // mais rien ne s'ouvre à lui. L'absence de droits ne vaut pas
+      // permission : c'est le sens d'erreur qui se rattrape.
+      const neuf = PermissionGate('comptable');
 
-      expect(inconnu.estConnecte, isTrue);
-      expect(inconnu.estAdmin, isFalse);
-      expect(inconnu.autorise(Permissions.gererUtilisateurs), isFalse);
-      expect(inconnu.autorise(Permissions.consulterStock), isTrue);
+      expect(neuf.estConnecte, isTrue);
+      expect(neuf.estAdmin, isFalse);
+      for (final p in Permissions.toutes) {
+        expect(neuf.autorise(p), isFalse, reason: p.code);
+      }
+    });
+
+    test('un droit inconnu du programme est sans effet', () {
+      // Une base écrite par une version plus récente peut accorder un
+      // code que celle-ci ne connaît pas. Il ne doit rien ouvrir, et
+      // surtout rien faire échouer.
+      const venuDAilleurs = PermissionGate(
+        'comptable',
+        accordees: {'comptabilite.cloturer'},
+      );
+
+      for (final p in Permissions.toutes) {
+        expect(venuDAilleurs.autorise(p), isFalse, reason: p.code);
+      }
     });
   });
 

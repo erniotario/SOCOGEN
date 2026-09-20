@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~369 tests across 41 files
+flutter test                 # ~387 tests across 44 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -95,9 +95,21 @@ chemin absolu est inspectable par le test ci-dessus.
   écran. `ErreurUtilisateur` sert aux services à lever une cause métier
   déjà rédigée.
 - **`core/auth/permissions`** — `PermissionGate` répond aux questions de
-  droits. Il reproduit aujourd'hui le comportement des deux rôles en dur
-  et sera remplacé en phase 4 sans toucher aux appelants. **Sans serveur,
-  une permission cache un écran ; elle ne protège pas le fichier SQLite.**
+  droits, désormais par données : il reçoit un rôle et l'ensemble des
+  codes qui lui sont accordés. Deux règles opposées s'y tiennent.
+  `admin` répond oui à tout **sans rien consulter** — si ses droits
+  étaient des données, un administrateur pourrait se retirer celui de
+  gérer les droits et plus personne ne rattraperait rien. Tout autre
+  rôle répond par ce qui lui est accordé, **et rien d'autre** : un rôle
+  neuf ne peut rien, parce que c'est le sens d'erreur qui se rattrape.
+  Les codes sont déclarés dans le code, pas en base ; un code inconnu lu
+  en base est sans effet plutôt que fatal. Charger les droits est
+  l'affaire du module (`UtilisateursService.droitsDe`) : le noyau ne
+  sait pas d'où ils viennent. **Sans serveur, une permission cache un
+  écran ; elle ne protège pas le fichier SQLite.**
+- **`core/auth/session_courante`** — qui est connecté, pour les
+  écritures qui portent un auteur. Ambiant et non passé en argument :
+  voir la note sur l'attribution plus bas.
 - **`core/auth/password_hasher`** — PBKDF2-HMAC-SHA256, 12 000 tours,
   écrit avec `crypto` (aucune dépendance ajoutée). Les condensats hérités
   en SHA-256 à un tour restent vérifiables et sont réécrits à la
