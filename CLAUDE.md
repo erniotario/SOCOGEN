@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~403 tests across 45 files
+flutter test                 # ~416 tests across 47 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -166,6 +166,26 @@ reports an unreadable date rather than assuming one — a movement in the
 wrong store silently corrupts that store's balance, and a silent
 corruption is worse than a rejected row. Hold that line everywhere:
 where the right answer is unknown, say so and let the operator decide.
+
+**A sale is the sortie from the shop's magasin.** The owner's ruling,
+and it settles the POS's shape: a sale is not an operation that produces
+a movement, it *is* the movement. What a bare sortie could not say is at
+what price — so `prix_unitaire` now sits on both movement tables, in
+minor units.
+
+It is **frozen on the line at write time**, never re-read from the
+article. A change of tariff must not rewrite what a sale in March
+brought in; the same rule as the tiers name kept on the movement. A
+negotiated price is therefore recordable, because the line holds what
+was actually charged rather than what the catalogue says.
+
+`ValorisationRepository` reads only those frozen prices: `ventes()` for
+what a shop took, `valeurDuStock()` for what a store's goods cost. Both
+**exclude** priceless movements from their totals and count them
+separately — the 5 201 lines from before v10 have no price, and counting
+them as zero would pass "we don't know" off as "it earned nothing". A
+transfer is excluded from sales outright: the goods never left the
+business.
 
 **A point of sale is a magasin, not a customer.** The owner's own
 reading of the live data: `BMC` is *Boutique Marché Central*, one of the

@@ -24,6 +24,14 @@ class StockOutput {
   /// perte ici et une aubaine là.
   final int? transfertId;
 
+  /// Le prix unitaire pratiqué, en unités minimales de la devise.
+  ///
+  /// Figé au moment de l'écriture et non relu sur l'article : un
+  /// changement de tarif ne doit pas réécrire ce qu'une vente de mars a
+  /// rapporté. Nul pour un transfert, qui ne vend rien, et pour les
+  /// mouvements antérieurs à cette version.
+  final int? prixUnitaireUnites;
+
   const StockOutput({
     required this.id,
     required this.date,
@@ -35,6 +43,7 @@ class StockOutput {
     required this.quantity,
     this.tiersId,
     this.transfertId,
+    this.prixUnitaireUnites,
   });
 
   factory StockOutput.fromMap(Map<String, Object?> map) {
@@ -49,6 +58,7 @@ class StockOutput {
       quantity: map['quantity'] as int,
       tiersId: map['tiers_id'] as int?,
       transfertId: map['transfert_id'] as int?,
+      prixUnitaireUnites: (map['prix_unitaire'] as num?)?.toInt(),
     );
   }
 
@@ -64,6 +74,7 @@ class StockOutput {
       'quantity': quantity,
       'tiers_id': tiersId,
       'transfert_id': transfertId,
+      'prix_unitaire': prixUnitaireUnites,
     };
   }
 }

@@ -9,7 +9,7 @@ import 'package:socogen/core/auth/permissions.dart';
 class AppSchema {
   AppSchema._();
 
-  static const int version = 9;
+  static const int version = 10;
 
   static const List<String> createStatements = [
     '''
@@ -163,6 +163,17 @@ class AppSchema {
       -- premier administrateur venu serait signer à sa place.
       created_by INTEGER REFERENCES users(id),
       created_at TEXT,
+      -- Le prix unitaire pratiqué sur cette ligne, en unités minimales
+      -- de la devise.
+      --
+      -- Figé au moment de l'écriture, et non relu sur l'article : un
+      -- changement de tarif ne doit pas réécrire ce qu'une vente de
+      -- mars a rapporté. Même principe que le nom du tiers conservé sur
+      -- le mouvement.
+      --
+      -- Nul est normal : un transfert entre magasins n'a pas de prix,
+      -- et les mouvements d'avant cette version n'en ont jamais eu.
+      prix_unitaire INTEGER,
       sync_id TEXT,
       updated_at TEXT
     )
@@ -190,6 +201,17 @@ class AppSchema {
       -- premier administrateur venu serait signer à sa place.
       created_by INTEGER REFERENCES users(id),
       created_at TEXT,
+      -- Le prix unitaire pratiqué sur cette ligne, en unités minimales
+      -- de la devise.
+      --
+      -- Figé au moment de l'écriture, et non relu sur l'article : un
+      -- changement de tarif ne doit pas réécrire ce qu'une vente de
+      -- mars a rapporté. Même principe que le nom du tiers conservé sur
+      -- le mouvement.
+      --
+      -- Nul est normal : un transfert entre magasins n'a pas de prix,
+      -- et les mouvements d'avant cette version n'en ont jamais eu.
+      prix_unitaire INTEGER,
       sync_id TEXT,
       updated_at TEXT
     )
@@ -386,6 +408,27 @@ class AppSchema {
     "UPDATE stock_outputs SET tiers_id = "
         "(SELECT id FROM tiers WHERE tiers.nom = TRIM(stock_outputs.destination)) "
         "WHERE tiers_id IS NULL AND TRIM(COALESCE(destination,'')) <> ''",
+  ];
+
+  /// L'argent arrive sur le mouvement.
+  ///
+  /// « La vente est la sortie dans le magasin de la boutique » : le
+  /// propriétaire a tranché, une vente n'est pas une opération à part.
+  /// Mais une sortie ne disait pas à quel prix, donc rien ne permettait
+  /// de savoir ce qu'une journée avait rapporté ni ce qu'un article
+  /// avait coûté.
+  ///
+  /// Le prix est **figé sur la ligne** au moment de l'écriture, et non
+  /// relu sur l'article au moment de la lecture : un changement de tarif
+  /// ne doit pas réécrire ce qu'une vente de mars a rapporté. C'est la
+  /// même règle que le nom du tiers conservé sur le mouvement.
+  ///
+  /// Les colonnes arrivent nulles et le restent : prêter aux 5 201
+  /// mouvements déjà au dossier le prix d'aujourd'hui inventerait un
+  /// chiffre d'affaires qui n'a jamais été constaté.
+  static const List<String> migrationV9ToV10 = [
+    'ALTER TABLE stock_entries ADD COLUMN prix_unitaire INTEGER',
+    'ALTER TABLE stock_outputs ADD COLUMN prix_unitaire INTEGER',
   ];
 
   /// Les rôles et leurs droits deviennent des données.
