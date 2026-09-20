@@ -18,6 +18,7 @@ import 'package:socogen/modules/stock/ui/stores_screen.dart';
 import 'package:socogen/modules/tiers/ui/tiers_screen.dart';
 import 'package:socogen/modules/stock/ui/transactions_screen.dart';
 import 'package:socogen/modules/stock/ui/transferts_screen.dart';
+import 'package:socogen/modules/stock/ui/caisse_screen.dart';
 import 'package:socogen/shared/ui/theme/app_theme.dart';
 
 import 'repositories/test_database.dart';
@@ -42,6 +43,7 @@ final _screens = <String, Widget Function()>{
   // belongs in the overflow matrix like the rest.
   'Configuration initiale': () => CompanySetupScreen(onDone: () {}),
   'Tableau de bord': () => const DashboardScreen(),
+  'Caisse': () => const CaisseScreen(),
   'Produits': () => const ProductsScreen(),
   'Entrées': () => const EntriesScreen(),
   'Sorties': () => const OutputsScreen(),

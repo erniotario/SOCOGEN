@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~417 tests across 47 files
+flutter test                 # ~438 tests across 49 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -186,6 +186,30 @@ separately — the 5 201 lines from before v10 have no price, and counting
 them as zero would pass "we don't know" off as "it earned nothing". A
 transfer is excluded from sales outright: the goods never left the
 business.
+
+**A sale has no table of its own.** The lines of one checkout are
+sorties from the shop's magasin sharing an `invoice_number` — the
+ticket. That column already existed and Transactions already shows it.
+A `ventes` table would have restated what the movements say and diverged
+from them at the first correction. What it costs is that a sale has no
+existence of its own — no payment method, no basket-level discount —
+and those arrive with payments, when they will have a reason to live
+somewhere other than on the line.
+
+Ticket numbers are `TKT…`, deliberately apart from the `FAC…` that the
+Sage import brings: a ticket rung up here and an invoice imported from
+Sage are not the same document, and mixing them would make the numbering
+impossible to resume. The next number is computed from the highest
+observed, not held in a counter — a counter drifts from a restored or
+merged database, the maximum does not.
+
+**The price is always typed, pre-filled from the catalogue when there is
+one.** The two requirements pull against each other: 583 articles have
+no tariff and refusing to sell them would make the till useless, while
+accepting a sale with no price would make turnover unknowable. So the
+line requires a price and does not require it to come from the article.
+A negotiated price is therefore a fact of the sale rather than an
+anomaly.
 
 **A point of sale is a magasin, not a customer.** The owner's own
 reading of the live data: `BMC` is *Boutique Marché Central*, one of the

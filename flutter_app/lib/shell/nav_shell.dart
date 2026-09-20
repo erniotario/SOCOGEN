@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:socogen/core/auth/auth_provider.dart';
 import 'package:socogen/core/auth/permissions.dart';
 import 'package:socogen/modules/rapports/ui/dashboard_screen.dart';
+import 'package:socogen/modules/stock/ui/caisse_screen.dart';
 import 'package:socogen/modules/stock/ui/entries_screen.dart';
 import 'package:socogen/modules/stock/ui/inventory_screen.dart';
 import 'package:socogen/modules/stock/ui/outputs_screen.dart';
@@ -85,6 +86,7 @@ class _NavEntry {
 const List<_NavEntry> _navEntries = [
   _NavEntry(Icons.dashboard_outlined, Icons.dashboard, 'Tableau de bord',
       'Accueil'),
+  _NavEntry(Icons.point_of_sale_outlined, Icons.point_of_sale, 'Caisse'),
   _NavEntry(Icons.inventory_2_outlined, Icons.inventory_2, 'Produits'),
   _NavEntry(Icons.call_received, Icons.call_received, 'Entrées'),
   _NavEntry(Icons.call_made, Icons.call_made, 'Sorties'),
@@ -111,7 +113,7 @@ const int _adminOnlyCount = 2;
 /// administration ones (Tiers, Magasins, Sécurité, Paramètres). These
 /// are positions into [_navEntries] -- inserting a destination moves
 /// them.
-const List<int> _sectionStarts = [5, 8];
+const List<int> _sectionStarts = [6, 9];
 
 /// Destinations that get a slot in the phone bottom bar. The rest live
 /// behind the trailing "Plus" destination.
@@ -119,6 +121,7 @@ const int _bottomBarCount = 4;
 
 const List<Widget> _screens = [
   DashboardScreen(),
+  CaisseScreen(),
   ProductsScreen(),
   EntriesScreen(),
   OutputsScreen(),
