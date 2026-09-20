@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~387 tests across 44 files
+flutter test                 # ~398 tests across 45 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -166,6 +166,24 @@ reports an unreadable date rather than assuming one — a movement in the
 wrong store silently corrupts that store's balance, and a silent
 corruption is worse than a rejected row. Hold that line everywhere:
 where the right answer is unknown, say so and let the operator decide.
+
+**Two magasins can be the same warehouse, and that is worse than two
+tiers.** The live data holds `Elig-Essono` beside `Ellig-Essono`. Stock
+is derived *per store*, so a duplicate splits one warehouse's balance in
+two halves that cannot see each other — an article reads as a rupture on
+one side while the other side has it. `StoreRepository.fusionner` is the
+deliberate act that settles one, and it differs from the tiers merge in
+two ways that matter. Opening stocks are **summed** where both stores
+carry the same article, because `product_stocks` is unique per (article,
+store) and the reunited warehouse's opening really is the sum. And the
+source store is **deleted**, not deactivated: a tiers keeps its name on
+past movements, whereas a store emptied of its movements and stocks is
+referenced by nothing. The tombstone goes out under its *name*, since
+that is how sync identifies a store. A transfer between the two is left
+standing — it becomes a transfer to itself, which is no longer a
+sensible operation, but its two movements now sit in the same store and
+cancel there, so the balance stays true and the history keeps saying
+what was done that day.
 
 **A partner is a record; the text on the movement is history.**
 `tiers` holds clients and fournisseurs — one fiche can be both, because

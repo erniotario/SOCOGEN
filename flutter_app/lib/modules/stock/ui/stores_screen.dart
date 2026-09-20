@@ -93,6 +93,45 @@ class _StoresScreenState extends State<StoresScreen> {
     if (saved == true) _onChanged();
   }
 
+  /// Réunit deux magasins qui désignent le même dépôt.
+  ///
+  /// Le geste existe parce que les données réelles portent
+  /// « Elig-Essono » et « Ellig-Essono ». Le stock étant dérivé par
+  /// magasin, ce doublon coupe en deux le solde d'un même entrepôt — et
+  /// un article peut paraître en rupture d'un côté et fourni de l'autre.
+  Future<void> _fusionner(Store source) async {
+    final autres = (await _storeRepo.getAllStores())
+        .where((m) => m.id != source.id)
+        .toList();
+    if (!mounted) return;
+    if (autres.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Il n'y a pas d'autre magasin vers lequel "
+                'fusionner.')),
+      );
+      return;
+    }
+    final bilan = await showDialog<
+        ({int mouvements, int lignesStock, int transferts})>(
+      context: context,
+      builder: (_) => _FusionMagasinDialog(source: source, candidats: autres),
+    );
+    if (bilan == null || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 6),
+        content: Text(
+          'Magasins réunis. ${bilan.mouvements} mouvement'
+          '${bilan.mouvements > 1 ? 's' : ''} et ${bilan.lignesStock} ligne'
+          '${bilan.lignesStock > 1 ? 's' : ''} de stock déplacée'
+          '${bilan.lignesStock > 1 ? 's' : ''}.',
+        ),
+      ),
+    );
+    _onChanged();
+  }
+
   Future<void> _deleteStore(Store store) async {
     final hasLinked = await _storeRepo.hasLinkedData(store.id);
     if (!mounted) return;
@@ -214,13 +253,13 @@ class _StoresScreenState extends State<StoresScreen> {
       actionsColumn: 4,
       titleColumn: 1,
       subtitleColumn: null,
-      minTableWidth: 560,
+      minTableWidth: 600,
       columns: const [
         AppColumn('ID', flex: 8, align: Alignment.center),
         AppColumn('NOM DU MAGASIN', flex: 35),
         AppColumn('PRODUITS', flex: 15, align: Alignment.center),
         AppColumn.number('STOCK TOTAL', flex: 20),
-        AppColumn.actions(flex: 14),
+        AppColumn.actions(flex: 20),
       ],
       empty: AppEmptyState(
         icon: Icons.store_outlined,
@@ -257,6 +296,11 @@ class _StoresScreenState extends State<StoresScreen> {
                     icon: Icons.edit_outlined,
                     tooltip: 'Modifier',
                     onPressed: () => _openEditDialog(overview.store),
+                  ),
+                  RowAction(
+                    icon: Icons.merge_type,
+                    tooltip: 'Fusionner avec un autre magasin',
+                    onPressed: () => _fusionner(overview.store),
                   ),
                   RowAction(
                     icon: Icons.delete_outline,
@@ -500,6 +544,141 @@ class _StoreFormDialogState extends State<_StoreFormDialog> {
           child: _saving
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
               : Text(_isEdit ? 'Enregistrer' : 'Ajouter'),
+        ),
+      ],
+    );
+  }
+}
+
+
+/// Réunir deux magasins, en disant ce que cela va faire.
+///
+/// L'opération est irréversible et touche tout l'historique du dépôt :
+/// le dialogue annonce donc les trois effets — les mouvements changent
+/// de magasin, les stocks d'ouverture s'additionnent, le magasin source
+/// disparaît — avant de demander confirmation.
+class _FusionMagasinDialog extends StatefulWidget {
+  final Store source;
+  final List<Store> candidats;
+
+  const _FusionMagasinDialog({required this.source, required this.candidats});
+
+  @override
+  State<_FusionMagasinDialog> createState() => _FusionMagasinDialogState();
+}
+
+class _FusionMagasinDialogState extends State<_FusionMagasinDialog> {
+  final _storeRepo = StoreRepository();
+
+  Store? _cible;
+  String? _erreur;
+  bool _enCours = false;
+
+  Future<void> _fusionner() async {
+    final cible = _cible;
+    if (cible == null) {
+      setState(() => _erreur = 'Choisissez le magasin à conserver.');
+      return;
+    }
+    setState(() {
+      _enCours = true;
+      _erreur = null;
+    });
+    try {
+      final bilan = await _storeRepo.fusionner(
+        sourceId: widget.source.id,
+        cibleId: cible.id,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, bilan);
+    } catch (e) {
+      setState(() {
+        _erreur = messagePour(e, operation: 'la fusion des magasins');
+        _enCours = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Fusionner deux magasins'),
+      content: SizedBox(
+        width: 460,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Tout ce que contient « ${widget.source.name} » passera au '
+              'magasin conservé, et « ${widget.source.name} » sera '
+              'supprimé.',
+              style: AppTextStyles.bodyMuted,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            DropdownButtonFormField<Store>(
+              initialValue: _cible,
+              isExpanded: true,
+              decoration:
+                  const InputDecoration(labelText: 'Magasin à conserver'),
+              items: [
+                for (final m in widget.candidats)
+                  DropdownMenuItem(
+                    value: m,
+                    child: Text(m.name,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: (v) => setState(() => _cible = v),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border:
+                    Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.warning_amber_outlined,
+                      size: 16, color: AppColors.warning),
+                  const SizedBox(width: AppSpacing.sm),
+                  const Expanded(
+                    child: Text(
+                      'Les mouvements changent de magasin et les stocks '
+                      "de départ s'additionnent. Cette opération ne peut "
+                      'pas être annulée.',
+                      style: AppTextStyles.bodyMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_erreur != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              Text(_erreur!,
+                  style:
+                      const TextStyle(color: AppColors.error, fontSize: 12)),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _enCours ? null : () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          onPressed: _enCours ? null : _fusionner,
+          child: _enCours
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Fusionner'),
         ),
       ],
     );
