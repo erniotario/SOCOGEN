@@ -12,6 +12,7 @@ import 'package:socogen/modules/rapports/ui/reports_screen.dart';
 import 'package:socogen/modules/utilisateurs/ui/security_screen.dart';
 import 'package:socogen/modules/parametres/ui/settings_screen.dart';
 import 'package:socogen/modules/stock/ui/stores_screen.dart';
+import 'package:socogen/modules/tiers/ui/tiers_screen.dart';
 import 'package:socogen/modules/stock/ui/transactions_screen.dart';
 import 'package:socogen/shared/ui/theme/app_branding.dart';
 import 'package:socogen/shared/ui/theme/app_breakpoints.dart';
@@ -54,6 +55,7 @@ const List<_NavEntry> _navEntries = [
   _NavEntry(Icons.swap_horiz, Icons.swap_horiz, 'Transactions'),
   _NavEntry(Icons.fact_check_outlined, Icons.fact_check, 'Inventaire'),
   _NavEntry(Icons.bar_chart_outlined, Icons.bar_chart, 'Rapports'),
+  _NavEntry(Icons.contacts_outlined, Icons.contacts, 'Tiers'),
   _NavEntry(Icons.store_outlined, Icons.store, 'Magasins'),
   _NavEntry(Icons.security_outlined, Icons.security, 'Sécurité'),
   _NavEntry(Icons.settings_outlined, Icons.settings, 'Paramètres'),
@@ -67,8 +69,10 @@ const int _adminOnlyCount = 2;
 /// (a divider is drawn above each, except the first).
 ///
 /// Sections are: the daily stock screens, then the ledger ones
-/// (Transactions, Inventaire, Rapports), then administration. These are
-/// positions into [_navEntries] -- inserting a destination moves them.
+/// (Transactions, Inventaire, Rapports), then the reference and
+/// administration ones (Tiers, Magasins, Sécurité, Paramètres). These
+/// are positions into [_navEntries] -- inserting a destination moves
+/// them.
 const List<int> _sectionStarts = [4, 7];
 
 /// Destinations that get a slot in the phone bottom bar. The rest live
@@ -83,6 +87,7 @@ const List<Widget> _screens = [
   TransactionsScreen(),
   InventoryScreen(),
   ReportsScreen(),
+  TiersScreen(),
   StoresScreen(),
   SecurityScreen(),
   SettingsScreen(),

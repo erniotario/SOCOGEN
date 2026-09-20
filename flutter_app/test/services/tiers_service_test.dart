@@ -7,7 +7,7 @@ import 'package:socogen/core/money/montant.dart';
 import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
 import 'package:socogen/modules/parametres/repositories/tva_repository.dart';
 import 'package:socogen/modules/parametres/services/parametres_service.dart';
-import 'package:socogen/modules/tiers/models/tiers.dart';
+import 'package:socogen/shared/models/tiers.dart';
 import 'package:socogen/modules/tiers/repositories/tiers_repository.dart';
 import 'package:socogen/modules/tiers/services/tiers_service.dart';
 

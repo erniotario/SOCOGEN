@@ -16,6 +16,10 @@ import 'package:socogen/core/db/schema.dart';
 /// - stock_outputs:
 ///     2026-01-08 REF1 StoreA -12 (INV1, Client X)
 ///     2026-02-05 REF2 StoreA -3  (INV2, Client Y)
+/// - tiers: F0001 "Fournisseur A" (fournisseur), C0001 "Client X" (client)
+///   Deux fiches seulement, et aucun mouvement ne les référence : le texte
+///   des mouvements ci-dessus est volontairement laissé tel quel, pour que
+///   le cas « saisi à la main, jamais rattaché » reste représenté ici.
 ///
 /// Expected aggregates:
 /// - REF1 current = 15 (initial) + 25 (entries) - 12 (outputs) = 28 -> En stock
@@ -111,6 +115,21 @@ Future<Database> openTestDatabase() async {
     'store_id': 1,
     'destination': 'Client Y',
     'quantity': 3,
+  });
+
+  await db.insert('tiers', {
+    'id': 1,
+    'code': 'F0001',
+    'nom': 'Fournisseur A',
+    'type': 'fournisseur',
+    'telephone': '699112233',
+    'ville': 'Yaoundé',
+  });
+  await db.insert('tiers', {
+    'id': 2,
+    'code': 'C0001',
+    'nom': 'Client X',
+    'type': 'client',
   });
 
   return db;

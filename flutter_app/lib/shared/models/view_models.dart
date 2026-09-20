@@ -173,6 +173,14 @@ class TransactionRow {
   /// Supplier for entries, destination for outputs.
   final String partner;
 
+  /// La fiche du partenaire, quand le mouvement en a une.
+  ///
+  /// Portée jusqu'ici parce que Transactions peut réécrire le
+  /// mouvement : sans elle, chaque modification effacerait le
+  /// rattachement en silence, et une fusion déjà faite serait défaite
+  /// par la première correction de quantité venue.
+  final int? tiersId;
+
   /// Empty for entries.
   final String invoiceNumber;
   final int inQty;
@@ -187,6 +195,7 @@ class TransactionRow {
     required this.designation,
     required this.storeName,
     required this.partner,
+    this.tiersId,
     required this.invoiceNumber,
     required this.inQty,
     required this.outQty,

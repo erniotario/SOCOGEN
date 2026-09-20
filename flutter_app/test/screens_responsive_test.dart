@@ -15,6 +15,7 @@ import 'package:socogen/modules/rapports/ui/reports_screen.dart';
 import 'package:socogen/modules/utilisateurs/ui/security_screen.dart';
 import 'package:socogen/modules/parametres/ui/settings_screen.dart';
 import 'package:socogen/modules/stock/ui/stores_screen.dart';
+import 'package:socogen/modules/tiers/ui/tiers_screen.dart';
 import 'package:socogen/modules/stock/ui/transactions_screen.dart';
 import 'package:socogen/shared/ui/theme/app_theme.dart';
 
@@ -46,6 +47,7 @@ final _screens = <String, Widget Function()>{
   'Transactions': () => const TransactionsScreen(),
   'Inventaire': () => const InventoryScreen(),
   'Rapports': () => const ReportsScreen(),
+  'Tiers': () => const TiersScreen(),
   'Magasins': () => const StoresScreen(),
   'Sécurité': () => const SecurityScreen(),
   'Paramètres': () => const SettingsScreen(),

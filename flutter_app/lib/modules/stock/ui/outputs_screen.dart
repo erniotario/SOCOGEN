@@ -23,6 +23,9 @@ import 'package:socogen/shared/ui/widgets/dialog_body.dart';
 import 'package:socogen/shared/ui/widgets/empty_state.dart';
 import 'package:socogen/shared/ui/widgets/page_header.dart';
 import 'package:socogen/shared/ui/widgets/product_autocomplete.dart';
+import 'package:socogen/shared/ui/widgets/tiers_autocomplete.dart';
+import 'package:socogen/shared/models/tiers.dart';
+import 'package:socogen/modules/tiers/services/tiers_service.dart';
 import 'package:socogen/shared/ui/widgets/row_actions.dart';
 import 'package:socogen/shared/ui/widgets/skeleton.dart';
 import 'package:socogen/core/errors/messages.dart';
@@ -280,6 +283,13 @@ class _OutputFormCard extends StatefulWidget {
 class _OutputFormCardState extends State<_OutputFormCard> {
   final _outputRepo = StockOutputRepository();
   final _stock = StockService();
+  final _tiersService = TiersService();
+
+  /// Les fiches proposées, et celle qui est retenue. Le lien tombe dès
+  /// que le texte bouge : un mouvement ne doit pas pointer une fiche
+  /// dont il ne porte plus le nom.
+  List<Tiers> _clients = const [];
+  int? _clientId;
   final _refController = TextEditingController();
   final _invoiceController = TextEditingController();
   final _destinationController = TextEditingController();
@@ -296,6 +306,34 @@ class _OutputFormCardState extends State<_OutputFormCard> {
   void initState() {
     super.initState();
     _storeId = widget.stores.isNotEmpty ? widget.stores.first.id : null;
+    _chargerClients();
+  }
+
+  Future<void> _chargerClients() async {
+    final fiches = await _tiersService.listerClients();
+    if (!mounted) return;
+    setState(() => _clients = fiches);
+  }
+
+  /// Crée la fiche demandée depuis le champ, puis la retient. Explicite,
+  /// pour la même raison que côté entrées : une fiche créée à chaque
+  /// frappe approximative refabriquerait les doublons.
+  Future<void> _creerClient(String nom) async {
+    try {
+      await _tiersService.creer(nom: nom, type: TypeTiers.client);
+      await _chargerClients();
+      final cree = await _tiersService.parNom(nom);
+      if (!mounted || cree == null) return;
+      setState(() {
+        _destinationController.text = cree.nom;
+        _clientId = cree.id;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() =>
+          _error = messagePour(e, operation: 'la création du client'));
+    }
   }
 
   @override
@@ -436,8 +474,10 @@ class _OutputFormCardState extends State<_OutputFormCard> {
         storeId: _storeId!,
         destination: destination,
         quantity: qty,
+        tiersId: _clientId,
       ));
       _refController.clear();
+      _clientId = null;
       _invoiceController.clear();
       _destinationController.clear();
       _quantityController.text = '1';
@@ -523,10 +563,17 @@ class _OutputFormCardState extends State<_OutputFormCard> {
                 ),
               ),
               SizedBox(
-                width: 220,
-                child: TextField(
+                width: 240,
+                child: TiersAutocomplete(
+                  tiers: _clients,
                   controller: _destinationController,
-                  decoration: const InputDecoration(labelText: 'Destination', hintText: 'Ex: Chantier Bastos'),
+                  labelText: 'Destination',
+                  hintText: 'Ex : BMC',
+                  onTiersChoisi: (t) => setState(() => _clientId = t.id),
+                  onCreationDemandee: _creerClient,
+                  onChoixAbandonne: () {
+                    if (_clientId != null) setState(() => _clientId = null);
+                  },
                 ),
               ),
               SizedBox(
@@ -679,6 +726,10 @@ class _OutputFormDialogState extends State<_OutputFormDialog> {
     });
 
     try {
+      // Le rattachement ne suit que si le nom n'a pas changé : retaper
+      // la destination, c'est désigner quelqu'un d'autre.
+      final nom = _destinationController.text.trim();
+      final memeNom = nom == widget.output.destination.trim();
       await _outputRepo.update(StockOutput(
         id: widget.output.id,
         date: DateFormat('yyyy-MM-dd').format(_date),
@@ -686,8 +737,11 @@ class _OutputFormDialogState extends State<_OutputFormDialog> {
         designation: _selectedProduct!.product.designation,
         invoiceNumber: _invoiceController.text.trim(),
         storeId: _storeId!,
-        destination: _destinationController.text.trim(),
+        destination: nom,
         quantity: qty,
+        tiersId: memeNom
+            ? widget.output.tiersId
+            : (await TiersService().parNom(nom))?.id,
       ));
       if (!mounted) return;
       Navigator.pop(context, true);

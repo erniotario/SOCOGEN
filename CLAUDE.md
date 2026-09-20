@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~300 tests across 32 files
+flutter test                 # ~313 tests across 33 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -174,6 +174,24 @@ one. It moves the movements, deactivates the source, and never deletes:
 a fiche with history behind it is not erasable. The reprise also never
 reclassifies a fiche it did not just create, since someone may have
 corrected the rôle by hand since.
+
+The movement forms choose a fiche instead of retyping a name, but the
+field stays free text on purpose: a storekeeper receiving from a new
+supplier on a Saturday must be able to record the entry without first
+going to create a fiche. What the field adds is that **choosing is
+easier than retyping** — and an unknown name offers to create the fiche
+rather than fabricating one silently, because a fiche created on every
+approximate keystroke is how the near-duplicates come back. A movement
+saved with no fiche keeps its text and stays rattachable, which is why
+the reprise is replayable.
+
+Three write paths now resolve that link, and all three follow the same
+rule: **the link follows the name.** Editing a movement re-resolves the
+fiche only when the text changed, because looking it up every time would
+undo a merge — a merged movement still reads `BCM` while counting for
+`BMC`, and a quantity correction would send it back to `BCM`.
+`mouvement_tiers_test.dart` pins that, and the Sage import links to an
+exact existing name but never creates a fiche.
 
 **A database belongs to one business, and says so.** `sync_meta` carries a
 `tenant_id`, minted on first sync rather than at creation — stamping on
@@ -330,6 +348,13 @@ WAL on Android is the `com.tekartik.sqflite.wal_enabled` manifest flag,
 not a pragma. It is currently off there.
 
 ## UI
+
+`AppEmptyState` and `AppErrorState` centre their content when the pane
+has room and scroll when it does not. The icon, title, sentence and
+button come to nearly 290 px — more than a phone in landscape leaves
+once the page header and filter bar are placed — and an empty state is
+exactly what a fresh install shows, so the overflow landed on a new
+customer's first screen.
 
 `AdaptiveTable` (`lib/widgets/adaptive_table.dart`) draws a column table
 on wide panes and one card per record below 840 px. Columns and cells are

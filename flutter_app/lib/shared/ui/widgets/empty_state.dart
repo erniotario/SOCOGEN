@@ -23,8 +23,30 @@ class AppEmptyState extends StatelessWidget {
     this.action,
   });
 
+  // Centré quand il y a la place, défilant quand il n'y en a pas.
+  //
+  // L'icône, le titre, la phrase et le bouton font ensemble près de
+  // 290 px : plus que la hauteur utile d'un téléphone en paysage une
+  // fois l'en-tête et les filtres posés. Sans ce défilement, l'état
+  // vide débordait de 139 px — et un état vide est précisément ce que
+  // voit une installation neuve, donc le tout premier écran d'un
+  // nouveau client.
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, contraintes) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight:
+                contraintes.hasBoundedHeight ? contraintes.maxHeight : 0,
+          ),
+          child: _contenu(),
+        ),
+      ),
+    );
+  }
+
+  Widget _contenu() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),
@@ -76,8 +98,25 @@ class AppErrorState extends StatelessWidget {
 
   const AppErrorState({super.key, required this.message, this.onRetry});
 
+  // Même traitement que [AppEmptyState] ci-dessus, et pour la
+  // même raison : cet état-là aussi s'affiche dans un panneau
+  // qui peut être court.
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, contraintes) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight:
+                contraintes.hasBoundedHeight ? contraintes.maxHeight : 0,
+          ),
+          child: _contenu(),
+        ),
+      ),
+    );
+  }
+
+  Widget _contenu() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),

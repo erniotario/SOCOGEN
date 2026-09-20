@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:socogen/core/db/database_service.dart';
 import 'package:socogen/core/db/sync_columns.dart';
 import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/modules/tiers/models/tiers.dart';
+import 'package:socogen/shared/models/tiers.dart';
 
 /// Les fiches clients et fournisseurs.
 class TiersRepository {

@@ -18,7 +18,7 @@ class StockEntryRepository {
     final db = await _db;
     final rows = await db.rawQuery('''
       SELECT se.id, se.date, se.supplier, se.reference, se.designation,
-             se.store_id, se.quantity, s.name AS store_name
+             se.store_id, se.quantity, se.tiers_id, s.name AS store_name
       FROM stock_entries se
       JOIN stores s ON s.id = se.store_id
       ORDER BY se.date DESC, se.id DESC

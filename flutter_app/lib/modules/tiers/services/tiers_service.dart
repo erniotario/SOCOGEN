@@ -1,7 +1,7 @@
 import 'package:socogen/core/errors/messages.dart';
 import 'package:socogen/core/money/montant.dart';
 import 'package:socogen/modules/parametres/services/parametres_service.dart';
-import 'package:socogen/modules/tiers/models/tiers.dart';
+import 'package:socogen/shared/models/tiers.dart';
 import 'package:socogen/modules/tiers/repositories/tiers_repository.dart';
 
 /// Ce que les tiers exposent aux autres modules.

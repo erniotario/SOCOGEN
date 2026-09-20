@@ -123,7 +123,7 @@ class TransactionRepository {
 
     final entryRows = await db.rawQuery('''
       SELECT se.id, se.date, se.reference, se.designation, se.supplier,
-             se.quantity, s.name AS store_name
+             se.quantity, se.tiers_id, s.name AS store_name
       FROM stock_entries se
       JOIN stores s ON s.id = se.store_id
       $whereSql
@@ -137,6 +137,7 @@ class TransactionRepository {
         designation: row['designation'] as String,
         storeName: row['store_name'] as String,
         partner: (row['supplier'] as String?) ?? '',
+        tiersId: row['tiers_id'] as int?,
         invoiceNumber: '',
         inQty: (row['quantity'] as num).toInt(),
         outQty: 0,
@@ -145,7 +146,7 @@ class TransactionRepository {
 
     final outputRows = await db.rawQuery('''
       SELECT so.id, so.date, so.reference, so.designation, so.destination,
-             so.invoice_number, so.quantity, s.name AS store_name
+             so.invoice_number, so.quantity, so.tiers_id, s.name AS store_name
       FROM stock_outputs so
       JOIN stores s ON s.id = so.store_id
       $outWhereSql
@@ -159,6 +160,7 @@ class TransactionRepository {
         designation: row['designation'] as String,
         storeName: row['store_name'] as String,
         partner: (row['destination'] as String?) ?? '',
+        tiersId: row['tiers_id'] as int?,
         invoiceNumber: (row['invoice_number'] as String?) ?? '',
         inQty: 0,
         outQty: (row['quantity'] as num).toInt(),

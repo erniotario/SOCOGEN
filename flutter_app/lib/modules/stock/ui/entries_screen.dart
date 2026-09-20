@@ -21,6 +21,9 @@ import 'package:socogen/shared/ui/widgets/dialog_body.dart';
 import 'package:socogen/shared/ui/widgets/empty_state.dart';
 import 'package:socogen/shared/ui/widgets/page_header.dart';
 import 'package:socogen/shared/ui/widgets/product_autocomplete.dart';
+import 'package:socogen/shared/ui/widgets/tiers_autocomplete.dart';
+import 'package:socogen/shared/models/tiers.dart';
+import 'package:socogen/modules/tiers/services/tiers_service.dart';
 import 'package:socogen/shared/ui/widgets/row_actions.dart';
 import 'package:socogen/shared/ui/widgets/skeleton.dart';
 import 'package:socogen/core/errors/messages.dart';
@@ -273,7 +276,16 @@ class _EntryFormCard extends StatefulWidget {
 
 class _EntryFormCardState extends State<_EntryFormCard> {
   final _entryRepo = StockEntryRepository();
+  final _tiersService = TiersService();
   final _supplierController = TextEditingController();
+
+  /// Les fiches proposées, et celle qui est retenue.
+  ///
+  /// `_fournisseurId` ne vaut que tant que le texte n'a pas bougé : dès
+  /// que quelqu'un retouche le nom, le lien est abandonné plutôt que de
+  /// rattacher un mouvement à une fiche qui ne porte plus ce nom-là.
+  List<Tiers> _fournisseurs = const [];
+  int? _fournisseurId;
   final _refController = TextEditingController();
   final _quantityController = TextEditingController(text: '1');
   DateTime _date = DateTime.now();
@@ -286,6 +298,37 @@ class _EntryFormCardState extends State<_EntryFormCard> {
   void initState() {
     super.initState();
     _storeId = widget.stores.isNotEmpty ? widget.stores.first.id : null;
+    _chargerFournisseurs();
+  }
+
+  Future<void> _chargerFournisseurs() async {
+    final fiches = await _tiersService.listerFournisseurs();
+    if (!mounted) return;
+    setState(() => _fournisseurs = fiches);
+  }
+
+  /// Crée la fiche demandée depuis le champ, puis la retient.
+  ///
+  /// La création est explicite — c'est une option de la liste, pas un
+  /// effet de bord de la saisie — parce qu'une fiche créée à chaque
+  /// frappe approximative redonnerait les doublons que ce module existe
+  /// pour éviter.
+  Future<void> _creerFournisseur(String nom) async {
+    try {
+      await _tiersService.creer(nom: nom, type: TypeTiers.fournisseur);
+      await _chargerFournisseurs();
+      final cree = await _tiersService.parNom(nom);
+      if (!mounted || cree == null) return;
+      setState(() {
+        _supplierController.text = cree.nom;
+        _fournisseurId = cree.id;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error =
+          messagePour(e, operation: 'la création du fournisseur'));
+    }
   }
 
   @override
@@ -344,8 +387,10 @@ class _EntryFormCardState extends State<_EntryFormCard> {
         designation: _selectedProduct!.product.designation,
         storeId: _storeId!,
         quantity: qty,
+        tiersId: _fournisseurId,
       ));
       _supplierController.clear();
+      _fournisseurId = null;
       _refController.clear();
       _quantityController.text = '1';
       setState(() {
@@ -391,10 +436,19 @@ class _EntryFormCardState extends State<_EntryFormCard> {
                 ),
               ),
               SizedBox(
-                width: 200,
-                child: TextField(
+                width: 240,
+                child: TiersAutocomplete(
+                  tiers: _fournisseurs,
                   controller: _supplierController,
-                  decoration: const InputDecoration(labelText: 'Fournisseur', hintText: 'Ex: CIMENCAM'),
+                  labelText: 'Fournisseur',
+                  hintText: 'Ex : CIMENCAM',
+                  onTiersChoisi: (t) => setState(() => _fournisseurId = t.id),
+                  onCreationDemandee: _creerFournisseur,
+                  onChoixAbandonne: () {
+                    if (_fournisseurId != null) {
+                      setState(() => _fournisseurId = null);
+                    }
+                  },
                 ),
               ),
               SizedBox(
@@ -546,14 +600,23 @@ class _EntryFormDialogState extends State<_EntryFormDialog> {
     });
 
     try {
+      // Le rattachement ne suit que si le nom n'a pas changé. Retaper
+      // le fournisseur, c'est désigner quelqu'un d'autre : garder
+      // l'ancien `tiers_id` classerait le mouvement sous une fiche dont
+      // il ne porte plus le nom.
+      final nom = _supplierController.text.trim();
+      final memeNom = nom == widget.entry.supplier.trim();
       await _entryRepo.update(StockEntry(
         id: widget.entry.id,
         date: DateFormat('yyyy-MM-dd').format(_date),
-        supplier: _supplierController.text.trim(),
+        supplier: nom,
         reference: _selectedProduct!.product.reference,
         designation: _selectedProduct!.product.designation,
         storeId: _storeId!,
         quantity: qty,
+        tiersId: memeNom
+            ? widget.entry.tiersId
+            : (await TiersService().parNom(nom))?.id,
       ));
       if (!mounted) return;
       Navigator.pop(context, true);

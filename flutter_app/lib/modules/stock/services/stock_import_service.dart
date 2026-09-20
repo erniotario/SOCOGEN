@@ -6,6 +6,7 @@ import 'package:socogen/modules/stock/models/store.dart';
 import 'package:socogen/shared/models/view_models.dart';
 import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
 import 'package:socogen/modules/stock/services/stock_service.dart';
+import 'package:socogen/modules/tiers/services/tiers_service.dart';
 import 'package:socogen/modules/rapports/repositories/report_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
@@ -73,7 +74,9 @@ class StockImportService {
     StockOutputRepository? outputRepository,
     ReportRepository? reportRepository,
     StockService? stockService,
+    TiersService? tiersService,
   })  : _catalogue = catalogueService ?? CatalogueService(),
+        _tiers = tiersService ?? TiersService(),
         _stock = stockService ?? StockService(),
         _stores = storeRepository ?? StoreRepository(),
         _entries = entryRepository ?? StockEntryRepository(),
@@ -86,6 +89,29 @@ class StockImportService {
   final StockEntryRepository _entries;
   final StockOutputRepository _outputs;
   final ReportRepository _reports;
+  final TiersService _tiers;
+
+  /// Les fiches existantes, indexées par nom, relevées une fois avant la
+  /// boucle.
+  ///
+  /// Une requête par ligne coûterait des milliers d'allers-retours sur
+  /// un fichier Sage complet — la même leçon que le rapport qui
+  /// balayait les mouvements par produit.
+  Map<String, int> _fichesParNom = const {};
+
+  Future<void> _releverLesFiches() async {
+    final fiches = await _tiers.lister(actifsSeuls: false);
+    _fichesParNom = {for (final t in fiches) t.nom: t.id};
+  }
+
+  /// La fiche portant exactement ce nom, s'il y en a une.
+  ///
+  /// Égalité exacte, et rien d'autre : c'est la règle de la reprise, et
+  /// la même raison. L'import ne crée pas de fiche non plus — il en
+  /// créerait des centaines d'un coup, dont les quasi-doublons que ce
+  /// module existe pour éviter. Un mouvement sans fiche garde son nom
+  /// en clair et reste rattachable ensuite.
+  int? _ficheDe(String nom) => _fichesParNom[nom.trim()];
 
   /// Enough to act on without burying the rest of the report.
   static const int _maxNegativesListed = 10;
@@ -102,6 +128,7 @@ class StockImportService {
     }
 
     final negativesBefore = await _negativesBefore();
+    await _releverLesFiches();
 
     final unrecognised = <String>[];
     for (final name in workbook.tables.keys) {
@@ -325,6 +352,7 @@ class StockImportService {
         designation: _text(row, designationCol) ?? reference,
         storeId: storeId,
         quantity: quantity,
+        tiersId: _ficheDe(supplier),
       ));
       report.entries++;
     }
@@ -392,6 +420,7 @@ class StockImportService {
         continue;
       }
 
+      final destination = _text(row, destinationCol) ?? '';
       await _outputs.create(StockOutput(
         id: 0,
         date: date,
@@ -399,8 +428,9 @@ class StockImportService {
         designation: _text(row, designationCol) ?? reference,
         invoiceNumber: invoice,
         storeId: storeId,
-        destination: _text(row, destinationCol) ?? '',
+        destination: destination,
         quantity: quantity,
+        tiersId: _ficheDe(destination),
       ));
       report.outputs++;
     }

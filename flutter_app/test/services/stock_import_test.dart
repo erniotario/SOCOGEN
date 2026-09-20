@@ -12,6 +12,9 @@ import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
 import 'package:socogen/modules/stock/repositories/store_repository.dart';
 import 'package:socogen/modules/stock/services/stock_import_service.dart';
+import 'package:socogen/modules/tiers/repositories/tiers_repository.dart';
+import 'package:socogen/modules/tiers/services/tiers_service.dart';
+import 'package:socogen/shared/models/tiers.dart';
 
 /// An empty database with only the two magasins, so the counts a test
 /// asserts belong to the import and not to a fixture.
@@ -45,6 +48,9 @@ StockImportService _service(Database db) => StockImportService(
       entryRepository: StockEntryRepository(database: db),
       outputRepository: StockOutputRepository(database: db),
       reportRepository: ReportRepository(database: db),
+      tiersService: TiersService(
+        tiersRepository: TiersRepository(database: db),
+      ),
     );
 
 CellValue _t(String v) => TextCellValue(v);
@@ -310,6 +316,71 @@ void main() {
         isTrue,
         reason: '${second.problems}',
       );
+    });
+  });
+
+
+  group('rattachement aux fiches', () {
+    Future<int> creerFiche(String nom, TypeTiers type) =>
+        TiersRepository(database: db).create(Tiers(
+          id: 0,
+          code: type == TypeTiers.client ? 'C0001' : 'F0001',
+          nom: nom,
+          type: type,
+        ));
+
+    Excel livreAvec(String fournisseur, String destination) => _workbook({
+          'Produits': _catalogue,
+          'Entrées': [
+            [_t('DATE'), _t('RÉFÉRENCE'), _t('MAGASIN'), _t('QUANTITÉ'),
+              _t('FOURNISSEUR')],
+            [_t('2026-01-15'), _t('ART-1'), _t('Magasin Central'), _n(40),
+              _t(fournisseur)],
+          ],
+          'Sorties': [
+            [_t('DATE'), _t('RÉFÉRENCE'), _t('MAGASIN'), _t('QUANTITÉ'),
+              _t('N° FACTURE'), _t('DESTINATION')],
+            [_t('2026-02-03'), _t('ART-1'), _t('Magasin Central'), _n(5),
+              _t('FA-77'), _t(destination)],
+          ],
+        });
+
+    test('un mouvement importé trouve la fiche qui porte ce nom exact',
+        () async {
+      final fournisseur = await creerFiche('SOCACIM', TypeTiers.fournisseur);
+      final client = await creerFiche('BMC', TypeTiers.client);
+
+      await _service(db).importWorkbook(livreAvec('SOCACIM', 'BMC'));
+
+      expect(
+        (await db.query('stock_entries')).single['tiers_id'],
+        fournisseur,
+      );
+      expect(
+        (await db.query('stock_outputs')).single['tiers_id'],
+        client,
+      );
+    });
+
+    test("l'import ne crée aucune fiche", () async {
+      // Il en créerait des centaines d'un coup, quasi-doublons compris.
+      // Le mouvement garde son nom en clair et reste rattachable après.
+      await _service(db).importWorkbook(livreAvec('INCONNU', 'AUTRE'));
+
+      expect(await db.query('tiers'), isEmpty);
+      expect((await db.query('stock_entries')).single['tiers_id'], isNull);
+      expect((await db.query('stock_entries')).single['supplier'], 'INCONNU');
+    });
+
+    test('un nom approchant ne suffit pas', () async {
+      // « BCM » n'est pas « BMC ». Deviner ici serait de la correction
+      // orthographique, et elle se verrait sur 4 500 mouvements.
+      await creerFiche('BMC', TypeTiers.client);
+
+      await _service(db).importWorkbook(livreAvec('SOCACIM', 'BCM'));
+
+      expect((await db.query('stock_outputs')).single['tiers_id'], isNull);
+      expect((await db.query('stock_outputs')).single['destination'], 'BCM');
     });
   });
 

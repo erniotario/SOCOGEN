@@ -34,6 +34,7 @@ import 'package:socogen/shared/ui/widgets/row_actions.dart';
 import 'package:socogen/shared/ui/widgets/skeleton.dart';
 import 'package:socogen/shared/ui/widgets/status_badge.dart';
 import 'package:socogen/core/errors/messages.dart';
+import 'package:socogen/modules/tiers/services/tiers_service.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -1078,15 +1079,24 @@ class _TransactionFormDialogState extends State<_TransactionFormDialog> {
 
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(_date);
+      // Le rattachement ne suit que si le nom n'a pas bougé. Le rechercher
+      // systématiquement défairait une fusion : un mouvement fusionné
+      // affiche encore « BCM » tout en comptant pour BMC, et une simple
+      // correction de quantité le renverrait vers BCM.
+      final partenaire = _counterpartController.text.trim();
+      final tiersId = partenaire == widget.row.partner.trim()
+          ? widget.row.tiersId
+          : (await TiersService().parNom(partenaire))?.id;
       if (_isEntry) {
         await _entryRepo.update(StockEntry(
           id: widget.row.id,
           date: dateStr,
-          supplier: _counterpartController.text.trim(),
+          supplier: partenaire,
           reference: ref,
           designation: des,
           storeId: _storeId!,
           quantity: qty,
+          tiersId: tiersId,
         ));
       } else {
         await _outputRepo.update(StockOutput(
@@ -1096,8 +1106,9 @@ class _TransactionFormDialogState extends State<_TransactionFormDialog> {
           designation: des,
           invoiceNumber: _invoiceController.text.trim(),
           storeId: _storeId!,
-          destination: _counterpartController.text.trim(),
+          destination: partenaire,
           quantity: qty,
+          tiersId: tiersId,
         ));
       }
       if (!mounted) return;

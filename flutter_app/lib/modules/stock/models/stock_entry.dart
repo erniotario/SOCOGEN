@@ -7,6 +7,15 @@ class StockEntry {
   final int storeId;
   final int quantity;
 
+  /// Le partenaire de ce mouvement, quand il est connu.
+  ///
+  /// Nul est une valeur normale : un mouvement peut n'avoir jamais été
+  /// rattaché, et le nom en clair ci-dessus reste alors la seule trace.
+  /// Ce nom ne bouge jamais, même après un renommage ou une fusion —
+  /// une ligne passée doit continuer de dire ce qui a été saisi ce
+  /// jour-là.
+  final int? tiersId;
+
   const StockEntry({
     required this.id,
     required this.date,
@@ -15,6 +24,7 @@ class StockEntry {
     required this.designation,
     required this.storeId,
     required this.quantity,
+    this.tiersId,
   });
 
   factory StockEntry.fromMap(Map<String, Object?> map) {
@@ -26,6 +36,7 @@ class StockEntry {
       designation: map['designation'] as String,
       storeId: map['store_id'] as int,
       quantity: map['quantity'] as int,
+      tiersId: map['tiers_id'] as int?,
     );
   }
 
@@ -38,6 +49,7 @@ class StockEntry {
       'designation': designation,
       'store_id': storeId,
       'quantity': quantity,
+      'tiers_id': tiersId,
     };
   }
 }
