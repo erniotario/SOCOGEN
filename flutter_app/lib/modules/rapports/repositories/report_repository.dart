@@ -60,14 +60,16 @@ class ReportRepository {
         s.name AS store_name,
         COALESCE(ps.initial_stock, 0) AS initial_stock,
         COALESCE(e.total, 0) AS entries,
-        COALESCE(o.total, 0) AS outputs
+        COALESCE(o.total, 0) AS outputs,
+        COALESCE(p.stock_min, c.stock_min_defaut, ?) AS stock_min
       FROM product_stocks ps
       JOIN products p ON p.id = ps.product_id
       JOIN stores s ON s.id = ps.store_id
+      LEFT JOIN company_settings c ON c.id = 1
       $_movementTotals
       $where
       ORDER BY p.reference, s.name
-    ''', args);
+    ''', [StockStatus.seuilParDefaut, ...args]);
 
     var result = rows
         .map((row) => ReportRow(
@@ -80,6 +82,7 @@ class ReportRepository {
               initialStock: (row['initial_stock'] as num).toInt(),
               entries: (row['entries'] as num).toInt(),
               outputs: (row['outputs'] as num).toInt(),
+              stockMin: (row['stock_min'] as num).toInt(),
             ))
         .toList();
 
@@ -98,27 +101,31 @@ class ReportRepository {
       getStatusCounts() async {
     final db = await _db;
 
-    // Mirrors StockStatus.fromCurrent: < 0 negatif, 0 rupture, < 10
-    // faible, else en stock. Keep the two in step -- the screen reads
-    // its badge from Dart and its KPI from here, and they must not
-    // disagree about the same row.
+    // Reprend StockStatus.pour : < 0 negatif, 0 rupture, sous le seuil
+    // faible, sinon en stock. Le seuil se resout ici exactement comme
+    // dans getReportRows -- l'article d'abord, l'entreprise ensuite --
+    // parce que l'ecran lit son badge en Dart et son compteur ici, et
+    // que les deux ne doivent pas juger la meme ligne differemment.
     final rows = await db.rawQuery('''
       SELECT
         COUNT(*) AS total,
-        SUM(CASE WHEN current >= 10 THEN 1 ELSE 0 END) AS en_stock,
-        SUM(CASE WHEN current > 0 AND current < 10 THEN 1 ELSE 0 END) AS faible,
+        SUM(CASE WHEN current >= seuil THEN 1 ELSE 0 END) AS en_stock,
+        SUM(CASE WHEN current > 0 AND current < seuil THEN 1 ELSE 0 END)
+          AS faible,
         SUM(CASE WHEN current = 0 THEN 1 ELSE 0 END) AS rupture,
         SUM(CASE WHEN current < 0 THEN 1 ELSE 0 END) AS negatif
       FROM (
         SELECT
           COALESCE(ps.initial_stock, 0) + COALESCE(e.total, 0) - COALESCE(o.total, 0)
-            AS current
+            AS current,
+          COALESCE(p.stock_min, c.stock_min_defaut, ?) AS seuil
         FROM product_stocks ps
         JOIN products p ON p.id = ps.product_id
         JOIN stores s ON s.id = ps.store_id
+        LEFT JOIN company_settings c ON c.id = 1
         $_movementTotals
       )
-    ''');
+    ''', [StockStatus.seuilParDefaut]);
 
     int at(String column) => (rows.first[column] as num?)?.toInt() ?? 0;
     return (

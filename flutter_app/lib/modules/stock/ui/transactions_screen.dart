@@ -522,7 +522,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Widget _balanceCell(TransactionRow row) => Cells.number(
         row.balance,
         strong: true,
-        color: StockStatus.fromCurrent(row.balance).color,
+        color: StockStatus.pour(row.balance, seuil: row.stockMin).color,
       );
 
   Widget _actionsCell(TransactionRow row, _TransactionsData data) => RowActions(
@@ -637,7 +637,10 @@ class _InfoCard extends StatelessWidget {
       storeLabel = '';
     }
 
-    final stockStatus = StockStatus.fromCurrent(currentStock);
+    final stockStatus = StockStatus.pour(
+      currentStock,
+      seuil: overview?.stockMin ?? StockStatus.seuilParDefaut,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

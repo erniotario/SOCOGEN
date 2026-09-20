@@ -1,3 +1,4 @@
+import 'package:socogen/core/errors/messages.dart';
 import 'package:socogen/core/money/montant.dart';
 import 'package:socogen/modules/parametres/models/company_settings.dart';
 import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
@@ -35,6 +36,27 @@ class ParametresService {
   }
 
   Future<CompanySettings> societe() => _settings.getSettings();
+
+  /// Le seuil d'alerte appliqué aux articles qui n'en déclarent pas.
+  ///
+  /// C'est la valeur de repli du catalogue entier ; chaque article peut
+  /// la remplacer par la sienne.
+  Future<int> seuilStockParDefaut() async =>
+      (await _settings.getSettings()).seuilStockParDefaut;
+
+  /// Change ce seuil de repli. Refuse un négatif, pour la même raison
+  /// qu'un seuil d'article : aucun stock ne passerait dessous.
+  Future<void> definirSeuilStockParDefaut(int seuil) async {
+    if (seuil < 0) {
+      throw const ErreurUtilisateur(
+        'Un seuil de stock ne peut pas être négatif.',
+      );
+    }
+    final societe = await _settings.getSettings();
+    await _settings.saveSettings(
+      societe.copyWith(seuilStockParDefaut: seuil),
+    );
+  }
 
   /// Les taux de TVA applicables, de l'exonéré au plus élevé.
   Future<List<TauxTva>> tauxTva() => _tva.getAll();

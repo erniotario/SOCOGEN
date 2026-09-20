@@ -49,4 +49,44 @@ void main() {
     expect(settings.name, 'SHEMAB');
     expect(settings.phone, '+237611111111');
   });
+
+  group('ce que la fiche société garde', () {
+    test("copyWith ne touche pas à ce qu'on ne lui donne pas", () async {
+      // L'écran Paramètres ne règle qu'une partie de la fiche. Il
+      // reconstruisait un enregistrement complet à l'enregistrement, si
+      // bien que saisir un téléphone remettait la devise à XAF pour une
+      // entreprise qui comptait en euros — une perte silencieuse, sur
+      // l'écran fait pour régler ces choses.
+      const depart = CompanySettings(
+        name: 'Maison Test',
+        devise: 'EUR',
+        seuilStockParDefaut: 4,
+      );
+
+      final modifie = depart.copyWith(phone: '+237699000000');
+
+      expect(modifie.devise, 'EUR');
+      expect(modifie.seuilStockParDefaut, 4);
+      expect(modifie.phone, '+237699000000');
+    });
+
+    test('la devise et le seuil traversent un aller-retour en base',
+        () async {
+      await repo.saveSettings(const CompanySettings(
+        name: 'Maison Test',
+        devise: 'EUR',
+        seuilStockParDefaut: 25,
+      ));
+
+      final relu = await repo.getSettings();
+      expect(relu.devise, 'EUR');
+      expect(relu.seuilStockParDefaut, 25);
+    });
+
+    test('un seuil absent vaut dix, ce qui était en dur', () async {
+      await repo.saveSettings(const CompanySettings(name: 'Maison Test'));
+
+      expect((await repo.getSettings()).seuilStockParDefaut, 10);
+    });
+  });
 }

@@ -53,16 +53,16 @@ void main() {
   });
 
   test('fromCurrent tells an empty article apart from an impossible one', () {
-    expect(StockStatus.fromCurrent(-1), StockStatus.stockNegatif);
-    expect(StockStatus.fromCurrent(-38), StockStatus.stockNegatif);
+    expect(StockStatus.pour(-1), StockStatus.stockNegatif);
+    expect(StockStatus.pour(-38), StockStatus.stockNegatif);
 
     // The regression this whole feature exists for: zero is a normal,
     // legitimate state and must never be reported as an anomaly.
-    expect(StockStatus.fromCurrent(0), StockStatus.rupture);
+    expect(StockStatus.pour(0), StockStatus.rupture);
 
-    expect(StockStatus.fromCurrent(1), StockStatus.stockFaible);
-    expect(StockStatus.fromCurrent(9), StockStatus.stockFaible);
-    expect(StockStatus.fromCurrent(10), StockStatus.enStock);
+    expect(StockStatus.pour(1), StockStatus.stockFaible);
+    expect(StockStatus.pour(9), StockStatus.stockFaible);
+    expect(StockStatus.pour(10), StockStatus.enStock);
   });
 
   test('a negative balance carries its own label and colour, not the rupture one', () {
@@ -114,8 +114,9 @@ void main() {
     expect(counts.rupture, 1);
     expect(counts.negatif, 1);
 
-    // The SQL thresholds and StockStatus.fromCurrent are written twice
-    // and must agree; this is what catches them drifting apart.
+    // Le seuil est résolu deux fois — une en SQL pour les compteurs,
+    // une en Dart pour le badge — et les deux doivent tomber d'accord
+    // sur chaque ligne. C'est ce qui attrape leur divergence.
     final rows = await repo.getReportRows();
     int tally(StockStatus s) => rows.where((r) => r.status == s).length;
     expect(tally(StockStatus.enStock), counts.enStock);
@@ -201,7 +202,7 @@ void main() {
         excludeOutputId: 1,
       );
       expect(base - 40, -10);
-      expect(StockStatus.fromCurrent(base - 40), StockStatus.stockNegatif);
+      expect(StockStatus.pour(base - 40), StockStatus.stockNegatif);
     });
   });
 }

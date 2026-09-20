@@ -50,12 +50,17 @@ class _ProductsData {
   final List<TauxTva> tauxTva;
   final List<Famille> familles;
 
+  /// Le seuil d'alerte de l'entreprise, affiché au formulaire pour dire
+  /// ce qui s'appliquera si le champ de l'article reste vide.
+  final int seuilParDefaut;
+
   const _ProductsData({
     required this.products,
     required this.stores,
     required this.devise,
     required this.tauxTva,
     required this.familles,
+    required this.seuilParDefaut,
   });
 }
 
@@ -96,12 +101,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   Future<void> _load() async {
     try {
-      final (products, stores, devise, taux, familles) = await (
+      final (products, stores, devise, taux, familles, seuil) = await (
         _productRepo.getProductOverviews(search: _search),
         _storeRepo.getAllStores(),
         _parametres.devise(),
         _parametres.tauxTva(),
         _catalogue.listerFamilles(),
+        _parametres.seuilStockParDefaut(),
       ).wait;
       if (!mounted) return;
       setState(() {
@@ -111,6 +117,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           devise: devise,
           tauxTva: taux,
           familles: familles,
+          seuilParDefaut: seuil,
         );
         _error = null;
       });
@@ -234,6 +241,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         devise: data.devise,
         tauxTva: data.tauxTva,
         familles: data.familles,
+        seuilParDefaut: data.seuilParDefaut,
       ),
     );
     if (saved == true) _onChanged();
@@ -251,6 +259,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         devise: data.devise,
         tauxTva: data.tauxTva,
         familles: data.familles,
+        seuilParDefaut: data.seuilParDefaut,
         existing: overview,
         existingStocks: stocks,
       ),
@@ -490,12 +499,14 @@ class _ProductFormDialog extends StatefulWidget {
   final Devise devise;
   final List<TauxTva> tauxTva;
   final List<Famille> familles;
+  final int seuilParDefaut;
 
   const _ProductFormDialog({
     required this.stores,
     required this.devise,
     required this.tauxTva,
     required this.familles,
+    required this.seuilParDefaut,
     this.existing,
     this.existingStocks = const [],
   });
@@ -514,6 +525,7 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
   late final TextEditingController _prixVenteController;
   late final TextEditingController _prixAchatController;
   late final TextEditingController _codeBarreController;
+  late final TextEditingController _seuilController;
   int? _tvaId;
   int? _familleId;
   int? _storeId;
@@ -550,6 +562,10 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
               .formate(avecSymbole: false),
     );
     _codeBarreController = TextEditingController(text: article?.codeBarre ?? '');
+    // Vide quand l'article n'a pas de seuil à lui : le champ dit alors
+    // par son texte d'aide lequel s'applique.
+    _seuilController =
+        TextEditingController(text: article?.stockMin?.toString() ?? '');
     _tvaId = article?.tvaId ??
         (widget.tauxTva.where((t) => t.estDefaut).firstOrNull)?.id;
     _familleId = article?.familleId;
@@ -572,6 +588,7 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
     _prixVenteController.dispose();
     _prixAchatController.dispose();
     _codeBarreController.dispose();
+    _seuilController.dispose();
     for (final row in _rows) {
       row.controller.dispose();
     }
@@ -595,6 +612,22 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
     });
   }
 
+  /// Le seuil saisi : null si le champ est vide — l'article retombe
+  /// alors sur celui de l'entreprise. Rend `(null, erreur)` si la
+  /// saisie n'est pas un entier positif.
+  (int?, String?) _lireSeuil() {
+    final texte = _seuilController.text.trim();
+    if (texte.isEmpty) return (null, null);
+    final valeur = int.tryParse(texte);
+    if (valeur == null) {
+      return (null, "Le seuil d'alerte doit être un nombre entier.");
+    }
+    if (valeur < 0) {
+      return (null, "Un seuil d'alerte ne peut pas être négatif.");
+    }
+    return (valeur, null);
+  }
+
   Future<void> _save() async {
     final ref = _refController.text.trim();
     final des = _desController.text.trim();
@@ -606,6 +639,12 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
     }
     if (des.isEmpty) {
       setState(() => _error = 'La désignation est obligatoire.');
+      return;
+    }
+
+    final (seuil, erreurSeuil) = _lireSeuil();
+    if (erreurSeuil != null) {
+      setState(() => _error = erreurSeuil);
       return;
     }
 
@@ -664,6 +703,11 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
             effacerFamille: _familleId == null,
             codeBarre: codeBarre.isEmpty ? null : codeBarre,
             effacerCodeBarre: codeBarre.isEmpty,
+            // Champ vidé : l'article n'a plus de seuil à lui et repasse
+            // sous celui de l'entreprise. Sans le drapeau, null voudrait
+            // dire « ne change rien » et l'ancien seuil resterait.
+            stockMin: seuil,
+            effacerStockMin: seuil == null,
           ),
         );
         for (final row in _rows) {
@@ -713,6 +757,7 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
               devise: widget.devise,
             )?.unites,
             codeBarre: codeBarre.isEmpty ? null : codeBarre,
+            stockMin: seuil,
           );
         }
         await _stock.definirStockOuverture(
@@ -820,6 +865,20 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
               decoration: const InputDecoration(
                 labelText: 'Code-barres',
                 hintText: 'Ex : 6161100000123',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _seuilController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: "Seuil d'alerte",
+                // Le texte d'aide porte la distinction : vide n'est pas
+                // zéro. Zéro veut dire « n'alerte jamais », et c'est une
+                // décision qu'on doit pouvoir prendre.
+                helperText: "Vide : celui de l'entreprise "
+                    "(${widget.seuilParDefaut})",
+                suffixText: 'en stock',
               ),
             ),
             const SizedBox(height: 12),

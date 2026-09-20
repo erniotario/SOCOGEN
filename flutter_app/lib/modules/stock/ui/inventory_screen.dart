@@ -562,7 +562,11 @@ class _CountFormCardState extends State<_CountFormCard> {
                     style: TextStyle(
                       color: theoretical == null
                           ? AppColors.textSecondary
-                          : StockStatus.fromCurrent(theoretical).color,
+                          : StockStatus.pour(
+                              theoretical,
+                              seuil: _product?.stockMin ??
+                                  StockStatus.seuilParDefaut,
+                            ).color,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

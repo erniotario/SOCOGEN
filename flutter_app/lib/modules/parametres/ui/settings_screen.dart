@@ -30,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _seuilController = TextEditingController();
   final _emailController = TextEditingController();
   final _websiteController = TextEditingController();
   final _taxIdController = TextEditingController();
@@ -48,6 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _seuilController.dispose();
     _nameController.dispose();
     _addressController.dispose();
     _cityController.dispose();
@@ -65,7 +67,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return settings;
   }
 
+  /// La dernière version lue.
+  ///
+  /// Gardée parce que cet écran ne modifie qu'une partie de la fiche :
+  /// reconstruire un `CompanySettings` complet à l'enregistrement
+  /// remettait en silence la devise à XAF pour une entreprise qui
+  /// comptait en euros.
+  CompanySettings _courant = const CompanySettings();
+
   void _applySettings(CompanySettings s) {
+    _courant = s;
+    _seuilController.text = s.seuilStockParDefaut.toString();
     _nameController.text = s.name;
     _addressController.text = s.address;
     _cityController.text = s.city;
@@ -100,10 +112,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      await _settingsRepo.saveSettings(CompanySettings(
-        // An emptied field means the name is unknown, not that it is the
-                    // first customer's.
-                    name: _nameController.text.trim(),
+      final seuil = int.tryParse(_seuilController.text.trim());
+      if (seuil == null || seuil < 0) {
+        setState(() {
+          _saving = false;
+          _statusMessage =
+              "Le seuil d'alerte doit être un nombre entier positif.";
+          _statusIsError = true;
+        });
+        return;
+      }
+      // copyWith, et non un objet neuf : ce qui n'est pas sur cet écran
+      // — la devise, par exemple — doit survivre à un enregistrement.
+      await _settingsRepo.saveSettings(_courant.copyWith(
+        // Un champ vidé veut dire que le nom est inconnu, pas qu'il est
+        // celui du premier client.
+        name: _nameController.text.trim(),
         address: _addressController.text.trim(),
         city: _cityController.text.trim(),
         phone: _phoneController.text.trim(),
@@ -112,6 +136,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         taxId: _taxIdController.text.trim(),
         rccm: _rccmController.text.trim(),
         logoPath: _logoPath,
+        seuilStockParDefaut: seuil,
       ));
       if (!mounted) return;
       setState(() {
@@ -233,6 +258,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               label: 'Site web',
                               controller: _websiteController,
                               hintText: 'Ex : www.monentreprise.cm',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  SectionCard(
+                    icon: Icons.inventory_outlined,
+                    title: 'STOCK',
+                    children: [
+                      ResponsiveRow(
+                        items: [
+                          RowItem(
+                            child: _LabeledField(
+                              label: "Seuil d'alerte par défaut",
+                              controller: _seuilController,
+                              hintText: 'Ex : 10',
+                            ),
+                          ),
+                          const RowItem(
+                            child: Padding(
+                              padding: EdgeInsets.only(top: 22),
+                              child: Text(
+                                'Un article passe en « stock faible » '
+                                'sous ce nombre. Chaque article peut '
+                                'avoir le sien, saisi sur sa fiche.',
+                                style: AppTextStyles.bodyMuted,
+                              ),
                             ),
                           ),
                         ],

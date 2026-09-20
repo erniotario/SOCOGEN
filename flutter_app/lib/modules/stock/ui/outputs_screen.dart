@@ -401,7 +401,10 @@ class _OutputFormCardState extends State<_OutputFormCard> {
   /// thresholds as every table, so a store already in the negative
   /// announces itself here too -- on the one screen where the next
   /// sortie would push it further down.
-  Color _stockColor(int current) => StockStatus.fromCurrent(current).color;
+  Color _stockColor(int current) => StockStatus.pour(
+        current,
+        seuil: _selectedProduct?.stockMin ?? StockStatus.seuilParDefaut,
+      ).color;
 
   Future<void> _save() async {
     final invoice = _invoiceController.text.trim();

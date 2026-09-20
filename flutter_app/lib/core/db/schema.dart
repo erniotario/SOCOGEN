@@ -7,7 +7,7 @@
 class AppSchema {
   AppSchema._();
 
-  static const int version = 5;
+  static const int version = 6;
 
   static const List<String> createStatements = [
     '''
@@ -37,6 +37,12 @@ class AppSchema {
       prix_achat INTEGER,
       prix_vente INTEGER,
       code_barre TEXT,
+      -- Seuil d'alerte propre à cet article. Nul veut dire « pas de
+      -- seuil à moi » : c'est celui de l'entreprise qui s'applique.
+      -- Distinguer les deux compte, parce qu'un seuil à zéro est une
+      -- décision — cet article ne déclenche jamais d'alerte — et non
+      -- une absence de réglage.
+      stock_min INTEGER,
       actif INTEGER NOT NULL DEFAULT 1,
       updated_at TEXT
     )
@@ -134,7 +140,11 @@ class AppSchema {
       tax_id TEXT DEFAULT '',
       rccm TEXT DEFAULT '',
       logo_path TEXT DEFAULT '',
-      devise TEXT NOT NULL DEFAULT 'XAF'
+      devise TEXT NOT NULL DEFAULT 'XAF',
+      -- Le seuil qui s'applique aux articles qui n'en ont pas. Dix,
+      -- parce que c'est ce que le code appliquait en dur à tout le
+      -- catalogue : une base migrée ne doit rien voir changer.
+      stock_min_defaut INTEGER NOT NULL DEFAULT 10
     )
     ''',
     '''
@@ -310,6 +320,18 @@ class AppSchema {
     "UPDATE stock_outputs SET tiers_id = "
         "(SELECT id FROM tiers WHERE tiers.nom = TRIM(stock_outputs.destination)) "
         "WHERE tiers_id IS NULL AND TRIM(COALESCE(destination,'')) <> ''",
+  ];
+
+  /// Le seuil de stock devient une propriété de l'article.
+  ///
+  /// Il valait dix pour tout le catalogue, du riz à la tonne comme du
+  /// carton d'allumettes. Les deux colonnes arrivent vides et la valeur
+  /// d'entreprise vaut dix : une base migrée se comporte exactement
+  /// comme avant, et chaque article peut ensuite dire son propre seuil.
+  static const List<String> migrationV5ToV6 = [
+    'ALTER TABLE products ADD COLUMN stock_min INTEGER',
+    'ALTER TABLE company_settings ADD COLUMN stock_min_defaut '
+        'INTEGER NOT NULL DEFAULT 10',
   ];
 
   /// Les taux servis à une base neuve comme à une base migrée.

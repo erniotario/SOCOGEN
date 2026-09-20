@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~315 tests across 34 files
+flutter test                 # ~333 tests across 36 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -264,10 +264,19 @@ not make any of them worse.
 - **There is no valuation.** No prices anywhere, so no stock value, no
   CUMP or FIFO, nothing an accountant can use. Sage holds the prices; an
   import path exists.
-- **The stock thresholds are global.** `StockStatus.fromCurrent` calls
-  anything under 10 "stock faible" whether it is rice by the tonne or a
-  carton of matches. These belong per article, as a stock minimum and a
-  reorder point.
+- **The stock threshold is per article — done.** `StockStatus.pour`
+  takes the threshold as a parameter; `products.stock_min` holds an
+  article's own, and `company_settings.stock_min_defaut` the one that
+  applies when it has none. Both arrive at 10, which is what the code
+  applied to the whole catalogue before, so a migrated database behaves
+  exactly as it did. Three rules the code holds: the article wins over
+  the company; **no threshold is not a threshold of zero** — zero is a
+  decision, "never warn me about this one"; and the threshold is
+  resolved the same way in SQL and in Dart, because Rapports reads its
+  badge from one and its KPI from the other and they must not judge the
+  same row differently. `seuil_stock_test.dart` pins all three. Still
+  open: a **reorder point** is not modelled — it would need a purchasing
+  module to act on, and a column nothing reads is speculation.
 - **A transfer between magasins is not a concept.** Moving goods is a
   sortie in one store and an entrée in the other with nothing linking
   them, so goods in transit read as a loss here and a windfall there.

@@ -130,4 +130,32 @@ class CatalogueService {
       ),
     );
   }
+
+  /// Le seuil qui vaut réellement pour cet article : le sien s'il en a
+  /// un, sinon celui de l'entreprise.
+  ///
+  /// C'est la question que posent les écrans, et elle a une réponse même
+  /// quand l'article n'a rien réglé — d'où ce service plutôt qu'une
+  /// lecture directe de `article.stockMin`, qui rendrait null.
+  Future<int> seuilDAlerte(Product article) async =>
+      article.stockMin ?? await _parametres.seuilStockParDefaut();
+
+  /// Enregistre le seuil d'alerte propre à un article.
+  ///
+  /// Null le retire : l'article repasse sous le seuil d'entreprise.
+  /// Zéro est autre chose — une décision de ne jamais l'alerter — et se
+  /// conserve tel quel. Un seuil négatif n'a pas de sens : aucun stock
+  /// ne peut passer dessous, l'alerte ne se déclencherait jamais, et
+  /// c'est plus probablement une faute de frappe qu'un choix.
+  Future<void> definirSeuilDAlerte(Product article, int? seuil) async {
+    if (seuil != null && seuil < 0) {
+      throw const ErreurUtilisateur(
+        'Un seuil de stock ne peut pas être négatif. '
+        "Laissez le champ vide pour utiliser le seuil de l'entreprise.",
+      );
+    }
+    await _produits.updateProduct(
+      article.copyWith(stockMin: seuil, effacerStockMin: seuil == null),
+    );
+  }
 }

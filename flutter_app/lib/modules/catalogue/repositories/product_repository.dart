@@ -35,6 +35,8 @@ class ProductRepository {
         p.reference AS reference,
         p.designation AS designation,
         p.unit AS unit,
+        p.stock_min AS stock_min,
+        COALESCE(p.stock_min, c.stock_min_defaut, ?) AS seuil_effectif,
         COALESCE(ps_sum.initial_total, 0) AS initial_total,
         COALESCE(e_sum.entries_total, 0) AS entries_total,
         COALESCE(o_sum.outputs_total, 0) AS outputs_total,
@@ -44,6 +46,7 @@ class ProductRepository {
         first_ps.store_id AS first_store_id,
         COALESCE(first_ps.initial_stock, 0) AS first_initial_stock
       FROM products p
+      LEFT JOIN company_settings c ON c.id = 1
       LEFT JOIN (
         SELECT product_id, SUM(initial_stock) AS initial_total, COUNT(*) AS stock_count
         FROM product_stocks GROUP BY product_id
@@ -71,7 +74,7 @@ class ProductRepository {
       )
       $where
       ORDER BY p.reference
-    ''', args);
+    ''', [StockStatus.seuilParDefaut, ...args]);
 
     return rows
         .map((row) => ProductOverview(
@@ -80,6 +83,7 @@ class ProductRepository {
                 reference: row['reference'] as String,
                 designation: row['designation'] as String,
                 unit: (row['unit'] as String?) ?? 'unité',
+                stockMin: (row['stock_min'] as num?)?.toInt(),
               ),
               initialStock: row['initial_total'] as int,
               entriesTotal: row['entries_total'] as int,
@@ -89,6 +93,7 @@ class ProductRepository {
               firstStockId: row['first_stock_id'] as int?,
               firstStoreId: row['first_store_id'] as int?,
               firstStoreInitialStock: row['first_initial_stock'] as int,
+              stockMin: (row['seuil_effectif'] as num).toInt(),
             ))
         .toList();
   }
@@ -173,6 +178,7 @@ class ProductRepository {
     int? prixAchatUnites,
     int? prixVenteUnites,
     String? codeBarre,
+    int? stockMin,
     bool actif = true,
   }) async {
     final db = await _db;
@@ -185,6 +191,7 @@ class ProductRepository {
       'prix_achat': prixAchatUnites,
       'prix_vente': prixVenteUnites,
       'code_barre': codeBarre,
+      'stock_min': stockMin,
       'actif': actif ? 1 : 0,
       'updated_at': nowIso(),
     });

@@ -15,10 +15,26 @@ enum StockStatus {
   rupture,
   stockNegatif;
 
-  static StockStatus fromCurrent(int current) {
+  /// Le seuil appliqué quand aucun n'est connu.
+  ///
+  /// Dix, parce que c'est ce que le code appliquait en dur à tout le
+  /// catalogue avant que le seuil devienne une propriété de l'article.
+  /// Il ne sert plus que de dernier recours : la valeur d'entreprise
+  /// (`company_settings.stock_min_defaut`) s'interpose, et l'article
+  /// passe avant elle.
+  static const int seuilParDefaut = 10;
+
+  /// L'état d'un stock, jugé sur le seuil qui vaut pour cet article.
+  ///
+  /// Le seuil est un paramètre et non une constante parce que du riz à
+  /// la tonne et un carton d'allumettes ne sont pas « faibles » au même
+  /// nombre. Un seuil à zéro est une décision valable — cet article ne
+  /// déclenche jamais d'alerte — et se distingue de l'absence de seuil,
+  /// que l'appelant résout avant d'arriver ici.
+  static StockStatus pour(int current, {int seuil = seuilParDefaut}) {
     if (current < 0) return StockStatus.stockNegatif;
     if (current == 0) return StockStatus.rupture;
-    if (current < 10) return StockStatus.stockFaible;
+    if (current < seuil) return StockStatus.stockFaible;
     return StockStatus.enStock;
   }
 
@@ -66,6 +82,10 @@ class ProductOverview {
   /// initial_stock of [firstStockId], pre-filled on the edit form.
   final int firstStoreInitialStock;
 
+  /// Le seuil effectif de cet article — le sien, ou celui de
+  /// l'entreprise. Résolu à la requête, comme sur [ReportRow].
+  final int stockMin;
+
   const ProductOverview({
     required this.product,
     required this.initialStock,
@@ -76,11 +96,12 @@ class ProductOverview {
     this.firstStockId,
     this.firstStoreId,
     this.firstStoreInitialStock = 0,
+    this.stockMin = StockStatus.seuilParDefaut,
   });
 
   int get currentStock => initialStock + entriesTotal - outputsTotal;
 
-  StockStatus get status => StockStatus.fromCurrent(currentStock);
+  StockStatus get status => StockStatus.pour(currentStock, seuil: stockMin);
 }
 
 /// One row of the Magasins table.
@@ -125,6 +146,12 @@ class ReportRow {
   final int entries;
   final int outputs;
 
+  /// Le seuil effectif de cet article : le sien s'il en a un, sinon
+  /// celui de l'entreprise. Résolu à la requête plutôt qu'ici, pour que
+  /// le badge lu en Dart et le compteur calculé en SQL jugent la même
+  /// ligne sur le même nombre.
+  final int stockMin;
+
   const ReportRow({
     required this.productId,
     required this.reference,
@@ -135,11 +162,12 @@ class ReportRow {
     required this.initialStock,
     required this.entries,
     required this.outputs,
+    this.stockMin = StockStatus.seuilParDefaut,
   });
 
   int get current => initialStock + entries - outputs;
 
-  StockStatus get status => StockStatus.fromCurrent(current);
+  StockStatus get status => StockStatus.pour(current, seuil: stockMin);
 }
 
 /// A store with its currently available stock for a given product
@@ -173,6 +201,13 @@ class TransactionRow {
   /// Supplier for entries, destination for outputs.
   final String partner;
 
+  /// Le seuil effectif de l'article de ce mouvement.
+  ///
+  /// Le « stock après » se colore comme partout ailleurs, donc sur le
+  /// seuil de l'article et non sur une constante — sinon le même article
+  /// s'afficherait ambre ici et vert dans Rapports.
+  final int stockMin;
+
   /// La fiche du partenaire, quand le mouvement en a une.
   ///
   /// Portée jusqu'ici parce que Transactions peut réécrire le
@@ -195,6 +230,7 @@ class TransactionRow {
     required this.designation,
     required this.storeName,
     required this.partner,
+    this.stockMin = StockStatus.seuilParDefaut,
     this.tiersId,
     required this.invoiceNumber,
     required this.inQty,

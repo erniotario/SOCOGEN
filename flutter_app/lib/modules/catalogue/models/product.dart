@@ -33,6 +33,15 @@ class Product {
   /// pas ; plusieurs articles peuvent légitimement n'en avoir aucun.
   final String? codeBarre;
 
+  /// Seuil d'alerte propre à cet article, en unités de stock.
+  ///
+  /// Null veut dire « pas de seuil à moi » : celui de l'entreprise
+  /// s'applique. La distinction compte, parce qu'un seuil à **zéro** est
+  /// une décision — cet article ne déclenche jamais d'alerte — et non
+  /// une absence de réglage. Du riz à la tonne et un carton
+  /// d'allumettes ne sont pas « faibles » au même nombre.
+  final int? stockMin;
+
   /// Un article retiré du catalogue reste en base — ses mouvements
   /// passés le référencent — mais ne se propose plus à la vente.
   final bool actif;
@@ -47,6 +56,7 @@ class Product {
     this.prixAchatUnites,
     this.prixVenteUnites,
     this.codeBarre,
+    this.stockMin,
     this.actif = true,
   });
 
@@ -64,6 +74,9 @@ class Product {
       prixAchatUnites: (map['prix_achat'] as num?)?.toInt(),
       prixVenteUnites: (map['prix_vente'] as num?)?.toInt(),
       codeBarre: map['code_barre'] as String?,
+      // Absente d'une base d'avant la v6, et nulle sur un article
+      // migré : les deux se lisent « pas de seuil à moi ».
+      stockMin: (map['stock_min'] as num?)?.toInt(),
       // Une base d'avant la v4 n'a pas la colonne : un article existant
       // est actif, c'est le seul état qu'il ait jamais eu.
       actif: ((map['actif'] as int?) ?? 1) == 1,
@@ -81,6 +94,7 @@ class Product {
       'prix_achat': prixAchatUnites,
       'prix_vente': prixVenteUnites,
       'code_barre': codeBarre,
+      'stock_min': stockMin,
       'actif': actif ? 1 : 0,
     };
   }
@@ -103,6 +117,8 @@ class Product {
     bool effacerPrixVente = false,
     String? codeBarre,
     bool effacerCodeBarre = false,
+    int? stockMin,
+    bool effacerStockMin = false,
     bool? actif,
   }) {
     return Product(
@@ -119,6 +135,7 @@ class Product {
           ? null
           : (prixVenteUnites ?? this.prixVenteUnites),
       codeBarre: effacerCodeBarre ? null : (codeBarre ?? this.codeBarre),
+      stockMin: effacerStockMin ? null : (stockMin ?? this.stockMin),
       actif: actif ?? this.actif,
     );
   }

@@ -123,11 +123,18 @@ class TransactionRepository {
 
     final entryRows = await db.rawQuery('''
       SELECT se.id, se.date, se.reference, se.designation, se.supplier,
-             se.quantity, se.tiers_id, s.name AS store_name
+             se.quantity, se.tiers_id, s.name AS store_name,
+             COALESCE(p.stock_min, c.stock_min_defaut, ?) AS stock_min
       FROM stock_entries se
       JOIN stores s ON s.id = se.store_id
+      -- Par la référence, pas par une clé étrangère : c'est ainsi qu'un
+      -- mouvement retrouve son article ici, et un article supprimé
+      -- laisse ses lignes derrière lui. LEFT, donc, et le COALESCE
+      -- retombe sur le seuil d'entreprise.
+      LEFT JOIN products p ON p.reference = se.reference
+      LEFT JOIN company_settings c ON c.id = 1
       $whereSql
-    ''', scopeArgs);
+    ''', [StockStatus.seuilParDefaut, ...scopeArgs]);
     for (final row in entryRows) {
       rows.add(TransactionRow(
         type: TransactionType.entry,
@@ -138,6 +145,7 @@ class TransactionRepository {
         storeName: row['store_name'] as String,
         partner: (row['supplier'] as String?) ?? '',
         tiersId: row['tiers_id'] as int?,
+        stockMin: (row['stock_min'] as num).toInt(),
         invoiceNumber: '',
         inQty: (row['quantity'] as num).toInt(),
         outQty: 0,
@@ -146,11 +154,14 @@ class TransactionRepository {
 
     final outputRows = await db.rawQuery('''
       SELECT so.id, so.date, so.reference, so.designation, so.destination,
-             so.invoice_number, so.quantity, so.tiers_id, s.name AS store_name
+             so.invoice_number, so.quantity, so.tiers_id, s.name AS store_name,
+             COALESCE(p.stock_min, c.stock_min_defaut, ?) AS stock_min
       FROM stock_outputs so
       JOIN stores s ON s.id = so.store_id
+      LEFT JOIN products p ON p.reference = so.reference
+      LEFT JOIN company_settings c ON c.id = 1
       $outWhereSql
-    ''', scopeArgs);
+    ''', [StockStatus.seuilParDefaut, ...scopeArgs]);
     for (final row in outputRows) {
       rows.add(TransactionRow(
         type: TransactionType.output,
@@ -161,6 +172,7 @@ class TransactionRepository {
         storeName: row['store_name'] as String,
         partner: (row['destination'] as String?) ?? '',
         tiersId: row['tiers_id'] as int?,
+        stockMin: (row['stock_min'] as num).toInt(),
         invoiceNumber: (row['invoice_number'] as String?) ?? '',
         inQty: 0,
         outQty: (row['quantity'] as num).toInt(),

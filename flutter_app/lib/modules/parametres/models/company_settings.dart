@@ -1,3 +1,5 @@
+import 'package:socogen/shared/models/view_models.dart';
+
 class CompanySettings {
   final int id;
   final String name;
@@ -15,6 +17,12 @@ class CompanySettings {
   /// s'affichent ; voir `core/money`.
   final String devise;
 
+  /// Le seuil d'alerte appliqué aux articles qui n'en déclarent pas.
+  ///
+  /// Dix : ce que le code appliquait en dur à tout le catalogue avant
+  /// que le seuil devienne une propriété de l'article.
+  final int seuilStockParDefaut;
+
   const CompanySettings({
     this.id = 1,
     this.name = '',
@@ -27,6 +35,7 @@ class CompanySettings {
     this.rccm = '',
     this.logoPath = '',
     this.devise = 'XAF',
+    this.seuilStockParDefaut = StockStatus.seuilParDefaut,
   });
 
   factory CompanySettings.fromMap(Map<String, Object?> map) {
@@ -43,6 +52,9 @@ class CompanySettings {
       logoPath: (map['logo_path'] as String?) ?? '',
       // Une base d'avant la v4 n'a pas la colonne.
       devise: (map['devise'] as String?) ?? 'XAF',
+      // Ni une base d'avant la v6 celle-ci.
+      seuilStockParDefaut: (map['stock_min_defaut'] as num?)?.toInt() ??
+          StockStatus.seuilParDefaut,
     );
   }
 
@@ -59,6 +71,7 @@ class CompanySettings {
       'rccm': rccm,
       'logo_path': logoPath,
       'devise': devise,
+      'stock_min_defaut': seuilStockParDefaut,
     };
   }
 
@@ -73,6 +86,7 @@ class CompanySettings {
     String? rccm,
     String? logoPath,
     String? devise,
+    int? seuilStockParDefaut,
   }) {
     return CompanySettings(
       id: id,
@@ -86,6 +100,8 @@ class CompanySettings {
       rccm: rccm ?? this.rccm,
       logoPath: logoPath ?? this.logoPath,
       devise: devise ?? this.devise,
+      seuilStockParDefaut:
+          seuilStockParDefaut ?? this.seuilStockParDefaut,
     );
   }
 }
