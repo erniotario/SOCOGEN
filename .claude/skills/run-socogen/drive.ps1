@@ -28,7 +28,7 @@
 
 param(
   [Parameter(Mandatory=$true)]
-  [ValidateSet("launch","quit","capture","click","keys","maximize","resize","info")]
+  [ValidateSet("launch","quit","capture","wait-ready","click","keys","maximize","resize","info")]
   [string]$Action,
 
   [string]$AppDir = "",
@@ -110,6 +110,55 @@ function Get-FrameOffset($hw) {
 # "{DEL}" typed there is not a failed test, it is someone else's work
 # destroyed. So take the foreground, verify it, and stop if it did not
 # happen.
+function Get-WindowBitmap($hw) {
+  $r = New-Object SgWin+RECT
+  [void][SgWin]::GetWindowRect($hw, [ref]$r)
+  $bmp = New-Object System.Drawing.Bitmap(($r.Right - $r.Left), ($r.Bottom - $r.Top))
+  $gfx = [System.Drawing.Graphics]::FromImage($bmp)
+  $hdc = $gfx.GetHdc()
+  [void][SgWin]::PrintWindow($hw, $hdc, 2)   # 2 = PW_RENDERFULLCONTENT
+  $gfx.ReleaseHdc($hdc); $gfx.Dispose()
+  return $bmp
+}
+
+# Has Flutter actually put pixels on the window yet?
+#
+# A window that exists is not a window that has painted. In a debug
+# build the Dart code is JIT-ed from an 86 MB kernel_blob, and on a slow
+# machine the first frame can be 15-20 s behind the window appearing.
+# Until then the client area is the blank Win32 background, and a
+# screenshot of it looks exactly like a broken app -- which is how this
+# got misdiagnosed twice, once with a full rebuild-and-bisect chasing a
+# rendering fault that was never there.
+#
+# The app's own theme is near-black, so "painted" is simply "not almost
+# entirely white". Sampled on a grid: reading every pixel of a 1280x720
+# window in PowerShell takes seconds.
+function Test-Painted($hw) {
+  $bmp = Get-WindowBitmap $hw
+  try {
+    $dark = 0; $total = 0
+    for ($y = 40; $y -lt $bmp.Height - 10; $y += 17) {
+      for ($x = 10; $x -lt $bmp.Width - 10; $x += 17) {
+        $c = $bmp.GetPixel($x, $y); $total++
+        if ($c.R -lt 240 -or $c.G -lt 240 -or $c.B -lt 240) { $dark++ }
+      }
+    }
+    if ($total -eq 0) { return $false }
+    return (($dark / $total) -gt 0.5)
+  } finally { $bmp.Dispose() }
+}
+
+# Blocks until the window has painted, or gives up saying so plainly.
+function Wait-Painted($hw, $timeoutSec) {
+  $sw = [System.Diagnostics.Stopwatch]::StartNew()
+  while ($sw.Elapsed.TotalSeconds -lt $timeoutSec) {
+    if (Test-Painted $hw) { return [math]::Round($sw.Elapsed.TotalSeconds, 1) }
+    Start-Sleep -Milliseconds 700
+  }
+  return -1
+}
+
 function Assert-Foreground($hw) {
   for ($i = 0; $i -lt 6; $i++) {
     [void][SgWin]::SetForegroundWindow($hw)
@@ -143,8 +192,16 @@ switch ($Action) {
         throw "app exited immediately (code $($started.ExitCode))"
       }
       if ($started.MainWindowHandle -ne 0) {
-        Start-Sleep -Seconds 2      # let the first frame paint
-        Write-Output "launched pid=$($started.Id)"
+        # Wait for pixels, not for a fixed number of seconds. See
+        # Test-Painted above for why this matters.
+        $painted = Wait-Painted $started.MainWindowHandle $TimeoutSec
+        if ($painted -lt 0) {
+          Write-Output ("launched pid=$($started.Id) -- WINDOW STILL BLANK " +
+            "after $TimeoutSec s. It is usually still starting: re-check " +
+            "with -Action wait-ready before concluding anything is wrong.")
+          exit 0
+        }
+        Write-Output "launched pid=$($started.Id) (first frame after ${painted}s)"
         exit 0
       }
       Start-Sleep -Milliseconds 500
@@ -171,18 +228,20 @@ switch ($Action) {
 
   "capture" {
     $hw = Get-AppWindow
-    $r = New-Object SgWin+RECT
-    [void][SgWin]::GetWindowRect($hw, [ref]$r)
-    $width = $r.Right - $r.Left
-    $height = $r.Bottom - $r.Top
-    $bmp = New-Object System.Drawing.Bitmap($width, $height)
-    $gfx = [System.Drawing.Graphics]::FromImage($bmp)
-    $hdc = $gfx.GetHdc()
-    [void][SgWin]::PrintWindow($hw, $hdc, 2)   # 2 = PW_RENDERFULLCONTENT
-    $gfx.ReleaseHdc($hdc); $gfx.Dispose()
+    $bmp = Get-WindowBitmap $hw
+    $width = $bmp.Width; $height = $bmp.Height
     $bmp.Save($Out, [System.Drawing.Imaging.ImageFormat]::Png)
     $bmp.Dispose()
     Write-Output "saved $Out (${width}x${height})"
+  }
+
+  # Use after a slow action (a big import, a report) or whenever a
+  # capture comes back blank, instead of assuming the app is broken.
+  "wait-ready" {
+    $hw = Get-AppWindow
+    $painted = Wait-Painted $hw $TimeoutSec
+    if ($painted -lt 0) { throw "window still blank after $TimeoutSec s" }
+    Write-Output "painted after ${painted}s"
   }
 
 

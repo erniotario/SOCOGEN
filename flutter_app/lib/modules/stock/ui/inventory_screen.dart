@@ -75,7 +75,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Future<void> _refresh() async {
     final future = _load();
-    setState(() => _future = future);
+    // Corps en bloc, pas en flèche : `() => _future = future` *retourne*
+    // l'affectation, donc un Future, et Flutter refuse un callback de
+    // setState qui en rend un. L'assertion ne tombe qu'en debug, mais le
+    // rafraîchissement ne prenait effet dans aucun des deux modes.
+    setState(() {
+      _future = future;
+    });
     await future;
   }
 

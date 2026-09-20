@@ -57,12 +57,13 @@ driver refuses to guess when more than one instance is running.
 ```powershell
 $D = ".claude\skills\run-socogen\drive.ps1"
 powershell -ExecutionPolicy Bypass -File $D -Action launch -AppDir "$SCRATCH\sandbox"
-# -> launched pid=15096
+# -> launched pid=15096 (first frame after 0.4s)
 
 $AppPid = 15096
 function Go($opts) { & powershell -ExecutionPolicy Bypass -File $D @opts -Pid $AppPid }
 
 Go @{Action="maximize"}
+Go @{Action="wait-ready"}          # blocks until the window has painted
 Go @{Action="capture"; Out="$SCRATCH\shot.png"}
 Go @{Action="click"; X=690; Y=410}
 Go @{Action="keys";  Text="verif"}
@@ -74,8 +75,21 @@ screenshot is the whole window; mouse input is client-relative. The
 driver measures the frame and converts. Don't subtract anything
 yourself. (`-Action info` prints the offset if you want to check.)
 
-**Read every screenshot.** A blank frame or an error banner means the
-step failed, however cheerful the driver's output was.
+**Read every screenshot.** An error banner means the step failed,
+however cheerful the driver's output was.
+
+**An all-white frame is almost never a broken app.** It is the bare
+Win32 background, showing because Flutter has not painted yet: a debug
+build JITs an 86 MB `kernel_blob.bin`, and the first frame can trail the
+window by 15-20 s on a slow machine. `launch` now waits for pixels and
+reports `first frame after 0.4s`; if a later capture still comes back
+white, run `-Action wait-ready` before concluding anything. Two separate
+sessions lost time to this — one of them rebuilt from the previous
+commit to bisect a rendering fault that did not exist. The tell that it
+is *not* the app: the process responds, and driving it still works. A
+login that reaches the database rewrites the stored hash to
+`pbkdf2_sha256$...`, which is a way to prove the app is alive without
+seeing a single pixel.
 
 ### 3. Log in and reach a screen
 
@@ -134,7 +148,7 @@ reload attached. Fine for a person at the keyboard; useless for an agent
 
 ```bash
 cd flutter_app && flutter analyze   # keep at zero
-cd flutter_app && flutter test      # ~300 tests
+cd flutter_app && flutter test      # ~315 tests
 ```
 
 Don't run the suite while a driven app is up: `web_report_test.dart`
@@ -197,6 +211,7 @@ serving its Wi-Fi sync.
 | `SM window not found` | Nothing running — `-Action launch` first. |
 | `several SM instances running (pids: ...)` | Pass `-Pid <id>`; don't let it pick. |
 | `Cannot convert value "System.Collections.Hashtable" to type "System.Int32"` | Your wrapper's `$p` collided with `-Pid`. Rename to `$opts`/`$AppPid`. |
+| Capture is all white | The app has not painted yet — `-Action wait-ready`. Not a broken app. |
 | Capture is a blank rectangle | Not using `PrintWindow` flag 2. |
 | Typed text never appears | Clipboard paste; use `-Action keys`. |
 | Black band right/bottom of capture | Used `resize`; use `maximize`. |

@@ -69,7 +69,13 @@ class _TiersScreenState extends State<TiersScreen> {
   Future<void> _rafraichir() async {
     final fiches = await _charger();
     if (!mounted) return;
-    setState(() => _future = Future.value(fiches));
+    // Corps en bloc, pas en flèche : `() => _future = ...` *retourne*
+    // l'affectation, donc un Future, et Flutter refuse un callback de
+    // setState qui rend un Future — l'état n'était jamais mis à jour et
+    // la recherche ne filtrait rien.
+    setState(() {
+      _future = Future.value(fiches);
+    });
   }
 
   void _onChanged() {

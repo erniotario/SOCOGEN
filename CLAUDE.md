@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~313 tests across 33 files
+flutter test                 # ~315 tests across 34 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -348,6 +348,15 @@ WAL on Android is the `com.tekartik.sqflite.wal_enabled` manifest flag,
 not a pragma. It is currently off there.
 
 ## UI
+
+**`setState(() => x = f())` is a trap when `f()` returns a Future.** An
+arrow body *returns* its expression, so `setState(() => _future =
+Future.value(rows))` hands Flutter a callback returning a Future.
+Flutter asserts on that and the assignment never lands: the screen keeps
+showing the previous data. It bit the Tiers search and the Inventaire
+refresh, and it is invisible without a test that changes state and then
+looks — the assert only fires in debug, and nothing about the code reads
+as wrong. Use a block body whenever the assignment's value is a Future.
 
 `AppEmptyState` and `AppErrorState` centre their content when the pane
 has room and scroll when it does not. The icon, title, sentence and
