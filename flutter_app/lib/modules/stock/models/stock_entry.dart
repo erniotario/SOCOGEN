@@ -16,6 +16,13 @@ class StockEntry {
   /// jour-là.
   final int? tiersId;
 
+  /// Le transfert dont ce mouvement fait partie, s'il y en a un.
+  ///
+  /// C'est ce lien qui distingue un déplacement entre magasins d'une
+  /// vente ou d'un achat : sans lui, la même caisse se lit comme une
+  /// perte ici et une aubaine là.
+  final int? transfertId;
+
   const StockEntry({
     required this.id,
     required this.date,
@@ -25,6 +32,7 @@ class StockEntry {
     required this.storeId,
     required this.quantity,
     this.tiersId,
+    this.transfertId,
   });
 
   factory StockEntry.fromMap(Map<String, Object?> map) {
@@ -37,6 +45,7 @@ class StockEntry {
       storeId: map['store_id'] as int,
       quantity: map['quantity'] as int,
       tiersId: map['tiers_id'] as int?,
+      transfertId: map['transfert_id'] as int?,
     );
   }
 
@@ -50,6 +59,7 @@ class StockEntry {
       'store_id': storeId,
       'quantity': quantity,
       'tiers_id': tiersId,
+      'transfert_id': transfertId,
     };
   }
 }

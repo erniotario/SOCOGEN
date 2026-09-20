@@ -14,6 +14,7 @@ import 'package:socogen/modules/parametres/ui/settings_screen.dart';
 import 'package:socogen/modules/stock/ui/stores_screen.dart';
 import 'package:socogen/modules/tiers/ui/tiers_screen.dart';
 import 'package:socogen/modules/stock/ui/transactions_screen.dart';
+import 'package:socogen/modules/stock/ui/transferts_screen.dart';
 import 'package:socogen/shared/ui/theme/app_branding.dart';
 import 'package:socogen/shared/ui/theme/app_breakpoints.dart';
 import 'package:socogen/shared/ui/theme/app_colors.dart';
@@ -52,6 +53,8 @@ const List<_NavEntry> _navEntries = [
   _NavEntry(Icons.inventory_2_outlined, Icons.inventory_2, 'Produits'),
   _NavEntry(Icons.call_received, Icons.call_received, 'Entrées'),
   _NavEntry(Icons.call_made, Icons.call_made, 'Sorties'),
+  _NavEntry(Icons.local_shipping_outlined, Icons.local_shipping,
+      'Transferts'),
   _NavEntry(Icons.swap_horiz, Icons.swap_horiz, 'Transactions'),
   _NavEntry(Icons.fact_check_outlined, Icons.fact_check, 'Inventaire'),
   _NavEntry(Icons.bar_chart_outlined, Icons.bar_chart, 'Rapports'),
@@ -73,7 +76,7 @@ const int _adminOnlyCount = 2;
 /// administration ones (Tiers, Magasins, Sécurité, Paramètres). These
 /// are positions into [_navEntries] -- inserting a destination moves
 /// them.
-const List<int> _sectionStarts = [4, 7];
+const List<int> _sectionStarts = [5, 8];
 
 /// Destinations that get a slot in the phone bottom bar. The rest live
 /// behind the trailing "Plus" destination.
@@ -84,6 +87,7 @@ const List<Widget> _screens = [
   ProductsScreen(),
   EntriesScreen(),
   OutputsScreen(),
+  TransfertsScreen(),
   TransactionsScreen(),
   InventoryScreen(),
   ReportsScreen(),

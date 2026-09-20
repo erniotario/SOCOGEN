@@ -7,7 +7,7 @@
 class AppSchema {
   AppSchema._();
 
-  static const int version = 6;
+  static const int version = 7;
 
   static const List<String> createStatements = [
     '''
@@ -44,6 +44,19 @@ class AppSchema {
       -- une absence de réglage.
       stock_min INTEGER,
       actif INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT
+    )
+    ''',
+    '''
+    CREATE TABLE transferts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      -- Les deux magasins de l'opération. Un transfert vers soi-même
+      -- n'est pas un transfert : le service le refuse.
+      source_id INTEGER NOT NULL REFERENCES stores(id),
+      destination_id INTEGER NOT NULL REFERENCES stores(id),
+      notes TEXT,
+      sync_id TEXT,
       updated_at TEXT
     )
     ''',
@@ -109,6 +122,9 @@ class AppSchema {
       store_id INTEGER NOT NULL REFERENCES stores(id),
       quantity INTEGER NOT NULL,
       tiers_id INTEGER REFERENCES tiers(id) ON DELETE SET NULL,
+      -- Les deux mouvements d'un même transfert le portent : c'est ce
+      -- lien qui distingue un déplacement d'une vente et d'un achat.
+      transfert_id INTEGER REFERENCES transferts(id),
       sync_id TEXT,
       updated_at TEXT
     )
@@ -124,6 +140,9 @@ class AppSchema {
       destination TEXT DEFAULT '',
       quantity INTEGER NOT NULL,
       tiers_id INTEGER REFERENCES tiers(id) ON DELETE SET NULL,
+      -- Les deux mouvements d'un même transfert le portent : c'est ce
+      -- lien qui distingue un déplacement d'une vente et d'un achat.
+      transfert_id INTEGER REFERENCES transferts(id),
       sync_id TEXT,
       updated_at TEXT
     )
@@ -322,6 +341,36 @@ class AppSchema {
         "WHERE tiers_id IS NULL AND TRIM(COALESCE(destination,'')) <> ''",
   ];
 
+  /// Le transfert entre magasins devient une opération.
+  ///
+  /// Déplacer des marchandises se faisait par une sortie ici et une
+  /// entrée là, sans rien qui les relie : la même caisse de riz se
+  /// lisait comme une perte dans un magasin et une aubaine dans
+  /// l'autre, et aucun état ne savait qu'elle n'avait pas quitté
+  /// l'entreprise.
+  ///
+  /// L'en-tête ne porte que ce qui appartient à l'opération — la date,
+  /// les deux magasins. Ce qui a bougé reste sur les mouvements, qui en
+  /// sont la seule source : recopier ici la référence et la quantité
+  /// les ferait diverger dès la première correction dans Transactions.
+  static const List<String> migrationV6ToV7 = [
+    '''
+    CREATE TABLE IF NOT EXISTS transferts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      source_id INTEGER NOT NULL REFERENCES stores(id),
+      destination_id INTEGER NOT NULL REFERENCES stores(id),
+      notes TEXT,
+      sync_id TEXT,
+      updated_at TEXT
+    )
+    ''',
+    'ALTER TABLE stock_entries ADD COLUMN transfert_id INTEGER '
+        'REFERENCES transferts(id)',
+    'ALTER TABLE stock_outputs ADD COLUMN transfert_id INTEGER '
+        'REFERENCES transferts(id)',
+  ];
+
   /// Le seuil de stock devient une propriété de l'article.
   ///
   /// Il valait dix pour tout le catalogue, du riz à la tonne comme du
@@ -374,6 +423,10 @@ class AppSchema {
         'ON stock_entries(tiers_id)',
     'CREATE INDEX IF NOT EXISTS idx_stock_outputs_tiers '
         'ON stock_outputs(tiers_id)',
+    'CREATE INDEX IF NOT EXISTS idx_stock_entries_transfert '
+        'ON stock_entries(transfert_id)',
+    'CREATE INDEX IF NOT EXISTS idx_stock_outputs_transfert '
+        'ON stock_outputs(transfert_id)',
   ];
 
   /// Deliberately empty. A database starts with no magasins: a business

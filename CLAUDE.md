@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~333 tests across 36 files
+flutter test                 # ~355 tests across 39 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -277,9 +277,33 @@ not make any of them worse.
   same row differently. `seuil_stock_test.dart` pins all three. Still
   open: a **reorder point** is not modelled — it would need a purchasing
   module to act on, and a column nothing reads is speculation.
-- **A transfer between magasins is not a concept.** Moving goods is a
-  sortie in one store and an entrée in the other with nothing linking
-  them, so goods in transit read as a loss here and a windfall there.
+- **A transfer between magasins is an operation — done.** `transferts`
+  is the header: the date and the two stores, nothing else. What moved
+  stays on the movements, which carry a `transfert_id`; copying the
+  reference and quantity onto the header would let them diverge the
+  first time someone corrects a line in Transactions. One transfer holds
+  many articles, because a storekeeper loads a van, not an article.
+  `TransfertRepository.creer` writes the header and both movements **in
+  one transaction** — a half-written transfer is goods that left one
+  store without arriving in the other. The counterparty text reads
+  "Transfert vers Ekie" / "Transfert depuis Hysacam", so the history is
+  legible without following the link, the same intent as "Inventaire
+  physique". Negative stock is warned about, not refused, and measured
+  against a snapshot taken before the run — the policy every other write
+  path follows.
+
+  The migration reprises **nothing**: past transfers were entered as an
+  ordinary sortie and entrée, and nothing in the data says which went
+  together. Pairing them after the fact on date and quantity would be
+  guessing — the same refusal as the tiers reprise applied to movements
+  — and an invented pair would make a real sale vanish from the figures.
+
+  Still open: the Accueil KPIs count a transfer as both an entrée and a
+  sortie, which overstates what entered and left the *business*. Stock
+  must keep counting them (the goods really did move between stores), so
+  the fix is a separate query for the business totals, not a filter on
+  the stock derivation. Decide what those KPIs mean before changing
+  them.
 - **Units are free text.** `unit` is a label with no conversions, so
   CARTON and PIÈCE sit in the same column and cannot be totalled.
 
