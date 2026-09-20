@@ -7,7 +7,7 @@
 class AppSchema {
   AppSchema._();
 
-  static const int version = 7;
+  static const int version = 8;
 
   static const List<String> createStatements = [
     '''
@@ -51,6 +51,8 @@ class AppSchema {
     CREATE TABLE transferts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT,
       -- Les deux magasins de l'opération. Un transfert vers soi-même
       -- n'est pas un transfert : le service le refuse.
       source_id INTEGER NOT NULL REFERENCES stores(id),
@@ -125,6 +127,15 @@ class AppSchema {
       -- Les deux mouvements d'un même transfert le portent : c'est ce
       -- lien qui distingue un déplacement d'une vente et d'un achat.
       transfert_id INTEGER REFERENCES transferts(id),
+      -- Qui a écrit cette ligne, et quand elle a été écrite.
+      --
+      -- `created_at` n'est pas `date` : un mouvement peut être
+      -- antidaté, et un registre doit pouvoir dire qu'une ligne datée
+      -- du 1er a été saisie le 5. Nul reste possible — les lignes
+      -- d'avant cette version n'ont pas d'auteur, et inventer le
+      -- premier administrateur venu serait signer à sa place.
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT,
       sync_id TEXT,
       updated_at TEXT
     )
@@ -143,6 +154,15 @@ class AppSchema {
       -- Les deux mouvements d'un même transfert le portent : c'est ce
       -- lien qui distingue un déplacement d'une vente et d'un achat.
       transfert_id INTEGER REFERENCES transferts(id),
+      -- Qui a écrit cette ligne, et quand elle a été écrite.
+      --
+      -- `created_at` n'est pas `date` : un mouvement peut être
+      -- antidaté, et un registre doit pouvoir dire qu'une ligne datée
+      -- du 1er a été saisie le 5. Nul reste possible — les lignes
+      -- d'avant cette version n'ont pas d'auteur, et inventer le
+      -- premier administrateur venu serait signer à sa place.
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT,
       sync_id TEXT,
       updated_at TEXT
     )
@@ -339,6 +359,29 @@ class AppSchema {
     "UPDATE stock_outputs SET tiers_id = "
         "(SELECT id FROM tiers WHERE tiers.nom = TRIM(stock_outputs.destination)) "
         "WHERE tiers_id IS NULL AND TRIM(COALESCE(destination,'')) <> ''",
+  ];
+
+  /// Un mouvement porte enfin son auteur.
+  ///
+  /// L'application avait des comptes et des rôles depuis toujours, mais
+  /// `stock_entries` et `stock_outputs` n'enregistraient personne. Dans
+  /// un registre de marchandises, qui a écrit une ligne et quand n'est
+  /// pas un agrément.
+  ///
+  /// Les colonnes arrivent nulles et le restent pour l'existant :
+  /// attribuer les 5 201 mouvements déjà au dossier au premier
+  /// administrateur venu serait signer à sa place. « Auteur inconnu »
+  /// est la vérité sur ces lignes-là.
+  static const List<String> migrationV7ToV8 = [
+    'ALTER TABLE stock_entries ADD COLUMN created_by INTEGER '
+        'REFERENCES users(id)',
+    'ALTER TABLE stock_entries ADD COLUMN created_at TEXT',
+    'ALTER TABLE stock_outputs ADD COLUMN created_by INTEGER '
+        'REFERENCES users(id)',
+    'ALTER TABLE stock_outputs ADD COLUMN created_at TEXT',
+    'ALTER TABLE transferts ADD COLUMN created_by INTEGER '
+        'REFERENCES users(id)',
+    'ALTER TABLE transferts ADD COLUMN created_at TEXT',
   ];
 
   /// Le transfert entre magasins devient une opération.

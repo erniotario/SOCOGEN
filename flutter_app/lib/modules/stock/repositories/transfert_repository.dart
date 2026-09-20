@@ -48,6 +48,7 @@ class TransfertRepository {
         'notes': notes,
         'sync_id': newSyncId(),
         'updated_at': nowIso(),
+        ...attribution(),
       });
 
       for (final ligne in lignes) {
@@ -62,6 +63,7 @@ class TransfertRepository {
           'transfert_id': transfertId,
           'sync_id': newSyncId(),
           'updated_at': nowIso(),
+          ...attribution(),
         });
         await txn.insert('stock_entries', {
           'date': date,
@@ -73,6 +75,7 @@ class TransfertRepository {
           'transfert_id': transfertId,
           'sync_id': newSyncId(),
           'updated_at': nowIso(),
+          ...attribution(),
         });
       }
 

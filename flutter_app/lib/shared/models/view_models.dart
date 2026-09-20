@@ -201,6 +201,17 @@ class TransactionRow {
   /// Supplier for entries, destination for outputs.
   final String partner;
 
+  /// Qui a saisi cette ligne, ou null pour les mouvements écrits avant
+  /// que l'application les signe — et pour ceux enregistrés hors
+  /// session. « Auteur inconnu » est la vérité sur ces lignes-là, pas
+  /// un trou à combler.
+  final String? auteur;
+
+  /// Quand la ligne a été écrite, distinct de sa [date] : un mouvement
+  /// peut être antidaté, et « saisi le 5 pour le 1er » est précisément
+  /// ce qu'on veut pouvoir lire.
+  final String? saisiLe;
+
   /// Le seuil effectif de l'article de ce mouvement.
   ///
   /// Le « stock après » se colore comme partout ailleurs, donc sur le
@@ -230,6 +241,8 @@ class TransactionRow {
     required this.designation,
     required this.storeName,
     required this.partner,
+    this.auteur,
+    this.saisiLe,
     this.stockMin = StockStatus.seuilParDefaut,
     this.tiersId,
     required this.invoiceNumber,

@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~355 tests across 39 files
+flutter test                 # ~369 tests across 41 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -236,10 +236,32 @@ not make any of them worse.
   posting the difference is what actually settles one of these, and
   `inventory_service_test.dart` pins that a settled article leaves the
   Rapports anomaly list.
-- **A movement has no author.** The app has users and roles
-  (`admin` / `magasinier`), but `stock_entries` and `stock_outputs`
-  record no one. In a stock ledger, who entered a line and when is not a
-  nicety. Any schema change in that area should add attribution.
+- **A movement carries its author — done.** `created_by` and
+  `created_at` sit on `stock_entries`, `stock_outputs` and `transferts`.
+  `created_at` is not the movement's `date`: a line can be back-dated,
+  and "entered on the 5th for the 1st" is exactly what a ledger must be
+  able to say.
+
+  The author is **read from the session, never passed in**.
+  `SessionCourante` holds who is logged in, `attribution()` in
+  `sync_columns.dart` stamps it, and the repositories call it themselves
+  at write time. Threading a user id through every form would mean every
+  form could supply a different one, and one distracted screen would
+  sign a line in someone else's name. The movement models deliberately
+  have no author field, so there is nothing for a caller to fill in.
+
+  The migration attributes **nothing**. There was one administrator in
+  the live database and naming them the author of all 5 201 existing
+  movements would have been signing on their behalf; `created_at` stays
+  null for the same reason, since stamping `now()` would claim every old
+  line was entered the day of the upgrade. "Author unknown" is the truth
+  about those rows, and the Transactions dialog says so in those words.
+
+  The limit is the same as the permissions': this records what the app
+  wrote, and opposes nothing to someone editing `created_by` in the
+  SQLite file. Still open: the inventory count session still has no
+  record of its own — its posted movements now carry an author, but
+  "who counted what, when" is not on file as a session.
 - **History is edited in place.** Transactions lets a past movement be
   changed or deleted outright. Accounting practice is a corrective
   movement that leaves the original standing, so the trail stays

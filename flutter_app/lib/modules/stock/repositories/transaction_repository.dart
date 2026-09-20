@@ -124,7 +124,8 @@ class TransactionRepository {
     final entryRows = await db.rawQuery('''
       SELECT se.id, se.date, se.reference, se.designation, se.supplier,
              se.quantity, se.tiers_id, s.name AS store_name,
-             COALESCE(p.stock_min, c.stock_min_defaut, ?) AS stock_min
+             COALESCE(p.stock_min, c.stock_min_defaut, ?) AS stock_min,
+             u.username AS auteur, se.created_at AS saisi_le
       FROM stock_entries se
       JOIN stores s ON s.id = se.store_id
       -- Par la référence, pas par une clé étrangère : c'est ainsi qu'un
@@ -133,6 +134,7 @@ class TransactionRepository {
       -- retombe sur le seuil d'entreprise.
       LEFT JOIN products p ON p.reference = se.reference
       LEFT JOIN company_settings c ON c.id = 1
+      LEFT JOIN users u ON u.id = se.created_by
       $whereSql
     ''', [StockStatus.seuilParDefaut, ...scopeArgs]);
     for (final row in entryRows) {
@@ -146,6 +148,8 @@ class TransactionRepository {
         partner: (row['supplier'] as String?) ?? '',
         tiersId: row['tiers_id'] as int?,
         stockMin: (row['stock_min'] as num).toInt(),
+        auteur: row['auteur'] as String?,
+        saisiLe: row['saisi_le'] as String?,
         invoiceNumber: '',
         inQty: (row['quantity'] as num).toInt(),
         outQty: 0,
@@ -155,11 +159,13 @@ class TransactionRepository {
     final outputRows = await db.rawQuery('''
       SELECT so.id, so.date, so.reference, so.designation, so.destination,
              so.invoice_number, so.quantity, so.tiers_id, s.name AS store_name,
-             COALESCE(p.stock_min, c.stock_min_defaut, ?) AS stock_min
+             COALESCE(p.stock_min, c.stock_min_defaut, ?) AS stock_min,
+             u.username AS auteur, so.created_at AS saisi_le
       FROM stock_outputs so
       JOIN stores s ON s.id = so.store_id
       LEFT JOIN products p ON p.reference = so.reference
       LEFT JOIN company_settings c ON c.id = 1
+      LEFT JOIN users u ON u.id = so.created_by
       $outWhereSql
     ''', [StockStatus.seuilParDefaut, ...scopeArgs]);
     for (final row in outputRows) {
@@ -173,6 +179,8 @@ class TransactionRepository {
         partner: (row['destination'] as String?) ?? '',
         tiersId: row['tiers_id'] as int?,
         stockMin: (row['stock_min'] as num).toInt(),
+        auteur: row['auteur'] as String?,
+        saisiLe: row['saisi_le'] as String?,
         invoiceNumber: (row['invoice_number'] as String?) ?? '',
         inQty: 0,
         outQty: (row['quantity'] as num).toInt(),

@@ -37,6 +37,9 @@ class StockOutputRepository {
     final values = output.toMap(includeId: false);
     values['sync_id'] = newSyncId();
     values['updated_at'] = nowIso();
+    // L'auteur se pose ici, jamais par l'appelant : une écriture est
+    // signée de qui est connecté, pas de qui le demande.
+    values.addAll(attribution());
     return db.insert('stock_outputs', values);
   }
 

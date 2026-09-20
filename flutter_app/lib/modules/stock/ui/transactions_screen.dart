@@ -1134,6 +1134,11 @@ class _TransactionFormDialogState extends State<_TransactionFormDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Qui a saisi la ligne, et quand. Placé ici plutôt qu'en
+            // colonne : c'est un fait qu'on cherche au moment où l'on
+            // met une ligne en doute, pas un qu'on parcourt.
+            _Attribution(row: widget.row),
+            const SizedBox(height: 12),
             TextField(controller: _refController, decoration: const InputDecoration(labelText: 'Référence')),
             const SizedBox(height: 12),
             TextField(controller: _desController, decoration: const InputDecoration(labelText: 'Désignation')),
@@ -1188,6 +1193,45 @@ class _TransactionFormDialogState extends State<_TransactionFormDialog> {
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
               : const Text('Enregistrer'),
         ),
+      ],
+    );
+  }
+}
+
+/// « Saisi par X le 5 janvier », ou l'aveu que personne ne le sait.
+class _Attribution extends StatelessWidget {
+  final TransactionRow row;
+
+  const _Attribution({required this.row});
+
+  /// L'horodatage est en UTC ISO ; on n'en montre que le jour, qui est
+  /// ce qui se lit. L'heure exacte n'aide personne ici.
+  String get _texte {
+    final auteur = row.auteur;
+    if (auteur == null) {
+      // Les lignes d'avant la v8 n'ont pas d'auteur, et celles saisies
+      // hors session non plus. Le dire vaut mieux que de laisser croire
+      // que le champ est simplement vide.
+      return 'Auteur non enregistré — ligne antérieure au suivi des '
+          'saisies.';
+    }
+    final quand = row.saisiLe;
+    if (quand == null || quand.length < 10) return 'Saisi par $auteur.';
+    return 'Saisi par $auteur le ${quand.substring(0, 10)}.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          row.auteur == null ? Icons.help_outline : Icons.person_outline,
+          size: 16,
+          color: AppColors.textMuted,
+        ),
+        const SizedBox(width: 6),
+        Expanded(child: Text(_texte, style: AppTextStyles.bodyMuted)),
       ],
     );
   }
