@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~398 tests across 45 files
+flutter test                 # ~403 tests across 45 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -166,6 +166,21 @@ reports an unreadable date rather than assuming one — a movement in the
 wrong store silently corrupts that store's balance, and a silent
 corruption is worse than a rejected row. Hold that line everywhere:
 where the right answer is unknown, say so and let the operator decide.
+
+**A point of sale is a magasin, not a customer.** The owner's own
+reading of the live data: `BMC` is *Boutique Marché Central*, one of the
+business's shops — and it is the destination of **4 563 of the 4 570
+sorties**, 99.8 % of them. So almost the entire "sales" history is in
+fact the shop being supplied from the three depots, and the real sales,
+made at the shop, were never recorded anywhere. Each boutique or
+supermarché gets its own magasin, deliveries to it are transfers, and
+the POS sells from that magasin's stock.
+
+The past 4 563 sorties are **left as they are**, by the owner's
+decision. They correctly removed goods from the depots; converting them
+into transfers would materialise 81 037 units of stock at BMC that have
+long since been sold. The shop's opening stock is established by a
+physical inventory instead — which is what that screen is for.
 
 **Two magasins can be the same warehouse, and that is worse than two
 tiers.** The live data holds `Elig-Essono` beside `Ellig-Essono`. Stock
@@ -313,9 +328,20 @@ not make any of them worse.
   can sit on screen while real movements land behind it. Still open: a
   count has no author and no session record, so "who counted what, when"
   is not on file — see the attribution gap above.
-- **There is no valuation.** No prices anywhere, so no stock value, no
-  CUMP or FIFO, nothing an accountant can use. Sage holds the prices; an
-  import path exists.
+- **There is no valuation.** Prices now have a home
+  (`products.prix_achat` / `prix_vente`) and the Sage import fills them,
+  but nothing computes a stock value yet — no CUMP, no FIFO, nothing an
+  accountant can use. The live catalogue still has 723 articles with no
+  price at all.
+
+  The import's rule, and it is the one to keep: **fill a price that is
+  missing, never overwrite one that is set.** Without the first half,
+  723 prices would have to be typed by hand; without the second, a
+  re-run of an older workbook would silently undo a correction someone
+  made in the app. Both counts are reported, because knowing a price was
+  left alone is what lets someone go back to it deliberately.
+  `CatalogueService.completerPrix` owns the rule — the importer asks,
+  it decides.
 - **The stock threshold is per article — done.** `StockStatus.pour`
   takes the threshold as a parameter; `products.stock_min` holds an
   article's own, and `company_settings.stock_min_defaut` the one that

@@ -73,6 +73,46 @@ class CatalogueService {
         codeBarre: codeBarre,
       );
 
+  /// Pose les prix qui manquent à un article, sans jamais en écraser un.
+  ///
+  /// Le catalogue réel arrive sans aucun prix : sans cette reprise, il
+  /// faudrait en saisir 723 à la main. Mais un prix déjà en place est
+  /// une décision de quelqu'un — corrigée dans l'application après un
+  /// import précédent, par exemple — et un classeur plus ancien ne doit
+  /// pas la défaire en silence.
+  ///
+  /// Rend ce qui a été fait : `(posé, conservé)`. L'appelant compte,
+  /// parce que savoir qu'un prix n'a pas été touché est ce qui permet
+  /// d'y revenir sciemment.
+  Future<({bool pose, bool conserve})> completerPrix(
+    String reference, {
+    Montant? prixVente,
+    Montant? prixAchat,
+  }) async {
+    final article = await _produits.getByReference(reference);
+    if (article == null) return (pose: false, conserve: false);
+
+    final poseVente = prixVente != null && article.prixVenteUnites == null;
+    final poseAchat = prixAchat != null && article.prixAchatUnites == null;
+    final garde = (prixVente != null && article.prixVenteUnites != null) ||
+        (prixAchat != null && article.prixAchatUnites != null);
+
+    if (poseVente || poseAchat) {
+      await _produits.updateProduct(article.copyWith(
+        prixVenteUnites: poseVente ? prixVente.unites : null,
+        prixAchatUnites: poseAchat ? prixAchat.unites : null,
+      ));
+    }
+    return (pose: poseVente || poseAchat, conserve: garde);
+  }
+
+  /// Enregistre un article modifié, tel qu'il est fourni.
+  ///
+  /// Les drapeaux `effacer*` de [Product.copyWith] restent la façon de
+  /// retirer une valeur : ici, ce qui est nul est simplement conservé.
+  Future<void> modifierArticle(Product article) =>
+      _produits.updateProduct(article);
+
   Future<List<Famille>> listerFamilles() => _familles.getAll();
 
   /// Le chemin d'une famille, « Alimentaire › Boissons › Sodas ».

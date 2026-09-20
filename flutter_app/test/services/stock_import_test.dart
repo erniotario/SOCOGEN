@@ -384,4 +384,100 @@ void main() {
     });
   });
 
+
+  group('les prix', () {
+    Excel catalogueAvecPrix(List<List<CellValue>> lignes) => _workbook({
+          'Produits': [
+            [_t('RÉFÉRENCE'), _t('DÉSIGNATION'), _t('MAGASIN'),
+              _t('STOCK INITIAL'), _t('PRIX DE VENTE'), _t("PRIX D'ACHAT")],
+            ...lignes,
+          ],
+        });
+
+    test('sont repris du classeur à la création', () async {
+      await _service(db).importWorkbook(catalogueAvecPrix([
+        [_t('ART-9'), _t('RIZ 25KG'), _t('Magasin Central'), _n(10),
+          _n(18500), _n(15000)],
+      ]));
+
+      final article = (await db.query('products',
+              where: 'reference = ?', whereArgs: ['ART-9']))
+          .single;
+      expect(article['prix_vente'], 18500);
+      expect(article['prix_achat'], 15000);
+    });
+
+    test("remplissent un article qui n'en avait pas", () async {
+      // Le catalogue réel arrive sans aucun prix : sans cette reprise,
+      // il faudrait en saisir 723 à la main.
+      await _service(db).importWorkbook(_workbook({'Produits': _catalogue}));
+      expect(
+        (await db.query('products', where: 'reference = ?', whereArgs: ['ART-1']))
+            .single['prix_vente'],
+        isNull,
+      );
+
+      final report = await _service(db).importWorkbook(catalogueAvecPrix([
+        [_t('ART-1'), _t('Article Un'), _t('Magasin Central'), _n(0),
+          _n(2500), _n(2000)],
+      ]));
+
+      expect(
+        (await db.query('products', where: 'reference = ?', whereArgs: ['ART-1']))
+            .single['prix_vente'],
+        2500,
+      );
+      expect(report.prixRemplis, 1);
+    });
+
+    test("n'écrasent jamais un prix déjà en place", () async {
+      // Un prix déjà posé est une décision de quelqu'un — corrigée dans
+      // l'application, peut-être — et un classeur plus ancien ne doit
+      // pas la défaire en silence.
+      await _service(db).importWorkbook(catalogueAvecPrix([
+        [_t('ART-1'), _t('Article Un'), _t('Magasin Central'), _n(0),
+          _n(2500), _n(2000)],
+      ]));
+
+      final report = await _service(db).importWorkbook(catalogueAvecPrix([
+        [_t('ART-1'), _t('Article Un'), _t('Magasin Central'), _n(0),
+          _n(999), _n(111)],
+      ]));
+
+      final article = (await db.query('products',
+              where: 'reference = ?', whereArgs: ['ART-1']))
+          .single;
+      expect(article['prix_vente'], 2500);
+      expect(article['prix_achat'], 2000);
+      expect(report.prixConserves, 1,
+          reason: 'conservé, et compté — pour pouvoir y revenir sciemment');
+      expect(report.prixRemplis, 0);
+    });
+
+    test('un prix négatif est ignoré plutôt que repris', () async {
+      // Dans un classeur il ne signifie rien, et le laisser passer
+      // contaminerait chaque total qui le rencontrerait.
+      await _service(db).importWorkbook(catalogueAvecPrix([
+        [_t('ART-9'), _t('RIZ'), _t('Magasin Central'), _n(0), _n(-500), _n(0)],
+      ]));
+
+      expect(
+        (await db.query('products', where: 'reference = ?', whereArgs: ['ART-9']))
+            .single['prix_vente'],
+        isNull,
+      );
+    });
+
+    test('une colonne de prix absente ne casse rien', () async {
+      // Le classeur Sage d'aujourd'hui n'en a pas : l'import doit
+      // continuer de marcher exactement comme avant.
+      final report =
+          await _service(db).importWorkbook(_workbook({'Produits': _catalogue}));
+
+      expect(report.products, greaterThan(0));
+      expect(report.prixRemplis, 0);
+      expect(report.prixConserves, 0);
+    });
+  });
+
 }

@@ -5,6 +5,7 @@ import 'package:socogen/modules/stock/models/stock_output.dart';
 import 'package:socogen/modules/stock/models/store.dart';
 import 'package:socogen/shared/models/view_models.dart';
 import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
+import 'package:socogen/core/money/montant.dart';
 import 'package:socogen/modules/stock/services/stock_service.dart';
 import 'package:socogen/modules/tiers/services/tiers_service.dart';
 import 'package:socogen/modules/rapports/repositories/report_repository.dart';
@@ -23,6 +24,16 @@ class ImportReport {
   int entries = 0;
   int outputs = 0;
   int skipped = 0;
+
+  /// Prix repris depuis le classeur sur un article qui n'en avait pas.
+  int prixRemplis = 0;
+
+  /// Prix laissés tels quels parce que l'article en avait déjà un.
+  ///
+  /// Compté et non tu : un prix déjà en place est une décision de
+  /// quelqu'un, et savoir que l'import ne l'a pas touché est ce qui
+  /// permet d'y revenir sciemment.
+  int prixConserves = 0;
 
   /// (product, store) balances this run drove below zero, or drove
   /// further below zero than they already were. Pre-existing negatives
@@ -45,10 +56,16 @@ class ImportReport {
       if (stocks > 0) '$stocks stock(s)',
       if (entries > 0) '$entries entrée(s)',
       if (outputs > 0) '$outputs sortie(s)',
+      if (prixRemplis > 0) '$prixRemplis prix',
     ];
     if (parts.isEmpty) return 'Rien à importer.';
     var text = 'Importé : ${parts.join(', ')}';
     if (skipped > 0) text += ' — $skipped ignoré(s)';
+    // Dit, et pas tu : c'est ce qui permet de revenir sciemment sur un
+    // prix que l'import a refusé d'écraser.
+    if (prixConserves > 0) {
+      text += ' — $prixConserves prix déjà en place, conservé(s)';
+    }
     if (negatives > 0) text += ' — $negatives stock(s) négatif(s)';
     return text;
   }
@@ -237,6 +254,8 @@ class StockImportService {
       );
     }
     final unitCol = map.find(_unitNames);
+    final prixVenteCol = map.find(_prixVenteNames);
+    final prixAchatCol = map.find(_prixAchatNames);
     final stockCol = map.find(_openingStockNames);
     final storeCol = map.find(_storeNames);
 
@@ -254,14 +273,32 @@ class StockImportService {
 
       final storeId = _resolveStore(row, storeCol, stores) ?? defaultStoreId;
 
+      final prixVente = _montant(row, prixVenteCol);
+      final prixAchat = _montant(row, prixAchatCol);
+
       final existing = await _catalogue.chercherParReference(reference);
       final productId = existing?.id ??
           await _catalogue.creerArticle(
             reference: reference,
             designation: designation,
             unite: unit,
+            prixVenteUnites: prixVente?.unites,
+            prixAchatUnites: prixAchat?.unites,
           );
-      if (existing == null) report.products++;
+      if (existing == null) {
+        report.products++;
+        if (prixVente != null || prixAchat != null) report.prixRemplis++;
+      } else if (prixVente != null || prixAchat != null) {
+        // La règle appartient au catalogue : remplir ce qui manque,
+        // ne jamais écraser ce qui est posé.
+        final fait = await _catalogue.completerPrix(
+          reference,
+          prixVente: prixVente,
+          prixAchat: prixAchat,
+        );
+        if (fait.pose) report.prixRemplis++;
+        if (fait.conserve) report.prixConserves++;
+      }
 
       if (await _stock.ligneDeStockExiste(
         articleId: productId,
@@ -497,6 +534,22 @@ const _designationNames = [
   'nom',
 ];
 const _unitNames = ['unite', 'unit', 'u'];
+const _prixVenteNames = [
+  'prix de vente',
+  'prix vente',
+  'prix_vente',
+  'pv',
+  'prix unitaire',
+  'pu',
+];
+const _prixAchatNames = [
+  "prix d'achat",
+  'prix achat',
+  'prix_achat',
+  'pa',
+  'prix de revient',
+  'cout',
+];
 const _openingStockNames = [
   'stock initial',
   'initial stock',
@@ -572,6 +625,28 @@ String? _text(List<Data?> row, int? column) {
   if (column == null || column >= row.length) return null;
   final value = _cellText(row[column]?.value)?.trim();
   return (value == null || value.isEmpty) ? null : value;
+}
+
+/// Lit une cellule comme un montant.
+///
+/// Une cellule numérique est prise telle quelle ; un texte passe par
+/// [Montant.depuisSaisie], qui accepte les formes françaises « 18 500 »
+/// et « 18500,50 ». Une cellule vide ou illisible rend null, et
+/// l'appelant décide si cela veut dire « pas de prix » ou « corrigez ».
+///
+/// Un prix négatif est refusé ici plutôt que plus loin : dans un
+/// classeur il ne signifie rien, et le laisser passer contaminerait
+/// chaque total qui le rencontrerait.
+Montant? _montant(List<Data?> row, int? column) {
+  if (column == null || column >= row.length) return null;
+  final brut = row[column]?.value;
+  if (brut == null) return null;
+  final entier = _cellInt(brut);
+  final montant = entier != null
+      ? Montant.depuisUnite(entier)
+      : Montant.depuisSaisie(_cellText(brut) ?? '');
+  if (montant == null || montant.estNegatif) return null;
+  return montant;
 }
 
 int? _int(List<Data?> row, int? column) {
