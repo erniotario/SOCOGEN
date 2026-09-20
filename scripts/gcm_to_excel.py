@@ -13,6 +13,14 @@ the file and confirming the field layout around them, so only the parts
 that could actually be confirmed are written out:
 
   * article reference, designation and family  -- confirmed, written.
+  * purchase and sale price -- confirmed, written. They are big-endian
+    doubles, the opposite byte order to the rest of the file, which is
+    why an ordinary little-endian scan finds nothing. Read back against
+    articles whose price is self-evident (rice at 15 900 for the 50 kg
+    sack and exactly half for the 25 kg; a carton of matches at 20 500
+    against 1 700 for the cartouche of ten), and 96 % of the articles
+    this file shares with the app have a sale price at or above the
+    purchase price.
   * stock per depot -- a candidate field exists on the per-depot records
     but its values could not be reconciled with any known figure, so it
     is NOT written. A wrong opening stock silently corrupts every balance
@@ -31,7 +39,17 @@ importer already reads.
 The sheet written here matches that importer: a `Produits` sheet with
 `Stock initial` and `Magasin` left blank for the operator to fill in.
 Re-importing is safe -- the app skips a product/store pair that already
-carries an opening stock.
+carries an opening stock, and it fills a missing price without ever
+overwriting one already on file.
+
+A word on coverage. This file holds 3 083 articles, but only 87 of the
+app's 723 references appear in it, and matching on designation instead
+finds fewer still (73) -- the app's catalogue was recoded at some point
+and largely no longer lines up with this 2025 export. The prices below
+are therefore right for what they cover and cover far less than a whole
+catalogue. For a full set, export the article list from Sage itself with
+its price columns; the app's importer reads `Prix d'achat` and `Prix de
+vente` under the usual French aliases.
 """
 
 from __future__ import annotations
@@ -39,6 +57,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import struct
 import sys
 from typing import Iterator, NamedTuple
 
@@ -50,6 +69,20 @@ FAMILY_WIDTH = 19
 # Offsets of the following fields, relative to the reference's length byte.
 DESIGN_OFFSET = REF_WIDTH + 1        # 20
 FAMILY_OFFSET = DESIGN_OFFSET + DESIGN_WIDTH + 1  # 90
+
+# Prices are IEEE 754 doubles stored BIG-endian -- the opposite byte
+# order to everything else on an x86 file, which is why a little-endian
+# scan finds nothing here. Purchase sits 16 bytes before sale.
+#
+# Confirmed by reading them back against articles whose price is
+# self-evident: RIZ BUTTER BRAND 50KG at 15 900 / 16 500 and the 25KG at
+# exactly half, a carton of matches at 20 500 against 1 700 for the
+# cartouche of ten. Across the articles this file shares with the app,
+# 96 % have a sale price at or above the purchase price -- the three
+# that do not are real cases (oil sold off below cost), not a misread
+# field.
+PURCHASE_PRICE_OFFSET = 152
+SALE_PRICE_OFFSET = 168
 
 DEFAULT_UNIT = "unité"
 
@@ -64,6 +97,8 @@ class Article(NamedTuple):
     reference: str
     designation: str
     family: str
+    purchase_price: float | None
+    sale_price: float | None
 
 
 def read_field(buf: bytes, offset: int, width: int) -> str | None:
@@ -82,6 +117,24 @@ def read_field(buf: bytes, offset: int, width: int) -> str | None:
         if byte != 0:
             return None
     return text.decode(TEXT_ENCODING)
+
+
+def read_price(buf: bytes, offset: int) -> float | None:
+    """Reads one price field: a big-endian double.
+
+    Returns None rather than 0.0 for an article Sage never priced. The
+    two say different things -- "no price on file" and "free" -- and the
+    app draws the same distinction, so flattening them here would lose
+    it before the importer ever sees the value.
+    """
+    if offset < 0 or offset + 8 > len(buf):
+        return None
+    (value,) = struct.unpack_from(">d", buf, offset)
+    if value != value or value in (float("inf"), float("-inf")):
+        return None
+    if value <= 0:
+        return None
+    return value
 
 
 # The designation field is the distinctive part of an article record: a
@@ -113,7 +166,13 @@ def scan_articles(data: bytes) -> Iterator[Article]:
         if reference is None or len(reference) < 2:
             continue
         family = read_field(data, ref_at + FAMILY_OFFSET, FAMILY_WIDTH) or ""
-        yield Article(reference.strip(), designation.strip(), family.strip())
+        yield Article(
+            reference.strip(),
+            designation.strip(),
+            family.strip(),
+            read_price(data, ref_at + PURCHASE_PRICE_OFFSET),
+            read_price(data, ref_at + SALE_PRICE_OFFSET),
+        )
 
 
 def collect(path: str) -> list[Article]:
@@ -146,14 +205,35 @@ def write_workbook(articles: list[Article], out_path: str) -> None:
     # The app routes sheets by name; "Produits" is read as the catalogue.
     sheet.title = "Produits"
     sheet.append(
-        ["Référence", "Désignation", "Famille", "Unité", "Stock initial", "Magasin"]
+        [
+            "Référence",
+            "Désignation",
+            "Famille",
+            "Unité",
+            "Prix d'achat",
+            "Prix de vente",
+            "Stock initial",
+            "Magasin",
+        ]
     )
     for article in articles:
         sheet.append(
-            [article.reference, article.designation, article.family, DEFAULT_UNIT, None, None]
+            [
+                article.reference,
+                article.designation,
+                article.family,
+                DEFAULT_UNIT,
+                article.purchase_price,
+                article.sale_price,
+                None,
+                None,
+            ]
         )
 
-    widths = {"A": 22, "B": 46, "C": 12, "D": 10, "E": 13, "F": 20}
+    widths = {
+        "A": 22, "B": 46, "C": 12, "D": 10,
+        "E": 13, "F": 14, "G": 13, "H": 20,
+    }
     for column, width in widths.items():
         sheet.column_dimensions[column].width = width
     sheet.freeze_panes = "A2"

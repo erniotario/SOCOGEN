@@ -555,8 +555,23 @@ layout on the UI thread is an ANR on Android and a watchdog kill on iOS.
 entry already on file is recognised by date, reference, magasin, quantity
 and supplier or invoice number.
 
-`scripts/gcm_to_excel.py` reads Sage's binary `.gcm` directly, but only
-the article catalogue. Per-depot stock and movement dates could not be
+`scripts/gcm_to_excel.py` reads Sage's binary `.gcm` directly — the
+article catalogue **and its two prices**. The prices are big-endian
+doubles, the opposite byte order to the rest of the file, which is why
+a normal little-endian scan finds nothing: purchase at `ref+152`, sale
+16 bytes later. Confirmed by reading them back against articles whose
+price is self-evident (rice at 15 900 for the 50 kg sack and exactly
+half for the 25 kg), and 96 % of shared articles price at or above cost.
+
+**It covers far less of the live catalogue than it looks.** The 2025
+file holds 3 083 articles, 1 745 of them priced, but only **87 of the
+app's 723 references** appear in it — and matching on designation finds
+fewer still (73). The catalogue was recoded at some point and no longer
+lines up with that export. For a full set of prices, export the article
+list from Sage itself; the importer reads `Prix d'achat` and `Prix de
+vente` under the usual French aliases.
+
+Beyond the catalogue, per-depot stock and movement dates could not be
 decoded with confidence, so it leaves those columns blank rather than
 inventing them; its docstring records exactly what was decoded and what
 was not. Sage stores text in **Mac Roman**, not Latin-1 — an ASCII-only
