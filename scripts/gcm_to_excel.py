@@ -239,6 +239,40 @@ def write_workbook(articles: list[Article], out_path: str) -> None:
     sheet.freeze_panes = "A2"
 
     book.save(out_path)
+    _relativise_sheet_targets(out_path)
+
+
+def _relativise_sheet_targets(path: str) -> None:
+    """Rewrites the workbook relationships so the app can open the file.
+
+    openpyxl records each sheet as `Target="/xl/worksheets/sheet1.xml"`,
+    an absolute path. The Dart `excel` package the app imports with
+    resolves a target by prefixing it -- `findFile('xl/' + target)` --
+    which turns that into `xl//xl/worksheets/sheet1.xml`, finds nothing,
+    and dies on a null check deep in its parser. Excel and LibreOffice
+    accept both forms, so nothing looks wrong until the app refuses the
+    file.
+
+    Stripping the leading `/xl/` makes the target relative, which both
+    readers accept. This is the whole reason the .gcm route had never
+    actually worked end to end.
+    """
+    import shutil
+    import tempfile
+    import zipfile
+
+    rels = "xl/_rels/workbook.xml.rels"
+    with zipfile.ZipFile(path) as source:
+        items = [(info, source.read(info.filename)) for info in source.infolist()]
+
+    handle, temporary = tempfile.mkstemp(suffix=".xlsx")
+    os.close(handle)
+    with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as target:
+        for info, payload in items:
+            if info.filename == rels:
+                payload = payload.replace(b'Target="/xl/', b'Target="')
+            target.writestr(info, payload)
+    shutil.move(temporary, path)
 
 
 def main() -> None:

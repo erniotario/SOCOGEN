@@ -468,6 +468,27 @@ void main() {
       );
     });
 
+    test('une feuille de prix seule ne touche pas au stock', () async {
+      // Une colonne absente n'est pas un zéro. Sans cette règle, un
+      // classeur de prix créait une ligne d'ouverture à zéro dans le
+      // magasin par défaut pour chaque article qui n'y était pas — 41
+      // sur le catalogue réel, donc 41 articles apparaissant dans un
+      // magasin où ils ne sont pas, et une alerte de stock négatif.
+      await _service(db).importWorkbook(_workbook({'Produits': _catalogue}));
+      final avant = (await db.query('product_stocks')).length;
+
+      final report = await _service(db).importWorkbook(_workbook({
+        'Produits': [
+          [_t('RÉFÉRENCE'), _t('DÉSIGNATION'), _t('PRIX DE VENTE')],
+          [_t('ART-1'), _t('Article Un'), _n(2500)],
+        ],
+      }));
+
+      expect((await db.query('product_stocks')), hasLength(avant));
+      expect(report.stocks, 0);
+      expect(report.prixRemplis, 1);
+    });
+
     test('une colonne de prix absente ne casse rien', () async {
       // Le classeur Sage d'aujourd'hui n'en a pas : l'import doit
       // continuer de marcher exactement comme avant.

@@ -273,6 +273,15 @@ class StockImportService {
 
       final storeId = _resolveStore(row, storeCol, stores) ?? defaultStoreId;
 
+      // Une feuille qui ne parle ni de stock ni de magasin ne dit rien
+      // du stock — et une colonne absente n'est pas un zéro. Un
+      // classeur de prix créait sinon une ligne d'ouverture à zéro dans
+      // le magasin par défaut pour chaque article qui n'y était pas :
+      // 41 lignes sur le catalogue réel, donc 41 articles qui se
+      // mettaient à apparaître dans un magasin où ils ne sont pas, et
+      // une alerte de stock négatif avec.
+      final parleDeStock = stockCol != null || storeCol != null;
+
       final prixVente = _montant(row, prixVenteCol);
       final prixAchat = _montant(row, prixAchatCol);
 
@@ -299,6 +308,8 @@ class StockImportService {
         if (fait.pose) report.prixRemplis++;
         if (fait.conserve) report.prixConserves++;
       }
+
+      if (!parleDeStock) continue;
 
       if (await _stock.ligneDeStockExiste(
         articleId: productId,

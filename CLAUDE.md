@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~416 tests across 47 files
+flutter test                 # ~417 tests across 47 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -354,6 +354,13 @@ not make any of them worse.
   accountant can use. The live catalogue still has 723 articles with no
   price at all.
 
+  A sheet that names neither a stock nor a magasin column says nothing
+  about stock, and **an absent column is not a zero**: a price-only
+  workbook used to create a zero opening row in the default store for
+  every article not already there — 41 of them on the live catalogue,
+  each then showing up in a store it is not in, with a negative-stock
+  warning to match.
+
   The import's rule, and it is the one to keep: **fill a price that is
   missing, never overwrite one that is set.** Without the first half,
   723 prices would have to be typed by hand; without the second, a
@@ -562,6 +569,17 @@ a normal little-endian scan finds nothing: purchase at `ref+152`, sale
 16 bytes later. Confirmed by reading them back against articles whose
 price is self-evident (rice at 15 900 for the 50 kg sack and exactly
 half for the 25 kg), and 96 % of shared articles price at or above cost.
+
+**openpyxl's output needs one fix before the app can read it.**
+openpyxl records each sheet as `Target="/xl/worksheets/sheet1.xml"`, an
+absolute path; the Dart `excel` package resolves a target by prefixing
+it — `findFile('xl/' + target)` — so it looks for
+`xl//xl/worksheets/sheet1.xml`, finds nothing, and dies on a null check
+inside its parser. Excel and LibreOffice accept both forms, so the file
+looks perfectly fine right up until the app refuses it. The script now
+rewrites those targets relative after saving; this is the reason the
+.gcm route had never actually worked end to end, and nothing short of
+importing a produced file would have revealed it.
 
 **It covers far less of the live catalogue than it looks.** The 2025
 file holds 3 083 articles, 1 745 of them priced, but only **87 of the
