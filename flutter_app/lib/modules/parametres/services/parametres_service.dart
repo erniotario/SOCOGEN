@@ -1,9 +1,9 @@
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/core/money/montant.dart';
-import 'package:socogen/shared/models/company_settings.dart';
-import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
-import 'package:socogen/modules/parametres/repositories/tva_repository.dart';
-import 'package:socogen/shared/models/taux_tva.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/core/money/montant.dart';
+import 'package:erp/shared/models/company_settings.dart';
+import 'package:erp/modules/parametres/repositories/settings_repository.dart';
+import 'package:erp/modules/parametres/repositories/tva_repository.dart';
+import 'package:erp/shared/models/taux_tva.dart';
 
 /// Ce que les autres modules ont le droit de demander aux paramètres.
 ///

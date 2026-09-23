@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
 
 /// Global [ThemeData] for the app: a dark, GitHub-inspired surface set
 /// shared by the Windows desktop build and the Android build.

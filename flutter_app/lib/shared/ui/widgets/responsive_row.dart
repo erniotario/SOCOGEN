@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
 
 /// One child of a [ResponsiveRow], with its share of the row width.
 class RowItem {

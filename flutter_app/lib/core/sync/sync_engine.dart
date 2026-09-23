@@ -1,8 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 
-import 'package:socogen/core/db/sync_columns.dart';
+import 'package:erp/core/db/sync_columns.dart';
 
-import 'package:socogen/core/sync/sync_models.dart';
+import 'package:erp/core/sync/sync_models.dart';
 
 /// Sentinel "since" value meaning "the beginning of time", used the first
 /// time a device syncs (so every local row is sent).

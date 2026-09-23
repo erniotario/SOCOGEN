@@ -2,23 +2,23 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:socogen/modules/stock/models/store.dart';
-import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/rapports/repositories/report_repository.dart';
-import 'package:socogen/modules/stock/repositories/store_repository.dart';
-import 'package:socogen/core/events/data_refresh_bus.dart';
-import 'package:socogen/shared/ui/theme/app_breakpoints.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
-import 'package:socogen/shared/ui/widgets/adaptive_table.dart';
-import 'package:socogen/shared/ui/widgets/empty_state.dart';
-import 'package:socogen/shared/ui/widgets/filter_bar.dart';
-import 'package:socogen/shared/ui/widgets/kpi_card.dart';
-import 'package:socogen/shared/ui/widgets/page_header.dart';
-import 'package:socogen/shared/ui/widgets/skeleton.dart';
-import 'package:socogen/shared/ui/widgets/status_badge.dart';
-import 'package:socogen/core/errors/messages.dart';
+import 'package:erp/modules/stock/models/store.dart';
+import 'package:erp/shared/models/view_models.dart';
+import 'package:erp/modules/rapports/repositories/report_repository.dart';
+import 'package:erp/modules/stock/repositories/store_repository.dart';
+import 'package:erp/core/events/data_refresh_bus.dart';
+import 'package:erp/shared/ui/theme/app_breakpoints.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/shared/ui/widgets/adaptive_table.dart';
+import 'package:erp/shared/ui/widgets/empty_state.dart';
+import 'package:erp/shared/ui/widgets/filter_bar.dart';
+import 'package:erp/shared/ui/widgets/kpi_card.dart';
+import 'package:erp/shared/ui/widgets/page_header.dart';
+import 'package:erp/shared/ui/widgets/skeleton.dart';
+import 'package:erp/shared/ui/widgets/status_badge.dart';
+import 'package:erp/core/errors/messages.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});

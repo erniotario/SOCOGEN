@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/core/db/schema.dart';
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/modules/stock/repositories/stock_repository.dart';
-import 'package:socogen/modules/stock/repositories/store_repository.dart';
-import 'package:socogen/modules/stock/services/stock_service.dart';
+import 'package:erp/core/db/schema.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/modules/stock/repositories/stock_repository.dart';
+import 'package:erp/modules/stock/repositories/store_repository.dart';
+import 'package:erp/modules/stock/services/stock_service.dart';
 
 /// Réunir deux magasins qui désignent le même dépôt.
 ///

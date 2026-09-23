@@ -5,9 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import 'package:socogen/shared/ui/theme/app_branding.dart';
-import 'package:socogen/shared/models/company_settings.dart';
-import 'package:socogen/shared/models/view_models.dart';
+import 'package:erp/shared/ui/theme/app_branding.dart';
+import 'package:erp/shared/models/company_settings.dart';
+import 'package:erp/shared/models/view_models.dart';
 
 /// Everything [TransactionsPdfService.build] needs, in one object so the
 /// whole report can be handed to a background isolate in a single message.

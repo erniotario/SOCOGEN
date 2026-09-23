@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
 
 /// Content wrapper for the app's form dialogs.
 ///

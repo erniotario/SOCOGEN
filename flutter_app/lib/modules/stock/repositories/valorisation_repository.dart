@@ -1,6 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 
-import 'package:socogen/core/db/database_service.dart';
+import 'package:erp/core/db/database_service.dart';
 
 /// Ce que le stock vaut et ce que les ventes ont rapporté.
 ///

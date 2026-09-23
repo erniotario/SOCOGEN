@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:socogen/shared/ui/theme/app_breakpoints.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/shared/ui/theme/app_breakpoints.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
 
 /// Card with an icon+title header and a divider, used to group related
 /// fields/content on the Paramètres and Sécurité screens.

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:socogen/core/auth/auth_provider.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
-import 'package:socogen/shared/ui/widgets/logo_mark.dart';
+import 'package:erp/core/auth/auth_provider.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/shared/ui/widgets/logo_mark.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

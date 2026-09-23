@@ -1,7 +1,7 @@
-#define AppName "SM"
+#define AppName "ERP"
 #define AppVersion "1.0.0"
 #define AppPublisher "SHEMAB"
-#define AppExeName "SM.exe"
+#define AppExeName "ERP.exe"
 #define ReleaseDir "build\windows\x64\runner\Release"
 
 [Setup]
@@ -15,7 +15,7 @@ AppPublisher={#AppPublisher}
 DefaultDirName={autopf}\{#AppPublisher}\{#AppName}
 DefaultGroupName={#AppName}
 OutputDir=dist
-OutputBaseFilename=SM_Setup
+OutputBaseFilename=ERP_Setup
 SetupIconFile=windows\runner\resources\app_icon.ico
 Compression=lzma2
 SolidCompression=yes
@@ -34,7 +34,7 @@ Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 Name: "desktopicon"; Description: "Créer une icône sur le bureau"; GroupDescription: "Icônes supplémentaires:"
 
 [Files]
-Source: "{#ReleaseDir}\SM.exe";                         DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ReleaseDir}\ERP.exe";                         DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ReleaseDir}\flutter_windows.dll";            DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ReleaseDir}\sqlite3.dll";                    DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ReleaseDir}\pdfium.dll";                     DestDir: "{app}"; Flags: ignoreversion
@@ -52,13 +52,16 @@ Source: "windows\runner\resources\app_icon.ico";        DestDir: "{app}"; DestNa
 ; Windows is also where its database lives, and why the database
 ; filename was left alone. Only the old shell is swept up.
 Type: files; Name: "{app}\socogen.exe"
+Type: files; Name: "{app}\SM.exe"
 Type: files; Name: "{app}\socogen.ico"
 ; Left behind by installs made when Flutter still emitted it. It
 ; records an absolute path from the build machine, so it is stale
 ; the moment it is copied to anyone else.
 Type: files; Name: "{app}\native_assets.json"
 Type: filesandordirs; Name: "{autoprograms}\SOCOGEN"
+Type: filesandordirs; Name: "{autoprograms}\SM"
 Type: files; Name: "{autodesktop}\SOCOGEN.lnk"
+Type: files; Name: "{autodesktop}\SM.lnk"
 
 [Icons]
 Name: "{group}\{#AppName}";              Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\sm.ico"

@@ -1,4 +1,4 @@
-import 'package:socogen/core/auth/permissions.dart';
+import 'package:erp/core/auth/permissions.dart';
 
 /// Clean schema (mirrors scripts/schema.sql, plus the v2 sync
 /// columns/tables added for the local Wi-Fi synchronisation feature).

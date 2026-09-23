@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/core/db/schema.dart';
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
-import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
-import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
-import 'package:socogen/modules/parametres/repositories/tva_repository.dart';
-import 'package:socogen/modules/parametres/services/parametres_service.dart';
-import 'package:socogen/modules/rapports/repositories/report_repository.dart';
-import 'package:socogen/shared/models/view_models.dart';
+import 'package:erp/core/db/schema.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/modules/catalogue/repositories/product_repository.dart';
+import 'package:erp/modules/catalogue/services/catalogue_service.dart';
+import 'package:erp/modules/parametres/repositories/settings_repository.dart';
+import 'package:erp/modules/parametres/repositories/tva_repository.dart';
+import 'package:erp/modules/parametres/services/parametres_service.dart';
+import 'package:erp/modules/rapports/repositories/report_repository.dart';
+import 'package:erp/shared/models/view_models.dart';
 
 /// Le seuil d'alerte, désormais propriété de l'article.
 ///

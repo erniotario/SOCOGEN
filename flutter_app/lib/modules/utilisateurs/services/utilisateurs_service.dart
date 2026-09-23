@@ -1,6 +1,6 @@
-import 'package:socogen/core/auth/permissions.dart';
-import 'package:socogen/modules/utilisateurs/repositories/role_repository.dart';
-import 'package:socogen/shared/models/role.dart';
+import 'package:erp/core/auth/permissions.dart';
+import 'package:erp/modules/utilisateurs/repositories/role_repository.dart';
+import 'package:erp/shared/models/role.dart';
 
 /// Ce que les utilisateurs et leurs rôles exposent aux autres modules.
 ///

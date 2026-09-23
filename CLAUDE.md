@@ -1,24 +1,35 @@
-# SM — gestion de stock
+# ERP — gestion commerciale
 
-A stock-management application for Cameroonian wholesalers, shipping to
-**Windows, Android and iOS** from one Flutter codebase in `flutter_app/`.
-The first customer, SOCOGEN, runs ~400 articles across three magasins
-(Hysacam, Ekie, Elig-Essono) and a few thousand movements a year,
-imported from Sage Gestion Commerciale — most of the hard-won detail
-below comes from that deployment.
+A commercial-management application for Cameroonian wholesalers and
+shops, shipping to **Windows, Android and iOS** from one Flutter
+codebase in `flutter_app/`. The first customer runs ~700 articles across
+three depots and a shop, and a few thousand movements a year, imported
+from Sage Gestion Commerciale — most of the hard-won detail below comes
+from that deployment.
 
-**The product is named SM; the repository, the Dart package and the
-database file are still `socogen`.** The app was named after its first
-customer, which stopped being true once a second business could install
-it. `AppBranding` (`lib/theme/app_branding.dart`) holds the product name
-so the next rename is one line, and records the three identifiers that
-deliberately do *not* follow it, because they are identity rather than
-branding: `DatabaseService._dbFileName` (on Windows the database sits
-beside the executable, so a new filename reads as an empty install),
-`AppId` in `installer.iss` (Inno upgrades in place only while it
-matches), and the Android `applicationId`. A customer's own name is data
-— `company_settings`, filled in at first run — and appears on their
-documents.
+**The interface shows the customer's name, not the product's.** The app
+was first named after its first customer, then `SM`, and is now `ERP` —
+deliberately generic, because a wholesaler in Douala should not run
+software wearing a competitor's name. What the sidebar, the login screen
+and the window title show is `company_settings.name`, asked once at
+first run; the product name appears beneath it, and takes over only on
+an installation that has not said who it is yet. `IdentiteSociete`
+(`shared/ui/widgets/`) holds that name so no screen has to fetch it, and
+it is `shared/` rather than a module because every screen reads it —
+which is also why it does **not** load itself: `shared/` may not reach a
+module, so the shell reads the settings and hands it the name.
+
+`AppBranding` holds the product name, so the next rename is one line.
+**Four identifiers deliberately do not follow it**, because they are
+identity rather than branding and moving them strands an installed
+customer: `DatabaseService._dbFileName` (`socogen_stock.db` — on Windows
+the database sits beside the executable, so a new filename reads as an
+empty install), the seed asset beside it (`socogen_seed.db`, renameable
+in principle but not covered by any test, and a mismatch would only
+surface on a new customer's very first launch), `AppId` in
+`installer.iss` (Inno upgrades in place only while it matches), and the
+Android `applicationId`. The Dart package *did* follow: it is
+`package:erp/…` now.
 
 **The application is `flutter_app/`.** A Python/PySide6 version came
 first and was removed once the port shipped on all three platforms; it is
@@ -37,7 +48,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~463 tests across 52 files
+flutter test                 # ~469 tests across 52 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -135,16 +146,16 @@ itself.
 - **The Windows installer must be compiled outside the project folder.**
   Output written in place trips real-time antivirus scanning and dies
   with `EndUpdateResource failed (110)`. Compile elsewhere and copy back:
-  `ISCC.exe "/O<temp-dir>" installer.iss`, then copy `SM_Setup.exe`
+  `ISCC.exe "/O<temp-dir>" installer.iss`, then copy `ERP_Setup.exe`
   into `flutter_app/dist/`.
-- **`SM.exe` keeping an old timestamp after a release build is
+- **`ERP.exe` keeping an old timestamp after a release build is
   normal** — it is the C++ runner shell, relinked only when the Windows
   runner sources change. The Dart code is
   `build/windows/x64/runner/Release/data/app.so`; check *that* date to
   know whether a build is current.
 - `file_picker` needs its AGP9 pub-cache patch for the Android build.
-- `web_report_test.dart` binds port 8765 and fails while any SOCOGEN
-  build is running with its Wi-Fi sync server on.
+- `web_report_test.dart` binds port 8765 and fails while any build of
+  this app is running with its Wi-Fi sync server on.
 
 ## The domain
 

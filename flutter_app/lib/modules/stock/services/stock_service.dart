@@ -1,6 +1,6 @@
-import 'package:socogen/modules/stock/repositories/stock_repository.dart';
-import 'package:socogen/modules/stock/repositories/valorisation_repository.dart';
-import 'package:socogen/shared/models/view_models.dart';
+import 'package:erp/modules/stock/repositories/stock_repository.dart';
+import 'package:erp/modules/stock/repositories/valorisation_repository.dart';
+import 'package:erp/shared/models/view_models.dart';
 
 /// Ce que le stock expose aux autres modules — et à ses propres écrans.
 ///

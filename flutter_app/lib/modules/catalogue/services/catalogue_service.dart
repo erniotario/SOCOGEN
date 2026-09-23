@@ -1,11 +1,11 @@
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/core/money/montant.dart';
-import 'package:socogen/modules/catalogue/models/famille.dart';
-import 'package:socogen/modules/catalogue/models/product.dart';
-import 'package:socogen/modules/catalogue/repositories/famille_repository.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
-import 'package:socogen/modules/parametres/services/parametres_service.dart';
-import 'package:socogen/shared/models/view_models.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/core/money/montant.dart';
+import 'package:erp/modules/catalogue/models/famille.dart';
+import 'package:erp/modules/catalogue/models/product.dart';
+import 'package:erp/modules/catalogue/repositories/famille_repository.dart';
+import 'package:erp/modules/catalogue/repositories/product_repository.dart';
+import 'package:erp/modules/parametres/services/parametres_service.dart';
+import 'package:erp/shared/models/view_models.dart';
 
 /// Ce que le catalogue expose aux autres modules.
 ///

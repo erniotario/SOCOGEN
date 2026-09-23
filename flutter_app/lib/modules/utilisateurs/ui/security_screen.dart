@@ -3,23 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import 'package:socogen/core/auth/auth_provider.dart';
-import 'package:socogen/core/db/database_service.dart';
-import 'package:socogen/modules/utilisateurs/models/user.dart';
-import 'package:socogen/modules/utilisateurs/repositories/user_repository.dart';
-import 'package:socogen/core/utils/app_restart.dart';
-import 'package:socogen/core/sync/sync_client.dart';
-import 'package:socogen/core/sync/sync_server.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
-import 'package:socogen/shared/ui/theme/app_breakpoints.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/widgets/page_header.dart';
-import 'package:socogen/shared/ui/widgets/section_card.dart';
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/modules/utilisateurs/services/utilisateurs_service.dart';
-import 'package:socogen/modules/utilisateurs/ui/roles_section.dart';
-import 'package:socogen/shared/models/role.dart';
+import 'package:erp/core/auth/auth_provider.dart';
+import 'package:erp/core/db/database_service.dart';
+import 'package:erp/modules/utilisateurs/models/user.dart';
+import 'package:erp/modules/utilisateurs/repositories/user_repository.dart';
+import 'package:erp/core/utils/app_restart.dart';
+import 'package:erp/core/sync/sync_client.dart';
+import 'package:erp/core/sync/sync_server.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/shared/ui/theme/app_breakpoints.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/widgets/page_header.dart';
+import 'package:erp/shared/ui/widgets/section_card.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/modules/utilisateurs/services/utilisateurs_service.dart';
+import 'package:erp/modules/utilisateurs/ui/roles_section.dart';
+import 'package:erp/shared/models/role.dart';
 
 /// Admin-only screen for creating accounts, changing roles, resetting
 /// passwords and deleting users.

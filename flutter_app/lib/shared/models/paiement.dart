@@ -6,7 +6,7 @@
 /// la somme de ses règlements — une soustraction, pas une ligne.
 library;
 
-import 'package:socogen/core/money/montant.dart';
+import 'package:erp/core/money/montant.dart';
 
 enum ModePaiement {
   especes('especes', 'Espèces'),

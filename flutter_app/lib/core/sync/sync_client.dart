@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 
-import 'package:socogen/core/events/data_refresh_bus.dart';
-import 'package:socogen/core/db/sync_columns.dart';
-import 'package:socogen/core/sync/sync_engine.dart';
-import 'package:socogen/core/sync/sync_models.dart';
-import 'package:socogen/core/sync/sync_server.dart' show syncPort;
+import 'package:erp/core/events/data_refresh_bus.dart';
+import 'package:erp/core/db/sync_columns.dart';
+import 'package:erp/core/sync/sync_engine.dart';
+import 'package:erp/core/sync/sync_models.dart';
+import 'package:erp/core/sync/sync_server.dart' show syncPort;
 
 /// Summary of a completed sync, shown to the user.
 class SyncResult {

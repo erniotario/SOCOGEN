@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/stock/repositories/stock_repository.dart';
-import 'package:socogen/modules/stock/services/stock_service.dart';
-import 'package:socogen/modules/rapports/repositories/report_repository.dart';
-import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
-import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
-import 'package:socogen/modules/stock/services/inventory_service.dart';
+import 'package:erp/shared/models/view_models.dart';
+import 'package:erp/modules/stock/repositories/stock_repository.dart';
+import 'package:erp/modules/stock/services/stock_service.dart';
+import 'package:erp/modules/rapports/repositories/report_repository.dart';
+import 'package:erp/modules/stock/repositories/stock_entry_repository.dart';
+import 'package:erp/modules/stock/repositories/stock_output_repository.dart';
+import 'package:erp/modules/stock/services/inventory_service.dart';
 
 import '../repositories/test_database.dart';
 

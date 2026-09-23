@@ -83,7 +83,7 @@ void main() {
     );
 
     final importRe = RegExp(
-      r"^\s*(?:import|export)\s+'package:socogen/([^']+)'",
+      r"^\s*(?:import|export)\s+'package:erp/([^']+)'",
       multiLine: true,
     );
 

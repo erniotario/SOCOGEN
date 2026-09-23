@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 
-import 'package:socogen/modules/stock/models/store.dart';
-import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
-import 'package:socogen/modules/stock/services/stock_service.dart';
-import 'package:socogen/modules/stock/repositories/store_repository.dart';
-import 'package:socogen/core/events/data_refresh_bus.dart';
-import 'package:socogen/modules/stock/services/inventory_service.dart';
-import 'package:socogen/shared/ui/theme/app_breakpoints.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
-import 'package:socogen/shared/ui/widgets/adaptive_table.dart';
-import 'package:socogen/shared/ui/widgets/empty_state.dart';
-import 'package:socogen/shared/ui/widgets/page_header.dart';
-import 'package:socogen/shared/ui/widgets/product_autocomplete.dart';
-import 'package:socogen/shared/ui/widgets/row_actions.dart';
-import 'package:socogen/shared/ui/widgets/skeleton.dart';
-import 'package:socogen/shared/ui/widgets/status_badge.dart';
-import 'package:socogen/core/errors/messages.dart';
+import 'package:erp/modules/stock/models/store.dart';
+import 'package:erp/shared/models/view_models.dart';
+import 'package:erp/modules/catalogue/services/catalogue_service.dart';
+import 'package:erp/modules/stock/services/stock_service.dart';
+import 'package:erp/modules/stock/repositories/store_repository.dart';
+import 'package:erp/core/events/data_refresh_bus.dart';
+import 'package:erp/modules/stock/services/inventory_service.dart';
+import 'package:erp/shared/ui/theme/app_breakpoints.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/shared/ui/widgets/adaptive_table.dart';
+import 'package:erp/shared/ui/widgets/empty_state.dart';
+import 'package:erp/shared/ui/widgets/page_header.dart';
+import 'package:erp/shared/ui/widgets/product_autocomplete.dart';
+import 'package:erp/shared/ui/widgets/row_actions.dart';
+import 'package:erp/shared/ui/widgets/skeleton.dart';
+import 'package:erp/shared/ui/widgets/status_badge.dart';
+import 'package:erp/core/errors/messages.dart';
 
 /// Physical inventory: count what the shelf actually holds, and let the
 /// app post the difference as a corrective movement.

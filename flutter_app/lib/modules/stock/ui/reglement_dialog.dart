@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/core/money/montant.dart';
-import 'package:socogen/modules/stock/services/paiement_service.dart';
-import 'package:socogen/shared/models/paiement.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/core/money/montant.dart';
+import 'package:erp/modules/stock/services/paiement_service.dart';
+import 'package:erp/shared/models/paiement.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
 
 /// Encaisser le règlement d'un ticket.
 ///

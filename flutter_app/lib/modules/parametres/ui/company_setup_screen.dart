@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
-import 'package:socogen/shared/models/company_settings.dart';
-import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
-import 'package:socogen/modules/stock/repositories/store_repository.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
-import 'package:socogen/shared/ui/widgets/logo_mark.dart';
-import 'package:socogen/core/errors/messages.dart';
+import 'package:erp/shared/models/company_settings.dart';
+import 'package:erp/modules/parametres/repositories/settings_repository.dart';
+import 'package:erp/modules/stock/repositories/store_repository.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/shared/ui/widgets/logo_mark.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/shared/ui/widgets/identite_societe.dart';
 
 /// Asked once, on a brand-new database, right after the first
 /// administrator account is created.
@@ -113,6 +114,9 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
       await _settings.saveSettings(
         CompanySettings(name: name, city: _cityController.text.trim()),
       );
+      // Dès la première saisie : c'est ce nom que la barre latérale,
+      // l'écran de connexion et les documents afficheront.
+      IdentiteSociete.instance.definir(name);
       for (final store in stores) {
         await _stores.createStore(store);
       }

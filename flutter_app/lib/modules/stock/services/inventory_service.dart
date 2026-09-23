@@ -1,8 +1,8 @@
-import 'package:socogen/modules/stock/models/stock_entry.dart';
-import 'package:socogen/modules/stock/models/stock_output.dart';
-import 'package:socogen/modules/stock/services/stock_service.dart';
-import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
-import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
+import 'package:erp/modules/stock/models/stock_entry.dart';
+import 'package:erp/modules/stock/models/stock_output.dart';
+import 'package:erp/modules/stock/services/stock_service.dart';
+import 'package:erp/modules/stock/repositories/stock_entry_repository.dart';
+import 'package:erp/modules/stock/repositories/stock_output_repository.dart';
 
 /// One article counted in one magasin.
 ///

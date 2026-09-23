@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/core/db/schema.dart';
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/core/money/montant.dart';
-import 'package:socogen/modules/catalogue/repositories/famille_repository.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
-import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
-import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
-import 'package:socogen/modules/parametres/repositories/tva_repository.dart';
-import 'package:socogen/modules/parametres/services/parametres_service.dart';
+import 'package:erp/core/db/schema.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/core/money/montant.dart';
+import 'package:erp/modules/catalogue/repositories/famille_repository.dart';
+import 'package:erp/modules/catalogue/repositories/product_repository.dart';
+import 'package:erp/modules/catalogue/services/catalogue_service.dart';
+import 'package:erp/modules/parametres/repositories/settings_repository.dart';
+import 'package:erp/modules/parametres/repositories/tva_repository.dart';
+import 'package:erp/modules/parametres/services/parametres_service.dart';
 
 /// Le service du catalogue, et surtout ce qu'il fait des prix.
 ///

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:socogen/shared/ui/theme/app_branding.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_branding.dart';
+import 'package:erp/shared/ui/widgets/identite_societe.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
 
 /// The app mark: a gradient tile carrying the product initial.
 ///
@@ -46,24 +47,37 @@ class LogoMark extends StatelessWidget {
 class LogoLockup extends StatelessWidget {
   final double markSize;
   final double titleSize;
-  final String subtitle;
+  /// Nul pour le sous-titre par défaut, qui nomme le produit.
+  final String? subtitle;
 
   const LogoLockup({
     super.key,
     this.markSize = 44,
     this.titleSize = 26,
-    this.subtitle = 'Gestion de Stock',
+    this.subtitle,
   });
 
   @override
   Widget build(BuildContext context) {
+    // L'entreprise d'abord, ici aussi : l'écran de connexion est le
+    // premier que quelqu'un voit le matin, et il doit reconnaître sa
+    // maison. Le produit reste en sous-titre pour dire de quel logiciel
+    // il s'agit.
+    final identite = IdentiteSociete.instance;
+    final sousTitre = subtitle ??
+        (identite.estConnu
+            ? '${AppBranding.productName} · ${AppBranding.tagline}'
+            : AppBranding.tagline);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         LogoMark(size: markSize),
         const SizedBox(height: AppSpacing.md),
         Text(
-          AppBranding.productName,
+          identite.affichable,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: titleSize,
             fontWeight: FontWeight.w800,
@@ -73,7 +87,7 @@ class LogoLockup extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.xxs),
         Text(
-          subtitle,
+          sousTitre,
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),

@@ -13,7 +13,7 @@
 /// ligne.
 library;
 
-import 'package:socogen/core/money/montant.dart';
+import 'package:erp/core/money/montant.dart';
 
 /// Une ligne de ticket : un article, une quantité, un prix.
 class LigneVente {

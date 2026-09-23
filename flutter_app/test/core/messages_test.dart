@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:socogen/core/errors/messages.dart';
+import 'package:erp/core/errors/messages.dart';
 
 /// Un message d'erreur s'adresse à un magasinier debout dans une allée,
 /// pas au développeur. Ces tests tiennent les deux bouts : ce qui est dit

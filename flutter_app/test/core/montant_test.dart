@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:socogen/core/money/montant.dart';
+import 'package:erp/core/money/montant.dart';
 
 /// intl sépare les milliers par une espace fine insécable (U+202F), pas
 /// par une espace ordinaire : c'est la typographie française correcte.

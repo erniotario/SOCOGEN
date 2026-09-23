@@ -1,9 +1,9 @@
 import 'package:sqflite/sqflite.dart';
 
-import 'package:socogen/core/db/database_service.dart';
-import 'package:socogen/core/db/sync_columns.dart';
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/modules/catalogue/models/famille.dart';
+import 'package:erp/core/db/database_service.dart';
+import 'package:erp/core/db/sync_columns.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/modules/catalogue/models/famille.dart';
 
 /// Les familles d'articles.
 class FamilleRepository {

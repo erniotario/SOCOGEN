@@ -2,26 +2,26 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
-import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
-import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
-import 'package:socogen/core/money/montant.dart';
-import 'package:socogen/modules/parametres/services/parametres_service.dart';
-import 'package:socogen/modules/stock/services/stock_service.dart';
-import 'package:socogen/modules/stock/services/vente_service.dart';
-import 'package:socogen/modules/stock/repositories/store_repository.dart';
-import 'package:socogen/core/events/data_refresh_bus.dart';
-import 'package:socogen/shared/ui/theme/app_breakpoints.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
-import 'package:socogen/shared/ui/widgets/adaptive_table.dart';
-import 'package:socogen/shared/ui/widgets/empty_state.dart';
-import 'package:socogen/shared/ui/widgets/kpi_card.dart';
-import 'package:socogen/shared/ui/widgets/page_header.dart';
-import 'package:socogen/shared/ui/widgets/skeleton.dart';
-import 'package:socogen/shared/ui/widgets/status_badge.dart';
+import 'package:erp/shared/models/view_models.dart';
+import 'package:erp/modules/catalogue/services/catalogue_service.dart';
+import 'package:erp/modules/stock/repositories/stock_entry_repository.dart';
+import 'package:erp/modules/stock/repositories/stock_output_repository.dart';
+import 'package:erp/core/money/montant.dart';
+import 'package:erp/modules/parametres/services/parametres_service.dart';
+import 'package:erp/modules/stock/services/stock_service.dart';
+import 'package:erp/modules/stock/services/vente_service.dart';
+import 'package:erp/modules/stock/repositories/store_repository.dart';
+import 'package:erp/core/events/data_refresh_bus.dart';
+import 'package:erp/shared/ui/theme/app_breakpoints.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/shared/ui/widgets/adaptive_table.dart';
+import 'package:erp/shared/ui/widgets/empty_state.dart';
+import 'package:erp/shared/ui/widgets/kpi_card.dart';
+import 'package:erp/shared/ui/widgets/page_header.dart';
+import 'package:erp/shared/ui/widgets/skeleton.dart';
+import 'package:erp/shared/ui/widgets/status_badge.dart';
 
 class _DashboardData {
   final List<ProductOverview> products;

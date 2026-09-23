@@ -6,9 +6,9 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
-import 'package:socogen/core/db/database_factory_init.dart';
-import 'package:socogen/core/db/schema.dart';
-import 'package:socogen/core/db/sync_columns.dart';
+import 'package:erp/core/db/database_factory_init.dart';
+import 'package:erp/core/db/schema.dart';
+import 'package:erp/core/db/sync_columns.dart';
 
 /// Owns the single SQLite database connection used by the whole app.
 ///

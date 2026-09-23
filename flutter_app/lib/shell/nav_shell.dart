@@ -1,29 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:socogen/core/auth/auth_provider.dart';
-import 'package:socogen/core/auth/permissions.dart';
-import 'package:socogen/modules/rapports/ui/dashboard_screen.dart';
-import 'package:socogen/modules/stock/ui/caisse_screen.dart';
-import 'package:socogen/modules/stock/ui/entries_screen.dart';
-import 'package:socogen/modules/stock/ui/inventory_screen.dart';
-import 'package:socogen/modules/stock/ui/outputs_screen.dart';
-import 'package:socogen/modules/catalogue/ui/products_screen.dart';
-import 'package:socogen/modules/rapports/ui/reports_screen.dart';
-import 'package:socogen/modules/utilisateurs/ui/security_screen.dart';
-import 'package:socogen/modules/parametres/ui/settings_screen.dart';
-import 'package:socogen/modules/stock/ui/stores_screen.dart';
-import 'package:socogen/modules/tiers/ui/tiers_screen.dart';
-import 'package:socogen/modules/stock/ui/transactions_screen.dart';
-import 'package:socogen/modules/stock/ui/transferts_screen.dart';
-import 'package:socogen/shared/ui/theme/app_branding.dart';
-import 'package:socogen/shared/ui/theme/app_breakpoints.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
-import 'package:socogen/core/auth/ui/change_password_dialog.dart';
-import 'package:socogen/shared/ui/widgets/logo_mark.dart';
-import 'package:socogen/modules/utilisateurs/services/utilisateurs_service.dart';
+import 'package:erp/core/auth/auth_provider.dart';
+import 'package:erp/core/auth/permissions.dart';
+import 'package:erp/modules/rapports/ui/dashboard_screen.dart';
+import 'package:erp/modules/stock/ui/caisse_screen.dart';
+import 'package:erp/modules/stock/ui/entries_screen.dart';
+import 'package:erp/modules/stock/ui/inventory_screen.dart';
+import 'package:erp/modules/stock/ui/outputs_screen.dart';
+import 'package:erp/modules/catalogue/ui/products_screen.dart';
+import 'package:erp/modules/rapports/ui/reports_screen.dart';
+import 'package:erp/modules/utilisateurs/ui/security_screen.dart';
+import 'package:erp/modules/parametres/ui/settings_screen.dart';
+import 'package:erp/modules/stock/ui/stores_screen.dart';
+import 'package:erp/modules/tiers/ui/tiers_screen.dart';
+import 'package:erp/modules/stock/ui/transactions_screen.dart';
+import 'package:erp/modules/stock/ui/transferts_screen.dart';
+import 'package:erp/shared/ui/theme/app_branding.dart';
+import 'package:erp/shared/ui/theme/app_breakpoints.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/core/auth/ui/change_password_dialog.dart';
+import 'package:erp/shared/ui/widgets/identite_societe.dart';
+import 'package:erp/shared/ui/widgets/logo_mark.dart';
+import 'package:erp/modules/utilisateurs/services/utilisateurs_service.dart';
 
 /// Les droits de la personne connectée, relus quand elle change.
 ///
@@ -171,6 +172,10 @@ class NavShell extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => NavigationController()),
         ChangeNotifierProvider(create: (_) => DroitsCourants()),
+        // L'instance partagée plutôt qu'une neuve : l'écran des
+        // paramètres la met à jour après un enregistrement, et la barre
+        // latérale doit le voir sans recharger.
+        ChangeNotifierProvider.value(value: IdentiteSociete.instance),
       ],
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -476,6 +481,7 @@ class _SidebarHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final identite = context.watch<IdentiteSociete>();
     return Container(
       height: 72,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
@@ -493,17 +499,31 @@ class _SidebarHeader extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Le nom de l'entreprise d'abord : c'est chez elle que
+                // la personne travaille, pas chez l'éditeur du logiciel.
+                // Le produit passe en dessous, et ne reprend le dessus
+                // que sur une installation qui ne s'est pas encore
+                // nommée.
                 Text(
-                  AppBranding.productName,
-                  style: TextStyle(
+                  identite.affichable,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.6,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                SizedBox(height: AppSpacing.xxs),
-                Text(AppBranding.tagline, style: AppTextStyles.captionMuted),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  identite.estConnu
+                      ? '${AppBranding.productName} · ${AppBranding.tagline}'
+                      : AppBranding.tagline,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.captionMuted,
+                ),
               ],
             ),
           ),

@@ -3,8 +3,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:socogen/shared/ui/theme/app_theme.dart';
-import 'package:socogen/shared/ui/widgets/adaptive_table.dart';
+import 'package:erp/shared/ui/theme/app_theme.dart';
+import 'package:erp/shared/ui/widgets/adaptive_table.dart';
 
 /// Guards the scrollbar on the pages that own their scroll — Produits
 /// and the wide layout of Rapports.

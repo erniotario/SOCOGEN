@@ -1,17 +1,17 @@
 import 'package:excel/excel.dart';
 
-import 'package:socogen/modules/stock/models/stock_entry.dart';
-import 'package:socogen/modules/stock/models/stock_output.dart';
-import 'package:socogen/modules/stock/models/store.dart';
-import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
-import 'package:socogen/core/money/montant.dart';
-import 'package:socogen/modules/stock/services/stock_service.dart';
-import 'package:socogen/modules/tiers/services/tiers_service.dart';
-import 'package:socogen/modules/rapports/repositories/report_repository.dart';
-import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
-import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
-import 'package:socogen/modules/stock/repositories/store_repository.dart';
+import 'package:erp/modules/stock/models/stock_entry.dart';
+import 'package:erp/modules/stock/models/stock_output.dart';
+import 'package:erp/modules/stock/models/store.dart';
+import 'package:erp/shared/models/view_models.dart';
+import 'package:erp/modules/catalogue/services/catalogue_service.dart';
+import 'package:erp/core/money/montant.dart';
+import 'package:erp/modules/stock/services/stock_service.dart';
+import 'package:erp/modules/tiers/services/tiers_service.dart';
+import 'package:erp/modules/rapports/repositories/report_repository.dart';
+import 'package:erp/modules/stock/repositories/stock_entry_repository.dart';
+import 'package:erp/modules/stock/repositories/stock_output_repository.dart';
+import 'package:erp/modules/stock/repositories/store_repository.dart';
 
 /// What one import run changed, per kind of record.
 ///

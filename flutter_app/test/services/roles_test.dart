@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/core/auth/permissions.dart';
-import 'package:socogen/core/db/schema.dart';
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/modules/utilisateurs/repositories/role_repository.dart';
-import 'package:socogen/modules/utilisateurs/services/utilisateurs_service.dart';
+import 'package:erp/core/auth/permissions.dart';
+import 'package:erp/core/db/schema.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/modules/utilisateurs/repositories/role_repository.dart';
+import 'package:erp/modules/utilisateurs/services/utilisateurs_service.dart';
 
 /// Les rôles, devenus des données.
 ///

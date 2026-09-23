@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
 
 /// A shimmering placeholder block.
 ///

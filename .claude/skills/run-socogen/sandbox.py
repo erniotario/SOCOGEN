@@ -41,8 +41,8 @@ PASSWORD = "verif1234"
 
 
 def build(src: str, dest: str) -> None:
-    if not os.path.isfile(os.path.join(src, "SM.exe")):
-        sys.exit(f"no SM.exe in {src} -- build the app first")
+    if not os.path.isfile(os.path.join(src, "ERP.exe")):
+        sys.exit(f"no ERP.exe in {src} -- build the app first")
 
     if os.path.exists(dest):
         shutil.rmtree(dest)

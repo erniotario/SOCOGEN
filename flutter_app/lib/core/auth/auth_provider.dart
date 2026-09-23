@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:socogen/core/auth/session_courante.dart';
-import 'package:socogen/modules/utilisateurs/models/user.dart';
-import 'package:socogen/modules/utilisateurs/repositories/user_repository.dart';
-import 'package:socogen/core/auth/password_hasher.dart';
+import 'package:erp/core/auth/session_courante.dart';
+import 'package:erp/modules/utilisateurs/models/user.dart';
+import 'package:erp/modules/utilisateurs/repositories/user_repository.dart';
+import 'package:erp/core/auth/password_hasher.dart';
 
 enum AuthStatus { unknown, setupRequired, loggedOut, loggedIn }
 

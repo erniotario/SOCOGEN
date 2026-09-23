@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/modules/rapports/repositories/report_repository.dart';
+import 'package:erp/shared/models/view_models.dart';
+import 'package:erp/modules/rapports/repositories/report_repository.dart';
 
 import 'test_database.dart';
 

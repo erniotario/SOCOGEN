@@ -1,8 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 
-import 'package:socogen/core/db/database_service.dart';
-import 'package:socogen/core/db/sync_columns.dart';
-import 'package:socogen/shared/models/transfert.dart';
+import 'package:erp/core/db/database_service.dart';
+import 'package:erp/core/db/sync_columns.dart';
+import 'package:erp/shared/models/transfert.dart';
 
 /// Les déplacements de marchandises entre magasins.
 class TransfertRepository {

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:socogen/core/auth/auth_provider.dart';
-import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
-import 'package:socogen/modules/parametres/ui/company_setup_screen.dart';
-import 'package:socogen/core/auth/ui/login_screen.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/widgets/logo_mark.dart';
-import 'package:socogen/shell/nav_shell.dart';
+import 'package:erp/core/auth/auth_provider.dart';
+import 'package:erp/modules/parametres/repositories/settings_repository.dart';
+import 'package:erp/modules/parametres/ui/company_setup_screen.dart';
+import 'package:erp/core/auth/ui/login_screen.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/widgets/logo_mark.dart';
+import 'package:erp/shell/nav_shell.dart';
 
 /// Decides which screen to show based on [AuthProvider.status]:
 /// loading -> setup/login -> main navigation shell.

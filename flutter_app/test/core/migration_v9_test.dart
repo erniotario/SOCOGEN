@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/core/auth/permissions.dart';
-import 'package:socogen/core/db/schema.dart';
+import 'package:erp/core/auth/permissions.dart';
+import 'package:erp/core/db/schema.dart';
 
 /// Les rôles et leurs droits passent du code aux données.
 ///

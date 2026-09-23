@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/core/db/schema.dart';
-import 'package:socogen/modules/stock/models/stock_output.dart';
-import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
-import 'package:socogen/modules/stock/repositories/valorisation_repository.dart';
+import 'package:erp/core/db/schema.dart';
+import 'package:erp/modules/stock/models/stock_output.dart';
+import 'package:erp/modules/stock/repositories/stock_output_repository.dart';
+import 'package:erp/modules/stock/repositories/valorisation_repository.dart';
 
 /// Ce que les ventes ont rapporté, et ce que le stock vaut.
 ///

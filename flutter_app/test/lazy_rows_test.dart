@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:socogen/shared/ui/theme/app_theme.dart';
-import 'package:socogen/shared/ui/widgets/adaptive_table.dart';
+import 'package:erp/shared/ui/theme/app_theme.dart';
+import 'package:erp/shared/ui/widgets/adaptive_table.dart';
 
 /// Guards the fix for stuttering scroll on Rapports/Entrées/Sorties/
 /// Transactions.

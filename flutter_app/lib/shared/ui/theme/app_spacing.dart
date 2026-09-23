@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
-import 'package:socogen/shared/ui/theme/app_breakpoints.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_breakpoints.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
 
 /// Spacing scale. Every gap in the UI is a multiple of 4 so that rhythm
 /// stays consistent between screens and across window sizes.

@@ -1,4 +1,4 @@
-import 'package:socogen/core/money/montant.dart';
+import 'package:erp/core/money/montant.dart';
 
 /// Un taux de TVA tel que l'entreprise l'applique.
 ///

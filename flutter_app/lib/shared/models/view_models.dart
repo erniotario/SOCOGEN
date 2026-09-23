@@ -1,5 +1,5 @@
-import 'package:socogen/modules/catalogue/models/product.dart';
-import 'package:socogen/modules/stock/models/store.dart';
+import 'package:erp/modules/catalogue/models/product.dart';
+import 'package:erp/modules/stock/models/store.dart';
 
 /// Status thresholds shared by the Dashboard and Reports screens.
 ///

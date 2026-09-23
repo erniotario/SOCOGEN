@@ -2,15 +2,16 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:socogen/app.dart';
-import 'package:socogen/core/auth/auth_provider.dart';
-import 'package:socogen/core/db/database_service.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/theme/app_branding.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
-import 'package:socogen/shared/ui/theme/app_theme.dart';
-import 'package:socogen/shared/ui/widgets/logo_mark.dart';
+import 'package:erp/app.dart';
+import 'package:erp/core/auth/auth_provider.dart';
+import 'package:erp/core/db/database_service.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/modules/parametres/services/parametres_service.dart';
+import 'package:erp/shared/ui/widgets/identite_societe.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/shared/ui/theme/app_theme.dart';
+import 'package:erp/shared/ui/widgets/logo_mark.dart';
 
 void main() {
   runApp(const StockApp());
@@ -35,10 +36,19 @@ class StockApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: IdentiteSociete.instance,
+      builder: (context, _) => _app(),
+    );
+  }
+
+  Widget _app() {
     return ChangeNotifierProvider(
       create: (_) => AuthProvider(),
       child: MaterialApp(
-        title: AppBranding.windowTitle,
+        // Le titre suit le nom de l'entreprise dès qu'il est connu : la
+        // barre des tâches est l'endroit où l'on cherche sa fenêtre.
+        title: IdentiteSociete.instance.titreFenetre,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
         scrollBehavior: const _AppScrollBehavior(),
@@ -72,6 +82,11 @@ class _SplashGateState extends State<_SplashGate> {
     // before the rest of the app (auth, navigation) is shown.
     final db = await DatabaseService.instance.database;
     await db.rawQuery('SELECT COUNT(*) FROM products');
+    // Le nom de l'entreprise se lit une fois, ici : il s'affiche sur
+    // chaque écran et le relire à chaque construction ferait une requête
+    // par image.
+    IdentiteSociete.instance
+        .definir((await ParametresService().societe()).name);
   }
 
   @override

@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/core/db/schema.dart';
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/core/money/montant.dart';
-import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
-import 'package:socogen/modules/parametres/repositories/tva_repository.dart';
-import 'package:socogen/modules/parametres/services/parametres_service.dart';
-import 'package:socogen/shared/models/tiers.dart';
-import 'package:socogen/modules/tiers/repositories/tiers_repository.dart';
-import 'package:socogen/modules/tiers/services/tiers_service.dart';
+import 'package:erp/core/db/schema.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/core/money/montant.dart';
+import 'package:erp/modules/parametres/repositories/settings_repository.dart';
+import 'package:erp/modules/parametres/repositories/tva_repository.dart';
+import 'package:erp/modules/parametres/services/parametres_service.dart';
+import 'package:erp/shared/models/tiers.dart';
+import 'package:erp/modules/tiers/repositories/tiers_repository.dart';
+import 'package:erp/modules/tiers/services/tiers_service.dart';
 
 /// Les fiches clients et fournisseurs, et la reprise du texte libre.
 ///

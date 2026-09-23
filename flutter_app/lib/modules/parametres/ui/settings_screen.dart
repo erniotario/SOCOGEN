@@ -3,17 +3,18 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
-import 'package:socogen/shared/models/company_settings.dart';
-import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
-import 'package:socogen/shared/ui/theme/app_breakpoints.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
-import 'package:socogen/shared/ui/widgets/empty_state.dart';
-import 'package:socogen/shared/ui/widgets/page_header.dart';
-import 'package:socogen/shared/ui/widgets/responsive_row.dart';
-import 'package:socogen/shared/ui/widgets/section_card.dart';
-import 'package:socogen/core/errors/messages.dart';
+import 'package:erp/shared/models/company_settings.dart';
+import 'package:erp/modules/parametres/repositories/settings_repository.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/shared/ui/theme/app_breakpoints.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/widgets/empty_state.dart';
+import 'package:erp/shared/ui/widgets/identite_societe.dart';
+import 'package:erp/shared/ui/widgets/page_header.dart';
+import 'package:erp/shared/ui/widgets/responsive_row.dart';
+import 'package:erp/shared/ui/widgets/section_card.dart';
+import 'package:erp/core/errors/messages.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -138,6 +139,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         logoPath: _logoPath,
         seuilStockParDefaut: seuil,
       ));
+      // La barre latérale et l'écran de connexion lisent ce nom : sans
+      // cette ligne, ils garderaient l'ancien jusqu'au prochain
+      // démarrage.
+      IdentiteSociete.instance.definir(_nameController.text.trim());
       if (!mounted) return;
       setState(() {
         _saving = false;

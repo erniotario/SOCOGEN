@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:socogen/core/auth/auth_provider.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/widgets/dialog_body.dart';
+import 'package:erp/core/auth/auth_provider.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/widgets/dialog_body.dart';
 
 /// Lets the currently signed-in user change their own password, available
 /// from the sidebar regardless of role (unlike the Paramètres page, which

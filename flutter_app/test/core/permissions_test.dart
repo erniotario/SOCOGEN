@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:socogen/core/auth/permissions.dart';
+import 'package:erp/core/auth/permissions.dart';
 
 /// Le point de décision des droits, maintenant qu'il répond par des
 /// données.

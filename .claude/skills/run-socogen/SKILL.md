@@ -1,11 +1,11 @@
 ---
 name: run-socogen
-description: Build, launch and drive the SM Flutter Windows desktop app (the SOCOGEN repository) - run it, screenshot it, click through its screens, and verify a change in the real app rather than only in tests. Use for "run the app", "start SM", "start SOCOGEN", "screenshot the app", "check X on the running app", "click through Inventaire/Rapports".
+description: Build, launch and drive the ERP Flutter Windows desktop app (the SOCOGEN repository) - run it, screenshot it, click through its screens, and verify a change in the real app rather than only in tests. Use for "run the app", "start ERP", "start SOCOGEN", "screenshot the app", "check X on the running app", "click through Inventaire/Rapports".
 ---
 
-# Running SM
+# Lancer ERP
 
-Windows Flutter desktop app. The product is named **SM**; the
+Windows Flutter desktop app. The product is named **ERP**; the
 repository, the Dart package and the database file are still named
 socogen, and deliberately so. Paths below are relative to the
 **repository root**.
@@ -29,7 +29,7 @@ on this machine. Python 3 for `sandbox.py` — stdlib only; the repo's
 cd flutter_app && flutter build windows --debug
 ```
 
-Produces `flutter_app/build/windows/x64/runner/Debug/SM.exe`.
+Produces `flutter_app/build/windows/x64/runner/Debug/ERP.exe`.
 Incremental builds take ~110 s; the first one is several minutes of
 `cl.exe`. Release builds are `--release`, but debug is what you want for
 driving.
@@ -208,8 +208,8 @@ serving its Wi-Fi sync.
 
 | Symptom | Fix |
 |---|---|
-| `SM window not found` | Nothing running — `-Action launch` first. |
-| `several SM instances running (pids: ...)` | Pass `-Pid <id>`; don't let it pick. |
+| `ERP window not found` | Nothing running — `-Action launch` first. |
+| `several ERP instances running (pids: ...)` | Pass `-Pid <id>`; don't let it pick. |
 | `Cannot convert value "System.Collections.Hashtable" to type "System.Int32"` | Your wrapper's `$p` collided with `-Pid`. Rename to `$opts`/`$AppPid`. |
 | Capture is all white | The app has not painted yet — `-Action wait-ready`. Not a broken app. |
 | Capture is a blank rectangle | Not using `PrintWindow` flag 2. |

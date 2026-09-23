@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:socogen/shared/ui/theme/app_theme.dart';
-import 'package:socogen/shared/ui/widgets/adaptive_table.dart';
-import 'package:socogen/shared/ui/widgets/filter_bar.dart';
-import 'package:socogen/shared/ui/widgets/kpi_card.dart';
-import 'package:socogen/shared/ui/widgets/page_header.dart';
-import 'package:socogen/shared/ui/widgets/responsive_row.dart';
+import 'package:erp/shared/ui/theme/app_theme.dart';
+import 'package:erp/shared/ui/widgets/adaptive_table.dart';
+import 'package:erp/shared/ui/widgets/filter_bar.dart';
+import 'package:erp/shared/ui/widgets/kpi_card.dart';
+import 'package:erp/shared/ui/widgets/page_header.dart';
+import 'package:erp/shared/ui/widgets/responsive_row.dart';
 
 /// Window sizes the app has to survive: a phone in portrait, a tablet /
 /// small desktop window, and a full desktop window.

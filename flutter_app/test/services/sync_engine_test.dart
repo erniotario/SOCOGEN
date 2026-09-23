@@ -1,16 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:socogen/modules/stock/repositories/stock_repository.dart';
+import 'package:erp/modules/stock/repositories/stock_repository.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/core/db/schema.dart';
-import 'package:socogen/core/db/sync_columns.dart';
-import 'package:socogen/modules/stock/models/stock_entry.dart';
-import 'package:socogen/modules/stock/models/stock_output.dart';
-import 'package:socogen/modules/catalogue/repositories/product_repository.dart';
-import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
-import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
-import 'package:socogen/modules/stock/repositories/store_repository.dart';
-import 'package:socogen/core/sync/sync_engine.dart';
+import 'package:erp/core/db/schema.dart';
+import 'package:erp/core/db/sync_columns.dart';
+import 'package:erp/modules/stock/models/stock_entry.dart';
+import 'package:erp/modules/stock/models/stock_output.dart';
+import 'package:erp/modules/catalogue/repositories/product_repository.dart';
+import 'package:erp/modules/stock/repositories/stock_entry_repository.dart';
+import 'package:erp/modules/stock/repositories/stock_output_repository.dart';
+import 'package:erp/modules/stock/repositories/store_repository.dart';
+import 'package:erp/core/sync/sync_engine.dart';
 
 /// Empty v2 database (no fixture rows), used to simulate a fresh device.
 Future<Database> _openEmptyDb() async {

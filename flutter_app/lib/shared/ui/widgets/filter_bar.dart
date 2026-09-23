@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_spacing.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_spacing.dart';
 
 /// One control inside a [FilterBar]. [flex] sets its share of the row
 /// when the fields sit side by side.

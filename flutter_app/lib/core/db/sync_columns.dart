@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:socogen/core/auth/session_courante.dart';
+import 'package:erp/core/auth/session_courante.dart';
 
 const _uuid = Uuid();
 

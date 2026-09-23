@@ -71,9 +71,9 @@ if (-not ("SgWin" -as [type])) { Add-Type -TypeDefinition $sig }
 # case-insensitive, so $h would silently overwrite the -H parameter and
 # the window gets resized to the value of a window handle.
 function Get-AppWindow {
-  $all = @(Get-Process SM -ErrorAction SilentlyContinue |
+  $all = @(Get-Process ERP -ErrorAction SilentlyContinue |
            Where-Object { $_.MainWindowHandle -ne 0 })
-  if ($all.Count -eq 0) { throw "SM window not found. Launch it first." }
+  if ($all.Count -eq 0) { throw "ERP window not found. Launch it first." }
 
   # Never pick blind. A developer commonly has their own instance open
   # on the real database; driving that one would type into their
@@ -87,7 +87,7 @@ function Get-AppWindow {
   }
   if ($all.Count -gt 1) {
     $ids = ($all | ForEach-Object { $_.Id }) -join ", "
-    throw "several SM instances running (pids: $ids). Re-run with -Pid <id>."
+    throw "several ERP instances running (pids: $ids). Re-run with -Pid <id>."
   }
   return $all[0].MainWindowHandle
 }
@@ -165,7 +165,7 @@ function Assert-Foreground($hw) {
     Start-Sleep -Milliseconds 250
     if ([SgWin]::GetForegroundWindow() -eq $hw) { return }
   }
-  Write-Error ("could not bring SM to the foreground -- something else " +
+  Write-Error ("could not bring ERP to the foreground -- something else " +
     "holds it (a person at the keyboard, a modal dialog). Refusing to " +
     "send input, because it would land in that window instead.")
   exit 3
@@ -175,10 +175,10 @@ switch ($Action) {
 
   "launch" {
     if ([string]::IsNullOrWhiteSpace($AppDir)) {
-      throw "launch needs -AppDir (the folder holding SM.exe)"
+      throw "launch needs -AppDir (the folder holding ERP.exe)"
     }
-    $exe = Join-Path $AppDir "SM.exe"
-    if (-not (Test-Path $exe)) { throw "no SM.exe in $AppDir -- build first" }
+    $exe = Join-Path $AppDir "ERP.exe"
+    if (-not (Test-Path $exe)) { throw "no ERP.exe in $AppDir -- build first" }
 
     # -PassThru so we hold the process WE started. Scanning for "a
     # SM window" instead would hand back a developer's own installed
@@ -216,10 +216,10 @@ switch ($Action) {
       Stop-Process -Id $PidTarget -Force -ErrorAction SilentlyContinue
       Write-Output "stopped pid=$PidTarget"
     } else {
-      $all = @(Get-Process SM -ErrorAction SilentlyContinue)
+      $all = @(Get-Process ERP -ErrorAction SilentlyContinue)
       if ($all.Count -gt 1) {
         $ids = ($all | ForEach-Object { $_.Id }) -join ", "
-        throw "several SM instances running (pids: $ids). Re-run with -Pid <id>."
+        throw "several ERP instances running (pids: $ids). Re-run with -Pid <id>."
       }
       $all | Stop-Process -Force
       Write-Output "stopped"

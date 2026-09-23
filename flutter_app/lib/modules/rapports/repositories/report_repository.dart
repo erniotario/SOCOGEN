@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
-import 'package:socogen/core/db/database_service.dart';
-import 'package:socogen/shared/models/view_models.dart';
+import 'package:erp/core/db/database_service.dart';
+import 'package:erp/shared/models/view_models.dart';
 
 class ReportRepository {
   ReportRepository({Database? database}) : _injectedDb = database;

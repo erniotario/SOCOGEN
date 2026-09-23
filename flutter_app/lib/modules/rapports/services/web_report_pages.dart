@@ -1,9 +1,9 @@
-import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/shared/ui/theme/app_branding.dart';
-import 'package:socogen/modules/rapports/repositories/report_repository.dart';
-import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
-import 'package:socogen/modules/stock/repositories/transaction_repository.dart';
-import 'package:socogen/core/utils/formatters.dart';
+import 'package:erp/shared/models/view_models.dart';
+import 'package:erp/shared/ui/theme/app_branding.dart';
+import 'package:erp/modules/rapports/repositories/report_repository.dart';
+import 'package:erp/modules/parametres/repositories/settings_repository.dart';
+import 'package:erp/modules/stock/repositories/transaction_repository.dart';
+import 'package:erp/core/utils/formatters.dart';
 
 /// Renders the read-only pages served over the local network by
 /// [SyncServer], so an admin can share a link with colleagues on the

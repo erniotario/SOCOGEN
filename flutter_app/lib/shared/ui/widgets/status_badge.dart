@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:socogen/shared/models/view_models.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/models/view_models.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
 
 /// Maps a [StockStatus] to its accent color: green/orange/red, matching
 /// the thresholds used by the Dashboard and Rapports screens, plus the

@@ -1,10 +1,10 @@
 import 'package:sqflite/sqflite.dart';
 
-import 'package:socogen/core/auth/permissions.dart';
-import 'package:socogen/core/db/database_service.dart';
-import 'package:socogen/core/db/sync_columns.dart';
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/shared/models/role.dart';
+import 'package:erp/core/auth/permissions.dart';
+import 'package:erp/core/db/database_service.dart';
+import 'package:erp/core/db/sync_columns.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/shared/models/role.dart';
 
 /// Les rôles et les droits qu'on leur accorde.
 class RoleRepository {

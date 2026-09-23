@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import 'package:socogen/core/auth/permissions.dart';
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/modules/utilisateurs/services/utilisateurs_service.dart';
-import 'package:socogen/shared/models/role.dart';
-import 'package:socogen/shared/ui/theme/app_colors.dart';
-import 'package:socogen/shared/ui/theme/app_text_styles.dart';
-import 'package:socogen/shared/ui/widgets/section_card.dart';
+import 'package:erp/core/auth/permissions.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/modules/utilisateurs/services/utilisateurs_service.dart';
+import 'package:erp/shared/models/role.dart';
+import 'package:erp/shared/ui/theme/app_colors.dart';
+import 'package:erp/shared/ui/theme/app_text_styles.dart';
+import 'package:erp/shared/ui/widgets/section_card.dart';
 
 /// Les rôles et ce que chacun a le droit de faire.
 ///

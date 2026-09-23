@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/core/db/database_service.dart';
-import 'package:socogen/core/db/schema.dart';
-import 'package:socogen/modules/catalogue/models/product.dart';
+import 'package:erp/core/db/database_service.dart';
+import 'package:erp/core/db/schema.dart';
+import 'package:erp/modules/catalogue/models/product.dart';
 
 /// La montée en v4 sur une base qui contient déjà du travail.
 ///

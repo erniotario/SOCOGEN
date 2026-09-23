@@ -1,11 +1,11 @@
 import 'package:sqflite/sqflite.dart';
 
-import 'package:socogen/core/db/database_service.dart';
-import 'package:socogen/core/db/sync_columns.dart';
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/core/money/montant.dart';
-import 'package:socogen/modules/parametres/services/parametres_service.dart';
-import 'package:socogen/shared/models/paiement.dart';
+import 'package:erp/core/db/database_service.dart';
+import 'package:erp/core/db/sync_columns.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/core/money/montant.dart';
+import 'package:erp/modules/parametres/services/parametres_service.dart';
+import 'package:erp/shared/models/paiement.dart';
 
 /// Ce qui a été payé, et ce qui reste dû.
 ///

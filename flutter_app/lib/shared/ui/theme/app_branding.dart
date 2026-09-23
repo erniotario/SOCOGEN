@@ -1,10 +1,12 @@
 /// What the product calls itself.
 ///
-/// The application was named after its first customer, SOCOGEN, which
-/// stopped being true once a second business could install it: a
-/// wholesaler in Douala should not run software wearing a competitor's
-/// name. The customer's own name is *data* now -- `company_settings`,
-/// filled in at first run -- and appears on their documents and reports.
+/// The application was named after its first customer, which stopped
+/// being true once a second business could install it: a wholesaler in
+/// Douala should not run software wearing a competitor's name. The
+/// customer's own name is *data* -- `company_settings`, filled in at
+/// first run -- and is what the interface shows, on the sidebar, in the
+/// window title and on every document. What is below is the product
+/// underneath it, shown when the business has not been named yet.
 /// This is the product above it.
 ///
 /// Kept in one place so the next rename is one line rather than a hunt.
@@ -23,12 +25,21 @@
 class AppBranding {
   AppBranding._();
 
-  /// Short form, as it appears on the executable, the installer and the
-  /// sidebar. Stands for Store Management.
-  static const String productName = 'SM';
+  /// Nom du produit, tel qu'il apparaît sur l'exécutable, l'installeur
+  /// et derrière le nom de l'entreprise dans la barre latérale.
+  ///
+  /// Générique à dessein : ce logiciel n'appartient plus à son premier
+  /// client, et chaque entreprise qui l'installe y voit **son** nom, pas
+  /// celui d'une autre. Le nom du produit n'est là que pour dire de quel
+  /// logiciel il s'agit quand l'entreprise n'a pas encore été nommée.
+  static const String productName = 'ERP';
 
-  /// What the product does, in the language its users read.
-  static const String tagline = 'Gestion de Stock';
+  /// Ce que le produit fait, dans la langue de ceux qui l'utilisent.
+  ///
+  /// « Gestion commerciale » et non « Gestion de stock » : il tient le
+  /// catalogue, les tiers, la caisse et les règlements, et s'annoncer
+  /// plus petit qu'on est induit en erreur autant que l'inverse.
+  static const String tagline = 'Gestion commerciale';
 
   /// Desktop window title, and the title of the Flutter application.
   static const String windowTitle = '$productName — $tagline';

@@ -1,8 +1,8 @@
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/modules/stock/repositories/store_repository.dart';
-import 'package:socogen/modules/stock/repositories/transfert_repository.dart';
-import 'package:socogen/modules/stock/services/stock_service.dart';
-import 'package:socogen/shared/models/transfert.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/modules/stock/repositories/store_repository.dart';
+import 'package:erp/modules/stock/repositories/transfert_repository.dart';
+import 'package:erp/modules/stock/services/stock_service.dart';
+import 'package:erp/shared/models/transfert.dart';
 
 /// Déplacer des marchandises d'un magasin à un autre.
 ///

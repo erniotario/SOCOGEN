@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:socogen/core/money/montant.dart';
-import 'package:socogen/shared/models/company_settings.dart';
-import 'package:socogen/modules/rapports/services/ticket_pdf_service.dart';
-import 'package:socogen/shared/models/vente.dart';
+import 'package:erp/core/money/montant.dart';
+import 'package:erp/shared/models/company_settings.dart';
+import 'package:erp/modules/rapports/services/ticket_pdf_service.dart';
+import 'package:erp/shared/models/vente.dart';
 
 /// Le ticket remis au client.
 ///

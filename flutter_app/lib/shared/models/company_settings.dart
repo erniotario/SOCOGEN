@@ -1,4 +1,4 @@
-import 'package:socogen/shared/models/view_models.dart';
+import 'package:erp/shared/models/view_models.dart';
 
 class CompanySettings {
   final int id;

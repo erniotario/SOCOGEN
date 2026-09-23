@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:socogen/core/auth/password_hasher.dart';
+import 'package:erp/core/auth/password_hasher.dart';
 
 /// Le hachage, et la migration silencieuse des comptes déjà créés.
 ///

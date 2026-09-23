@@ -1,18 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/core/auth/session_courante.dart';
-import 'package:socogen/core/db/schema.dart';
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/core/money/montant.dart';
-import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
-import 'package:socogen/modules/parametres/repositories/tva_repository.dart';
-import 'package:socogen/modules/parametres/services/parametres_service.dart';
-import 'package:socogen/modules/stock/repositories/stock_repository.dart';
-import 'package:socogen/modules/stock/repositories/valorisation_repository.dart';
-import 'package:socogen/modules/stock/services/stock_service.dart';
-import 'package:socogen/modules/stock/services/vente_service.dart';
-import 'package:socogen/shared/models/vente.dart';
+import 'package:erp/core/auth/session_courante.dart';
+import 'package:erp/core/db/schema.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/core/money/montant.dart';
+import 'package:erp/modules/parametres/repositories/settings_repository.dart';
+import 'package:erp/modules/parametres/repositories/tva_repository.dart';
+import 'package:erp/modules/parametres/services/parametres_service.dart';
+import 'package:erp/modules/stock/repositories/stock_repository.dart';
+import 'package:erp/modules/stock/repositories/valorisation_repository.dart';
+import 'package:erp/modules/stock/services/stock_service.dart';
+import 'package:erp/modules/stock/services/vente_service.dart';
+import 'package:erp/shared/models/vente.dart';
 
 /// Encaisser au comptoir.
 ///

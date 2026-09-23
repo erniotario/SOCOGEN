@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart' show compute;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import 'package:socogen/shared/models/company_settings.dart';
-import 'package:socogen/shared/models/vente.dart';
+import 'package:erp/shared/models/company_settings.dart';
+import 'package:erp/shared/models/vente.dart';
 
 /// Tout ce qu'un ticket doit dire, en un objet.
 ///

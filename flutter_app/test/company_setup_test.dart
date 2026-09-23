@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/core/db/schema.dart';
-import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
-import 'package:socogen/modules/stock/repositories/store_repository.dart';
-import 'package:socogen/modules/parametres/ui/company_setup_screen.dart';
-import 'package:socogen/shared/ui/theme/app_theme.dart';
+import 'package:erp/core/db/schema.dart';
+import 'package:erp/modules/parametres/repositories/settings_repository.dart';
+import 'package:erp/modules/stock/repositories/store_repository.dart';
+import 'package:erp/modules/parametres/ui/company_setup_screen.dart';
+import 'package:erp/shared/ui/theme/app_theme.dart';
 
 /// First-run setup exists so a new business does not open the app to
 /// another company's name and another company's warehouses.

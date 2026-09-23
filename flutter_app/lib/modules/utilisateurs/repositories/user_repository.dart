@@ -1,9 +1,9 @@
 import 'package:sqflite/sqflite.dart';
 
-import 'package:socogen/core/auth/password_hasher.dart';
-import 'package:socogen/core/errors/messages.dart';
-import 'package:socogen/core/db/database_service.dart';
-import 'package:socogen/modules/utilisateurs/models/user.dart';
+import 'package:erp/core/auth/password_hasher.dart';
+import 'package:erp/core/errors/messages.dart';
+import 'package:erp/core/db/database_service.dart';
+import 'package:erp/modules/utilisateurs/models/user.dart';
 
 class UserRepository {
   UserRepository({Database? database}) : _injectedDb = database;

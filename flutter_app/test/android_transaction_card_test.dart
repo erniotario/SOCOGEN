@@ -4,10 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:socogen/core/auth/auth_provider.dart';
-import 'package:socogen/core/db/database_service.dart';
-import 'package:socogen/modules/stock/ui/transactions_screen.dart';
-import 'package:socogen/shared/ui/theme/app_theme.dart';
+import 'package:erp/core/auth/auth_provider.dart';
+import 'package:erp/core/db/database_service.dart';
+import 'package:erp/modules/stock/ui/transactions_screen.dart';
+import 'package:erp/shared/ui/theme/app_theme.dart';
 
 import 'repositories/test_database.dart';
 
