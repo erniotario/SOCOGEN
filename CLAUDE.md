@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~438 tests across 49 files
+flutter test                 # ~444 tests across 50 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -560,6 +560,23 @@ standing in an aisle; a desk screen is worked through.
 which one added field pushes straight through.
 
 ### Reports
+
+**The till receipt is roll80, not A4** — that is the width of a
+till printer, and a receipt on a full sheet wastes the paper and reads
+worse. The roll format's height is unbounded, so a thirty-line ticket
+comes out in one piece with no page break to reconcile at the counter.
+It is built by re-reading what was **written**, not from the basket that
+was just emptied: the paper the customer carries away must say what the
+ledger holds. If the two ever diverged, the paper would be the one in
+the wrong, and nobody would find out.
+
+**`Helvetica has no Unicode support` is noise for this app's text.** The
+`pdf` package prints that warning for every built-in font, and it means
+characters outside WinAnsi are dropped — but WinAnsi covers what French
+needs. Verified rather than assumed, on an uncompressed document: `é`
+comes out as byte 233 and the `°` in `N°118` as 176. Embedding a font
+would be a real cost (size, load time) for no gain here; a character
+genuinely outside WinAnsi would be another matter.
 
 `MultiPage` caps how many pages a *single widget* may span at 20, as an
 assert: a debug build throws `TooManyPagesException`, a release build

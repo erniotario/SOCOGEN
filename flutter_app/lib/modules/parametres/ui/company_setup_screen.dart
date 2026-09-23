@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:socogen/modules/parametres/models/company_settings.dart';
+import 'package:socogen/shared/models/company_settings.dart';
 import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
 import 'package:socogen/modules/stock/repositories/store_repository.dart';
 import 'package:socogen/shared/ui/theme/app_colors.dart';

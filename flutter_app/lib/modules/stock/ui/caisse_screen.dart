@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
+import 'package:socogen/core/auth/session_courante.dart';
+import 'package:socogen/modules/rapports/services/ticket_pdf_service.dart';
 import 'package:socogen/core/errors/messages.dart';
 import 'package:socogen/core/events/data_refresh_bus.dart';
 import 'package:socogen/core/money/montant.dart';
@@ -81,6 +86,10 @@ class _CaisseScreenState extends State<CaisseScreen> {
   final _clientController = TextEditingController();
   ProductOverview? _article;
   int? _clientId;
+
+  /// Le client du ticket qu'on vient d'encaisser, retenu le temps de
+  /// l'impression : le champ est vidé dès l'encaissement.
+  String? _dernierClient;
   int? _disponible;
   String? _erreur;
   bool _enCours = false;
@@ -224,7 +233,7 @@ class _CaisseScreenState extends State<CaisseScreen> {
     return somme;
   }
 
-  Future<void> _encaisser() async {
+  Future<void> _encaisser(String nomMagasin) async {
     setState(() {
       _enCours = true;
       _erreur = null;
@@ -241,6 +250,9 @@ class _CaisseScreenState extends State<CaisseScreen> {
       if (!mounted) return;
       setState(() {
         _panier.clear();
+        _dernierClient = _clientController.text.trim().isEmpty
+            ? null
+            : _clientController.text.trim();
         _clientController.clear();
         _clientId = null;
         _enCours = false;
@@ -248,7 +260,7 @@ class _CaisseScreenState extends State<CaisseScreen> {
       DataRefreshBus.instance.notifyChanged();
       await _rafraichir();
       if (!mounted) return;
-      _annoncer(resultat);
+      _annoncer(resultat, nomMagasin);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -258,12 +270,54 @@ class _CaisseScreenState extends State<CaisseScreen> {
     }
   }
 
-  void _annoncer(ResultatVente resultat) {
+  /// Imprime le ticket, en relisant ce qui a été **écrit**.
+  ///
+  /// Et non le panier qui vient d'être vidé : le ticket que le client
+  /// emporte doit dire ce que le registre retient, pas ce que l'écran
+  /// croyait. Si les deux divergeaient un jour, c'est le papier qui
+  /// aurait tort, et on ne le saurait jamais.
+  Future<void> _imprimer(String numeroTicket, String nomMagasin) async {
+    try {
+      final (lignes, societe) = await (
+        _caisse.lignesDuTicket(numeroTicket),
+        _parametres.societe(),
+      ).wait;
+      final bytes = await TicketPdfService.buildInBackground(
+        TicketPdfRequest(
+          numero: numeroTicket,
+          date: DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()),
+          magasin: nomMagasin,
+          societe: societe,
+          lignes: lignes,
+          caissier: SessionCourante.instance.nomUtilisateur,
+          client: _dernierClient,
+        ),
+      );
+      await Printing.layoutPdf(
+        onLayout: (_) async => bytes,
+        name: 'Ticket $numeroTicket',
+        format: PdfPageFormat.roll80,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(messagePour(e, operation: "l'impression"))),
+      );
+    }
+  }
+
+  void _annoncer(ResultatVente resultat, String nomMagasin) {
     final base = 'Ticket ${resultat.numeroTicket} — ${resultat.total.formate()}';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: resultat.aDesNegatifs ? AppColors.anomaly : null,
-        duration: Duration(seconds: resultat.aDesNegatifs ? 8 : 4),
+        // Assez longtemps pour qu'on ait le temps de cliquer, et plus
+        // longtemps encore quand il y a un négatif à lire.
+        duration: Duration(seconds: resultat.aDesNegatifs ? 10 : 6),
+        action: SnackBarAction(
+          label: 'Imprimer',
+          onPressed: () => _imprimer(resultat.numeroTicket, nomMagasin),
+        ),
         content: Text(
           resultat.aDesNegatifs
               ? '$base. Stock négatif : ${resultat.negatifs.join(' ')}'
@@ -497,7 +551,13 @@ class _CaisseScreenState extends State<CaisseScreen> {
                 child: const Text('Vider'),
               ),
               FilledButton.icon(
-                onPressed: pret ? _encaisser : null,
+                onPressed: pret
+                    ? () => _encaisser(
+                          donnees.magasins
+                              .firstWhere((m) => m.id == _magasinId)
+                              .name,
+                        )
+                    : null,
                 icon: _enCours
                     ? const SizedBox(
                         width: 16,

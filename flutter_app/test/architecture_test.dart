@@ -34,7 +34,6 @@ const Set<String> _detteConnue = {
   'modules/catalogue/ui/products_screen.dart -> modules/stock/models/store.dart',
   'modules/catalogue/ui/products_screen.dart -> modules/stock/repositories/store_repository.dart',
   'modules/parametres/ui/company_setup_screen.dart -> modules/stock/repositories/store_repository.dart',
-  'modules/rapports/services/transactions_pdf_service.dart -> modules/parametres/models/company_settings.dart',
   'modules/rapports/services/web_report_pages.dart -> modules/parametres/repositories/settings_repository.dart',
   'modules/rapports/services/web_report_pages.dart -> modules/stock/repositories/transaction_repository.dart',
   'modules/rapports/ui/dashboard_screen.dart -> modules/stock/repositories/stock_entry_repository.dart',

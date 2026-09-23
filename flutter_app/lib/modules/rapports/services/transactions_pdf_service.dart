@@ -6,7 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import 'package:socogen/shared/ui/theme/app_branding.dart';
-import 'package:socogen/modules/parametres/models/company_settings.dart';
+import 'package:socogen/shared/models/company_settings.dart';
 import 'package:socogen/shared/models/view_models.dart';
 
 /// Everything [TransactionsPdfService.build] needs, in one object so the

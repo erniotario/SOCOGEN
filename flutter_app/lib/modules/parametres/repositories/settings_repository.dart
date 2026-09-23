@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 import 'package:socogen/core/db/database_service.dart';
-import 'package:socogen/modules/parametres/models/company_settings.dart';
+import 'package:socogen/shared/models/company_settings.dart';
 
 class SettingsRepository {
   SettingsRepository({Database? database}) : _injectedDb = database;

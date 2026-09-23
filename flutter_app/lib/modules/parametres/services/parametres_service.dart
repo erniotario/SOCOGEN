@@ -1,6 +1,6 @@
 import 'package:socogen/core/errors/messages.dart';
 import 'package:socogen/core/money/montant.dart';
-import 'package:socogen/modules/parametres/models/company_settings.dart';
+import 'package:socogen/shared/models/company_settings.dart';
 import 'package:socogen/modules/parametres/repositories/settings_repository.dart';
 import 'package:socogen/modules/parametres/repositories/tva_repository.dart';
 import 'package:socogen/shared/models/taux_tva.dart';
