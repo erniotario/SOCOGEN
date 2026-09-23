@@ -160,6 +160,12 @@ class WebReportPages {
     required String active,
     required String body,
   }) {
+    // Le nom de l'entreprise, ou celui du produit tant qu'elle ne l'a
+    // pas encore donné : un en-tête vide ne dit à personne quel stock
+    // il est en train de consulter.
+    final enTete = company.trim().isEmpty ? AppBranding.productName : company;
+    final initiale = enTete.substring(0, 1).toUpperCase();
+
     final stamp = DateTime.now();
     final time = '${stamp.day.toString().padLeft(2, '0')}/'
         '${stamp.month.toString().padLeft(2, '0')}/${stamp.year} à '
@@ -171,7 +177,7 @@ class WebReportPages {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(company)} — $title</title>
+<title>${esc(enTete)} — $title</title>
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--elev:#111827;--border:#21262d;
 --strong:#30363d;--fg:#e6edf3;--dim:#8b949e;--muted:#484f58;--accent:#58a6ff;
@@ -242,9 +248,9 @@ a{color:var(--accent)}
 <body>
 <header>
   <div class="brand">
-    <div class="mark">S</div>
+    <div class="mark">${esc(initiale)}</div>
     <div>
-      <h1>${esc(company)}</h1>
+      <h1>${esc(enTete)}</h1>
       <div class="sub">Consultation du stock — lecture seule</div>
     </div>
   </div>

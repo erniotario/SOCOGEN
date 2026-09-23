@@ -6,6 +6,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:erp/core/db/database_service.dart';
 import 'package:erp/core/sync/sync_server.dart';
+import 'package:erp/shared/ui/theme/app_branding.dart';
 
 import 'repositories/test_database.dart';
 
@@ -97,5 +98,28 @@ void main() {
 
   test('an unknown path returns 404 rather than the report', () async {
     expect((await _get('/nope')).status, 404);
+  });
+
+  group("l'en-tête de la page servie", () {
+    test("porte le nom de l'entreprise", () async {
+      // Ces pages se consultent depuis un téléphone sur le réseau du
+      // magasin : la première chose à y lire est de quelle maison on
+      // regarde le stock.
+      await db.insert('company_settings', {'id': 1, 'name': 'Maison Kamdem'});
+
+      final body = (await _get('/')).body;
+      expect(body, contains('<h1>Maison Kamdem</h1>'));
+      expect(body, contains('<title>Maison Kamdem — Stock</title>'));
+      expect(body, contains('<div class="mark">M</div>'),
+          reason: "l'initiale suit le nom, elle n'est pas gravée");
+    });
+
+    test("retombe sur le nom du produit tant qu'il est inconnu", () async {
+      // Une base neuve n'a pas encore dit qui elle est. Un en-tête vide
+      // ne dirait à personne quel stock il consulte.
+      final body = (await _get('/')).body;
+      expect(body, contains('<h1>${AppBranding.productName}</h1>'));
+      expect(body, isNot(contains('<h1></h1>')));
+    });
   });
 }
