@@ -107,6 +107,13 @@ chemin absolu est inspectable par le test ci-dessus.
   l'affaire du module (`UtilisateursService.droitsDe`) : le noyau ne
   sait pas d'où ils viennent. **Sans serveur, une permission cache un
   écran ; elle ne protège pas le fichier SQLite.**
+  Sécurité règles les rôles : créer, cocher les droits, supprimer. Les
+  deux listes déroulantes de rôles y lisent la table — codées en dur,
+  elles auraient donné un « caissier » qu'on peut créer et qu'aucun
+  compte ne peut porter. Le rôle d'un compte figure toujours dans sa
+  liste même s'il a disparu de la table, faute de quoi le menu
+  s'ouvrirait sur une valeur qu'il ne propose pas et Flutter refuserait
+  de le construire.
 - **`core/auth/session_courante`** — qui est connecté, pour les
   écritures qui portent un auteur. Ambiant et non passé en argument :
   voir la note sur l'attribution plus bas.

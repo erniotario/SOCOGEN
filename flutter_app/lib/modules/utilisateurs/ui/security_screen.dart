@@ -17,6 +17,9 @@ import 'package:socogen/shared/ui/theme/app_spacing.dart';
 import 'package:socogen/shared/ui/widgets/page_header.dart';
 import 'package:socogen/shared/ui/widgets/section_card.dart';
 import 'package:socogen/core/errors/messages.dart';
+import 'package:socogen/modules/utilisateurs/services/utilisateurs_service.dart';
+import 'package:socogen/modules/utilisateurs/ui/roles_section.dart';
+import 'package:socogen/shared/models/role.dart';
 
 /// Admin-only screen for creating accounts, changing roles, resetting
 /// passwords and deleting users.
@@ -29,7 +32,16 @@ class SecurityScreen extends StatefulWidget {
 
 class _SecurityScreenState extends State<SecurityScreen> {
   final _userRepo = UserRepository();
+  final _utilisateurs = UtilisateursService();
   late Future<List<AppUser>> _usersFuture;
+
+  /// Les rôles existants, relus à chaque changement.
+  ///
+  /// Chargés ici plutôt que codés en dur dans les deux listes
+  /// déroulantes : depuis que les rôles sont des données, un rôle créé
+  /// et absent de ces listes serait un rôle qu'aucun compte ne peut
+  /// porter.
+  late Future<List<Role>> _rolesFuture;
 
   bool _dbBusy = false;
   String? _dbError;
@@ -50,6 +62,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
   void initState() {
     super.initState();
     _usersFuture = _userRepo.getAllUsers();
+    _rolesFuture = _utilisateurs.listerRoles();
   }
 
   @override
@@ -65,10 +78,20 @@ class _SecurityScreenState extends State<SecurityScreen> {
     });
   }
 
+  void _refreshRoles() {
+    setState(() {
+      _rolesFuture = _utilisateurs.listerRoles();
+      // Un rôle renommé change ce que les listes de comptes affichent.
+      _usersFuture = _userRepo.getAllUsers();
+    });
+  }
+
   Future<void> _openAddUserDialog() async {
+    final roles = await _rolesFuture;
+    if (!mounted) return;
     final created = await showDialog<bool>(
       context: context,
-      builder: (context) => const _UserFormDialog(),
+      builder: (context) => _UserFormDialog(roles: roles),
     );
     if (created == true) _refreshUsers();
   }
@@ -293,7 +316,11 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  FutureBuilder<List<AppUser>>(
+                  FutureBuilder<List<Role>>(
+                    future: _rolesFuture,
+                    builder: (context, rolesSnapshot) {
+                      final roles = rolesSnapshot.data ?? const <Role>[];
+                      return FutureBuilder<List<AppUser>>(
                     future: _usersFuture,
                     builder: (context, usersSnapshot) {
                       if (usersSnapshot.connectionState != ConnectionState.done) {
@@ -315,6 +342,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                           for (final user in users)
                             _UserRow(
                               user: user,
+                              roles: roles,
                               isSelf: user.id == selfId,
                               onRoleChanged: (role) => _changeUserRole(user, role),
                               onResetPassword: () => _resetUserPassword(user),
@@ -323,8 +351,16 @@ class _SecurityScreenState extends State<SecurityScreen> {
                         ],
                       );
                     },
+                  );
+                    },
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              RolesSection(
+                rolesFuture: _rolesFuture,
+                service: _utilisateurs,
+                onChanged: _refreshRoles,
               ),
               const SizedBox(height: 16),
               SectionCard(
@@ -509,6 +545,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 
 class _UserRow extends StatelessWidget {
   final AppUser user;
+  final List<Role> roles;
   final bool isSelf;
   final ValueChanged<String> onRoleChanged;
   final VoidCallback onResetPassword;
@@ -516,6 +553,7 @@ class _UserRow extends StatelessWidget {
 
   const _UserRow({
     required this.user,
+    required this.roles,
     required this.isSelf,
     required this.onRoleChanged,
     required this.onResetPassword,
@@ -550,13 +588,22 @@ class _UserRow extends StatelessWidget {
       ],
     );
 
+    // Le rôle du compte figure toujours dans la liste, même s'il a
+    // disparu de la table : sans cela le menu s'ouvrirait sur une valeur
+    // qu'il ne propose pas, et Flutter refuserait de le construire.
+    final codes = {for (final r in roles) r.code};
     final roleField = DropdownButtonFormField<String>(
       initialValue: user.role,
       isExpanded: true,
       decoration: const InputDecoration(isDense: true),
-      items: const [
-        DropdownMenuItem(value: 'admin', child: Text('Administrateur')),
-        DropdownMenuItem(value: 'magasinier', child: Text('Magasinier')),
+      items: [
+        for (final role in roles)
+          DropdownMenuItem(value: role.code, child: Text(role.libelle)),
+        if (!codes.contains(user.role))
+          DropdownMenuItem(
+            value: user.role,
+            child: Text('${user.role} (rôle inconnu)'),
+          ),
       ],
       onChanged: isSelf
           ? null
@@ -672,7 +719,14 @@ class _ShareLinkRow extends StatelessWidget {
 }
 
 class _UserFormDialog extends StatefulWidget {
-  const _UserFormDialog();
+  /// Les rôles existants, passés par l'écran.
+  ///
+  /// Depuis que les rôles sont des données, une liste codée en dur ici
+  /// donnerait un « caissier » qu'on peut créer et qu'aucun compte ne
+  /// peut porter.
+  final List<Role> roles;
+
+  const _UserFormDialog({required this.roles});
 
   @override
   State<_UserFormDialog> createState() => _UserFormDialogState();
@@ -683,7 +737,17 @@ class _UserFormDialogState extends State<_UserFormDialog> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
-  String _role = 'magasinier';
+  /// Le rôle proposé d'emblée : le premier non administrateur, sinon le
+  /// premier tout court. Proposer « administrateur » par défaut serait
+  /// donner tous les droits à qui clique sans lire.
+  late String _role = widget.roles
+      .firstWhere(
+        (r) => r.code != 'admin',
+        orElse: () => widget.roles.isEmpty
+            ? const Role(code: 'magasinier', libelle: 'Magasinier')
+            : widget.roles.first,
+      )
+      .code;
   String? _error;
   bool _saving = false;
 
@@ -763,12 +827,15 @@ class _UserFormDialogState extends State<_UserFormDialog> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _role,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Rôle'),
-              items: const [
-                DropdownMenuItem(value: 'magasinier', child: Text('Magasinier')),
-                DropdownMenuItem(value: 'admin', child: Text('Administrateur')),
+              items: [
+                for (final role in widget.roles)
+                  DropdownMenuItem(
+                      value: role.code, child: Text(role.libelle)),
               ],
-              onChanged: (value) => setState(() => _role = value ?? 'magasinier'),
+              onChanged: (value) =>
+                  setState(() => _role = value ?? _role),
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
