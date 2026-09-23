@@ -9,7 +9,7 @@ import 'package:socogen/core/auth/permissions.dart';
 class AppSchema {
   AppSchema._();
 
-  static const int version = 10;
+  static const int version = 11;
 
   static const List<String> createStatements = [
     '''
@@ -71,6 +71,26 @@ class AppSchema {
       -- une absence de réglage.
       stock_min INTEGER,
       actif INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT
+    )
+    ''',
+    '''
+    CREATE TABLE paiements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      -- Le ticket réglé, par son numéro : c'est ce que les lignes de
+      -- vente portent déjà dans `invoice_number`. Pas de clé étrangère,
+      -- puisqu'une vente n'est pas une ligne mais un groupe.
+      ticket TEXT NOT NULL,
+      mode TEXT NOT NULL,
+      montant INTEGER NOT NULL,
+      -- Numéro de transaction Mobile Money, de chèque, de virement.
+      -- C'est la trace qui permet de retrouver l'argent chez le tiers
+      -- payeur quand un client conteste.
+      reference TEXT,
+      date TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT,
+      sync_id TEXT,
       updated_at TEXT
     )
     ''',
@@ -410,6 +430,34 @@ class AppSchema {
         "WHERE tiers_id IS NULL AND TRIM(COALESCE(destination,'')) <> ''",
   ];
 
+  /// Les règlements.
+  ///
+  /// Le **crédit n'est pas un mode de paiement** : c'est l'absence de
+  /// paiement. Ce qui reste dû sur un ticket est la différence entre son
+  /// total et la somme de ses règlements, et cette différence se calcule
+  /// plutôt qu'elle ne se stocke — un solde stocké diverge du jour où
+  /// une ligne est corrigée.
+  ///
+  /// Un ticket peut porter plusieurs règlements : une partie en
+  /// espèces, le reste en Mobile Money est le quotidien d'un commerce
+  /// camerounais.
+  static const List<String> migrationV10ToV11 = [
+    '''
+    CREATE TABLE IF NOT EXISTS paiements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket TEXT NOT NULL,
+      mode TEXT NOT NULL,
+      montant INTEGER NOT NULL,
+      reference TEXT,
+      date TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT,
+      sync_id TEXT,
+      updated_at TEXT
+    )
+    ''',
+  ];
+
   /// L'argent arrive sur le mouvement.
   ///
   /// « La vente est la sortie dans le magasin de la boutique » : le
@@ -608,6 +656,9 @@ class AppSchema {
         'ON stock_entries(transfert_id)',
     'CREATE INDEX IF NOT EXISTS idx_stock_outputs_transfert '
         'ON stock_outputs(transfert_id)',
+    'CREATE INDEX IF NOT EXISTS idx_paiements_ticket ON paiements(ticket)',
+    'CREATE INDEX IF NOT EXISTS idx_stock_outputs_facture '
+        'ON stock_outputs(invoice_number)',
   ];
 
   /// Deliberately empty. A database starts with no magasins: a business

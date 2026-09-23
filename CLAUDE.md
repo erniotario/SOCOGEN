@@ -37,7 +37,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~444 tests across 50 files
+flutter test                 # ~463 tests across 52 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -230,6 +230,33 @@ accepting a sale with no price would make turnover unknowable. So the
 line requires a price and does not require it to come from the article.
 A negotiated price is therefore a fact of the sale rather than an
 anomaly.
+
+**Credit is not a payment method; it is the absence of one.** `paiements`
+records what came in — espèces, Mobile Money, virement, chèque — against
+a ticket number, and what remains due is the subtraction: the ticket's
+lines minus its payments. That balance is **computed, never stored**; a
+stored balance diverges the day a line is corrected in Transactions, and
+nobody notices before the till is counted. One ticket takes several
+payments, because part cash and the rest on Mobile Money is the ordinary
+Cameroonian sale.
+
+Overpaying is allowed and only the amount **due** is recorded — the
+surplus is change handed back, not money taken in, and booking it would
+inflate turnover by a note that walked out of the shop. A mode that
+leaves a trace elsewhere (Mobile Money, cheque, transfer) requires its
+transaction number: that is what answers a customer who disputes a
+payment weeks later.
+
+This is what `tiers.plafond_credit` was built for.
+`PaiementService.depassementDePlafond` compares a customer's outstanding
+balance plus this sale against their ceiling, and the message names all
+three figures — a refusal that does not say by how much you are over
+helps nobody decide. It is computed **before** the payment dialog opens,
+because the cashier has to see it while deciding to let the goods go.
+
+The payment dialog runs **after** the sale is written, not before: the
+goods have already left with the customer by the time the money is
+counted, and a failed payment must not erase a sale that happened.
 
 **A point of sale is a magasin, not a customer.** The owner's own
 reading of the live data: `BMC` is *Boutique Marché Central*, one of the

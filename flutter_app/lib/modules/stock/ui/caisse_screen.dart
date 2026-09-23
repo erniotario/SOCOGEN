@@ -6,6 +6,9 @@ import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:socogen/core/auth/session_courante.dart';
 import 'package:socogen/modules/rapports/services/ticket_pdf_service.dart';
+import 'package:socogen/modules/stock/services/paiement_service.dart';
+import 'package:socogen/modules/stock/ui/reglement_dialog.dart';
+import 'package:socogen/shared/models/paiement.dart';
 import 'package:socogen/core/errors/messages.dart';
 import 'package:socogen/core/events/data_refresh_bus.dart';
 import 'package:socogen/core/money/montant.dart';
@@ -74,6 +77,7 @@ class _CaisseScreenState extends State<CaisseScreen> {
   final _tiers = TiersService();
   final _parametres = ParametresService();
   final _stock = StockService();
+  final _reglements = PaiementService();
 
   late Future<_DonneesCaisse> _future;
 
@@ -90,6 +94,7 @@ class _CaisseScreenState extends State<CaisseScreen> {
   /// Le client du ticket qu'on vient d'encaisser, retenu le temps de
   /// l'impression : le champ est vidé dès l'encaissement.
   String? _dernierClient;
+  int? _dernierClientId;
   int? _disponible;
   String? _erreur;
   bool _enCours = false;
@@ -253,6 +258,7 @@ class _CaisseScreenState extends State<CaisseScreen> {
         _dernierClient = _clientController.text.trim().isEmpty
             ? null
             : _clientController.text.trim();
+        _dernierClientId = _clientId;
         _clientController.clear();
         _clientId = null;
         _enCours = false;
@@ -260,7 +266,9 @@ class _CaisseScreenState extends State<CaisseScreen> {
       DataRefreshBus.instance.notifyChanged();
       await _rafraichir();
       if (!mounted) return;
-      _annoncer(resultat, nomMagasin);
+      final solde = await _encaisserLeReglement(resultat);
+      if (!mounted) return;
+      _annoncer(resultat, nomMagasin, solde);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -268,6 +276,42 @@ class _CaisseScreenState extends State<CaisseScreen> {
         _enCours = false;
       });
     }
+  }
+
+  /// Ouvre le règlement, après que la vente est écrite.
+  ///
+  /// Dans cet ordre et pas l'inverse : la marchandise est déjà partie
+  /// avec le client au moment où l'on compte l'argent, et un règlement
+  /// qui échoue ne doit pas effacer une vente qui a eu lieu.
+  ///
+  /// Le dépassement de plafond est calculé ici, avant d'ouvrir : le
+  /// caissier doit le voir au moment où il décide de laisser partir à
+  /// crédit, pas après.
+  Future<SoldeTicket?> _encaisserLeReglement(ResultatVente resultat) async {
+    final solde = await _reglements.solde(resultat.numeroTicket);
+    String? avertissement;
+    final clientId = _dernierClientId;
+    if (clientId != null) {
+      final fiche = await _tiers.parId(clientId);
+      if (fiche != null) {
+        avertissement = await _reglements.depassementDePlafond(
+          tiersId: clientId,
+          plafond: await _tiers.plafondCredit(fiche),
+          aCrediter: solde.reste,
+        );
+      }
+    }
+    if (!mounted) return solde;
+    return showDialog<SoldeTicket>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ReglementDialog(
+        ticket: resultat.numeroTicket,
+        solde: solde,
+        service: _reglements,
+        avertissementCredit: avertissement,
+      ),
+    );
   }
 
   /// Imprime le ticket, en relisant ce qui a été **écrit**.
@@ -306,8 +350,17 @@ class _CaisseScreenState extends State<CaisseScreen> {
     }
   }
 
-  void _annoncer(ResultatVente resultat, String nomMagasin) {
-    final base = 'Ticket ${resultat.numeroTicket} — ${resultat.total.formate()}';
+  void _annoncer(
+    ResultatVente resultat,
+    String nomMagasin,
+    SoldeTicket? solde,
+  ) {
+    // Dire « reste dû » plutôt que rien : un ticket parti à crédit et un
+    // ticket réglé se ressemblent trop une fois l'écran vidé.
+    final argent = solde == null || solde.estRegle
+        ? resultat.total.formate()
+        : '${resultat.total.formate()} — reste ${solde.reste.formate()}';
+    final base = 'Ticket ${resultat.numeroTicket} — $argent';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: resultat.aDesNegatifs ? AppColors.anomaly : null,

@@ -133,6 +133,7 @@ class Montant implements Comparable<Montant> {
 
   bool get estZero => unites == 0;
   bool get estNegatif => unites < 0;
+  bool get estPositif => unites > 0;
 
   Montant operator +(Montant autre) {
     _memeDevise(autre);

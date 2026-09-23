@@ -151,6 +151,9 @@ class DatabaseService {
     if (versionActuelle < 10) {
       await _migrateToV10(db);
     }
+    if (versionActuelle < 11) {
+      await _migrateToV11(db);
+    }
     // Les index viennent en dernier, une seule fois, et non dans chaque
     // étape. Une étape qui les réapplique les crée sur le schéma de son
     // époque : `_migrateToV4`, lancée sur une base en v3, tentait un
@@ -172,6 +175,13 @@ class DatabaseService {
       await db.execute(statement);
     }
     for (final statement in AppSchema.tauxTvaParDefaut) {
+      await db.execute(statement);
+    }
+  }
+
+  /// Ajoute les règlements.
+  static Future<void> _migrateToV11(Database db) async {
+    for (final statement in AppSchema.migrationV10ToV11) {
       await db.execute(statement);
     }
   }
