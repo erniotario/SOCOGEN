@@ -6,6 +6,10 @@ import 'package:socogen/shared/models/view_models.dart';
 import 'package:socogen/modules/catalogue/services/catalogue_service.dart';
 import 'package:socogen/modules/stock/repositories/stock_entry_repository.dart';
 import 'package:socogen/modules/stock/repositories/stock_output_repository.dart';
+import 'package:socogen/core/money/montant.dart';
+import 'package:socogen/modules/parametres/services/parametres_service.dart';
+import 'package:socogen/modules/stock/services/stock_service.dart';
+import 'package:socogen/modules/stock/services/vente_service.dart';
 import 'package:socogen/modules/stock/repositories/store_repository.dart';
 import 'package:socogen/core/events/data_refresh_bus.dart';
 import 'package:socogen/shared/ui/theme/app_breakpoints.dart';
@@ -25,11 +29,24 @@ class _DashboardData {
   final int totalEntries;
   final int totalOutputs;
 
+  /// Ce que la journée a encaissé, et ce que le stock vaut.
+  ///
+  /// Les deux ne couvrent que les lignes et les articles qui portent un
+  /// prix : c'est pourquoi le nombre d'articles non valorisés voyage
+  /// avec eux. Un total présenté seul laisserait croire qu'il couvre
+  /// tout le catalogue.
+  final Montant ventesDuJour;
+  final Montant valeurStock;
+  final int articlesSansPrix;
+
   const _DashboardData({
     required this.products,
     required this.storeCount,
     required this.totalEntries,
     required this.totalOutputs,
+    required this.ventesDuJour,
+    required this.valeurStock,
+    required this.articlesSansPrix,
   });
 }
 
@@ -45,6 +62,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final _storeRepo = StoreRepository();
   final _entryRepo = StockEntryRepository();
   final _outputRepo = StockOutputRepository();
+  final _stock = StockService();
+  final _ventes = VenteService();
+  final _parametres = ParametresService();
 
   // Holding the resolved data (rather than a Future) keeps the previous
   // contents on screen while a refresh runs, so nothing flashes.
@@ -65,19 +85,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<_DashboardData> _load() async {
-    final (products, stores, totalEntries, totalOutputs) = await (
+    final aujourdhui = _iso(DateTime.now());
+    final (products, stores, totalEntries, totalOutputs, devise, ventes, stock) =
+        await (
       _catalogue.listerArticles(),
       _storeRepo.getAllStores(),
       _entryRepo.getTotalQuantity(),
       _outputRepo.getTotalQuantity(),
+      _parametres.devise(),
+      _ventes.chiffreDAffaires(du: aujourdhui, au: aujourdhui),
+      _stock.valeurDuStock(),
     ).wait;
     return _DashboardData(
       products: products,
       storeCount: stores.length,
       totalEntries: totalEntries,
       totalOutputs: totalOutputs,
+      ventesDuJour: Montant(ventes.total, devise: devise),
+      valeurStock: Montant(stock.valeur, devise: devise),
+      articlesSansPrix: stock.articlesSansPrix,
     );
   }
+
+  static String _iso(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
 
   Future<void> _refresh() async {
     try {
@@ -171,7 +204,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 value: '${data.storeCount}',
                 color: AppColors.warning,
               ),
+              KpiCard(
+                icon: Icons.point_of_sale_outlined,
+                label: "Ventes aujourd'hui",
+                value: data.ventesDuJour.formate(),
+                color: AppColors.success,
+              ),
+              KpiCard(
+                icon: Icons.savings_outlined,
+                label: 'Valeur du stock',
+                value: data.valeurStock.formate(),
+                color: AppColors.accentLight,
+              ),
             ]),
+            if (data.articlesSansPrix > 0) ...[
+              const SizedBox(height: AppSpacing.sm),
+              // Dit, et non tu : une valeur calculée sur une partie du
+              // catalogue présentée seule laisserait croire qu'elle les
+              // couvre tous.
+              _ReserveSurLaValeur(articlesSansPrix: data.articlesSansPrix),
+            ],
             const SizedBox(height: AppSpacing.xl),
             const Text(
               'STOCK ACTUEL PAR PRODUIT',
@@ -254,6 +306,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ],
           ),
+      ],
+    );
+  }
+}
+
+
+/// Ce que la valeur du stock ne couvre pas.
+///
+/// Un article sans prix d'achat a un stock réel et une valeur inconnue.
+/// Le compter pour zéro donnerait un total plus petit que la vérité, et
+/// le taire donnerait un total qui a l'air complet — le second est pire.
+class _ReserveSurLaValeur extends StatelessWidget {
+  final int articlesSansPrix;
+
+  const _ReserveSurLaValeur({required this.articlesSansPrix});
+
+  @override
+  Widget build(BuildContext context) {
+    final pluriel = articlesSansPrix > 1 ? 's' : '';
+    return Row(
+      children: [
+        const Icon(Icons.info_outline, size: 14, color: AppColors.textMuted),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'Valeur hors $articlesSansPrix article$pluriel sans prix '
+            "d'achat : leur stock est réel, sa valeur est inconnue.",
+            style: AppTextStyles.bodyMuted,
+          ),
+        ),
       ],
     );
   }

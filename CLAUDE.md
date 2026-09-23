@@ -187,6 +187,19 @@ them as zero would pass "we don't know" off as "it earned nothing". A
 transfer is excluded from sales outright: the goods never left the
 business.
 
+**A figure that covers part of the catalogue says so.** Accueil shows
+what the day took and what the stock is worth, and the stock value names
+how many articles it could not price — their stock is real, their value
+unknown. Counting them as zero would understate the total; saying
+nothing would present a partial total as a complete one, which is worse.
+The note appears only when there is something to say: shown always, it
+would become furniture nobody reads.
+
+Not covered by a test: that conditional note. The figure itself is
+pinned in `valorisation_test.dart` and the screen's layout in the
+responsive matrix, but a widget test of Accueil deadlocks on `runAsync`
+— the same trap as the Paramètres screen, and not worth a third attempt.
+
 **A sale has no table of its own.** The lines of one checkout are
 sorties from the shop's magasin sharing an `invoice_number` — the
 ticket. That column already existed and Transactions already shows it.

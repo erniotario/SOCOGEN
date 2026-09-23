@@ -1,4 +1,5 @@
 import 'package:socogen/modules/stock/repositories/stock_repository.dart';
+import 'package:socogen/modules/stock/repositories/valorisation_repository.dart';
 import 'package:socogen/shared/models/view_models.dart';
 
 /// Ce que le stock expose aux autres modules — et à ses propres écrans.
@@ -8,10 +9,14 @@ import 'package:socogen/shared/models/view_models.dart';
 /// Aucun d'eux n'a à connaître le SQL qui dérive un solde ; ils posent
 /// la question, le module stock répond.
 class StockService {
-  StockService({StockRepository? stockRepository})
-      : _stock = stockRepository ?? StockRepository();
+  StockService({
+    StockRepository? stockRepository,
+    ValorisationRepository? valorisationRepository,
+  })  : _stock = stockRepository ?? StockRepository(),
+        _valorisation = valorisationRepository ?? ValorisationRepository();
 
   final StockRepository _stock;
+  final ValorisationRepository _valorisation;
 
   /// Ce que le registre dit du stock de [reference] dans [magasinId].
   ///
@@ -19,6 +24,16 @@ class StockService {
   /// *modification* : le solde doit être calculé sans la ligne qu'on est
   /// en train de changer, sinon son ancien chiffre compte encore et la
   /// modification paraît anodine jusqu'à l'enregistrement.
+  /// Ce que le stock vaut, au prix d'achat des articles.
+  ///
+  /// Rend aussi combien d'articles n'ont pas de prix : leur stock est
+  /// réel et sa valeur inconnue, et un total présenté sans ce nombre
+  /// laisserait croire qu'il couvre tout le catalogue.
+  Future<({int valeur, int articles, int articlesSansPrix})> valeurDuStock({
+    int? magasinId,
+  }) =>
+      _valorisation.valeurDuStock(magasinId: magasinId);
+
   Future<int> solde({
     required String reference,
     required int magasinId,

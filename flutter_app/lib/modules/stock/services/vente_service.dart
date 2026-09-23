@@ -5,6 +5,7 @@ import 'package:socogen/core/db/sync_columns.dart';
 import 'package:socogen/core/errors/messages.dart';
 import 'package:socogen/core/money/montant.dart';
 import 'package:socogen/modules/parametres/services/parametres_service.dart';
+import 'package:socogen/modules/stock/repositories/valorisation_repository.dart';
 import 'package:socogen/modules/stock/services/stock_service.dart';
 import 'package:socogen/shared/models/vente.dart';
 
@@ -27,10 +28,14 @@ class VenteService {
     ParametresService? parametresService,
   })  : _injectedDb = database,
         _stock = stockService ?? StockService(),
+        // Le même fichier que le reste du service : passer la base
+        // injectée évite qu'un test écrive ici et compte là.
+        _valorisation = ValorisationRepository(database: database),
         _parametres = parametresService ?? ParametresService();
 
   final Database? _injectedDb;
   final StockService _stock;
+  final ValorisationRepository _valorisation;
   final ParametresService _parametres;
 
   Future<Database> get _db async =>
@@ -161,6 +166,19 @@ class VenteService {
       negatifs: negatifs,
     );
   }
+
+  /// Ce qu'un magasin a encaissé sur une période.
+  ///
+  /// Rend aussi le nombre de lignes laissées de côté faute de prix :
+  /// les 5 201 mouvements antérieurs n'en ont pas, et les compter pour
+  /// zéro ferait passer « on ne sait pas » pour « ça n'a rien
+  /// rapporté ».
+  Future<({int total, int lignes, int lignesSansPrix})> chiffreDAffaires({
+    int? magasinId,
+    String? du,
+    String? au,
+  }) =>
+      _valorisation.ventes(magasinId: magasinId, du: du, au: au);
 
   /// Les lignes d'un ticket, telles qu'elles ont été enregistrées.
   Future<List<LigneVente>> lignesDuTicket(String numero) async {
