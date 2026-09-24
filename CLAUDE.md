@@ -60,7 +60,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~523 tests across 59 files
+flutter test                 # ~552 tests across 62 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -302,6 +302,28 @@ accepting a sale with no price would make turnover unknowable. So the
 line requires a price and does not require it to come from the article.
 A negotiated price is therefore a fact of the sale rather than an
 anomaly.
+
+**A receivable is a subtraction, and its age is half the fact.** The
+Créances screen sums, per customer, what each of their tickets still
+owes — nothing is stored, so a line corrected in Transactions shows up
+at once instead of being discovered while chasing someone who has
+already paid. The list runs from the largest balance down, because that
+is the order in which you pick up the phone, and the balance is split
+across 0-30 / 31-60 / 61-90 / 90+ days: 200 000 owed for four months and
+200 000 owed for eight days are not the same problem, and a list sorted
+on amount alone does not say so.
+
+Three things it refuses to fold in. A sale with **no customer fiche** is
+counted apart, never in the total — you cannot chase a passer-by, and
+that figure says what the shop let go without knowing to whom. A ticket
+whose date will not parse stays in the total and out of the age columns,
+which say so. And no ceiling is not a ceiling of zero — zero forbids all
+credit, and that is a decision.
+
+The as-of date is a parameter rather than `DateTime.now()` deep in the
+query, so last month's statement can be reissued and land in the same
+buckets; it is normalised to midnight, or the same receivable would
+change bucket depending on the hour it was printed.
 
 **A day's close holds two figures, and confusing them is why a till
 never balances.** What was *sold* today includes what left on credit and
@@ -716,6 +738,13 @@ needs. Verified rather than assumed, on an uncompressed document: `é`
 comes out as byte 233 and the `°` in `N°118` as 176. Embedding a font
 would be a real cost (size, load time) for no gain here; a character
 genuinely outside WinAnsi would be another matter.
+
+**Accents are not.** The rule is *above U+00FF*, not "avoid anything
+French": `é`, `à`, `û`, `ç`, `« »` and `·` all encode fine, and stripping
+them "just in case" produces a customer-facing document in illiterate
+French — a worse outcome than the bug being avoided. The guard test
+below draws the line in exactly the right place; trust it rather than
+self-censoring.
 
 **The em dash is one of those characters.** `—` (U+2014) is not in
 WinAnsi, and the package drops it *silently* — the only trace is an

@@ -9,6 +9,7 @@ import 'package:erp/modules/stock/ui/entries_screen.dart';
 import 'package:erp/modules/stock/ui/inventory_screen.dart';
 import 'package:erp/modules/stock/ui/outputs_screen.dart';
 import 'package:erp/modules/catalogue/ui/products_screen.dart';
+import 'package:erp/modules/rapports/ui/creances_screen.dart';
 import 'package:erp/modules/rapports/ui/reports_screen.dart';
 import 'package:erp/modules/utilisateurs/ui/security_screen.dart';
 import 'package:erp/modules/parametres/ui/settings_screen.dart';
@@ -97,6 +98,8 @@ const List<_NavEntry> _navEntries = [
   _NavEntry(Icons.fact_check_outlined, Icons.fact_check, 'Inventaire'),
   _NavEntry(Icons.bar_chart_outlined, Icons.bar_chart, 'Rapports'),
   _NavEntry(Icons.contacts_outlined, Icons.contacts, 'Tiers'),
+  _NavEntry(Icons.account_balance_wallet_outlined,
+      Icons.account_balance_wallet, 'Créances'),
   _NavEntry(Icons.store_outlined, Icons.store, 'Magasins'),
   _NavEntry(Icons.security_outlined, Icons.security, 'Sécurité'),
   _NavEntry(Icons.settings_outlined, Icons.settings, 'Paramètres'),
@@ -111,9 +114,12 @@ const int _adminOnlyCount = 2;
 ///
 /// Sections are: the daily stock screens, then the ledger ones
 /// (Transactions, Inventaire, Rapports), then the reference and
-/// administration ones (Tiers, Magasins, Sécurité, Paramètres). These
-/// are positions into [_navEntries] -- inserting a destination moves
-/// them.
+/// administration ones (Tiers, Créances, Magasins, Sécurité,
+/// Paramètres). These are positions into [_navEntries] -- inserting a
+/// destination **before** one of them moves it, which is why Créances
+/// was added after Tiers rather than before: the phone's bottom bar
+/// shows the first [_bottomBarCount] entries, and pushing a daily
+/// screen out of it would cost more than the tidier order gains.
 const List<int> _sectionStarts = [6, 9];
 
 /// Destinations that get a slot in the phone bottom bar. The rest live
@@ -131,6 +137,7 @@ const List<Widget> _screens = [
   InventoryScreen(),
   ReportsScreen(),
   TiersScreen(),
+  CreancesScreen(),
   StoresScreen(),
   SecurityScreen(),
   SettingsScreen(),
