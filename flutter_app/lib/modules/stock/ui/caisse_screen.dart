@@ -437,6 +437,15 @@ class _CaisseScreenState extends State<CaisseScreen> {
                   onRetry: _rafraichir,
                 );
               }
+              if (!snapshot.hasData) {
+                return Padding(
+                  padding: padding,
+                  child: AppErrorState(
+                    message: 'Impossible de charger les données de la caisse.',
+                    onRetry: _rafraichir,
+                  ),
+                );
+              }
               final donnees = snapshot.data!;
               return SingleChildScrollView(
                 padding: padding,

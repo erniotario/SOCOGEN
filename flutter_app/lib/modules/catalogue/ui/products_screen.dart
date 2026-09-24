@@ -779,10 +779,11 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
       title: Text(_isEdit ? 'Modifier le produit' : 'Nouveau produit'),
       content: DialogBody(
         maxWidth: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             TextField(
               controller: _refController,
               decoration: const InputDecoration(labelText: 'Référence *', hintText: 'REF-001'),
@@ -973,6 +974,7 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
               Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
             ],
           ],
+          ),
         ),
       ),
       actions: [
