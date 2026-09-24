@@ -157,6 +157,9 @@ class DatabaseService {
     if (versionActuelle < 12) {
       await _migrateToV12(db);
     }
+    if (versionActuelle < 13) {
+      await _migrateToV13(db);
+    }
     // Les index viennent en dernier, une seule fois, et non dans chaque
     // étape. Une étape qui les réapplique les crée sur le schéma de son
     // époque : `_migrateToV4`, lancée sur une base en v3, tentait un
@@ -185,6 +188,14 @@ class DatabaseService {
   /// Ajoute les règlements.
   static Future<void> _migrateToV11(Database db) async {
     for (final statement in AppSchema.migrationV10ToV11) {
+      await db.execute(statement);
+    }
+  }
+
+  /// Ouvre la clôture comptable : une période peut être fermée, et ce
+  /// qui est fermé ne se réécrit plus.
+  static Future<void> _migrateToV13(Database db) async {
+    for (final statement in AppSchema.migrationV12ToV13) {
       await db.execute(statement);
     }
   }

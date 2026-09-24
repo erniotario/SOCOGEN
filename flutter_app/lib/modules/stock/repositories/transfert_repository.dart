@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'package:erp/core/db/database_service.dart';
 import 'package:erp/core/db/sync_columns.dart';
+import 'package:erp/core/db/verrou_comptable.dart';
 import 'package:erp/shared/models/transfert.dart';
 
 /// Les déplacements de marchandises entre magasins.
@@ -39,6 +40,9 @@ class TransfertRepository {
     required List<LigneTransfert> lignes,
     String? notes,
   }) async {
+    // Avant d'ouvrir la transaction : un transfert refusé ne doit pas
+    // laisser la moitié de ses mouvements derrière lui.
+    VerrouComptable.instance.verifier(date, operation: 'le transfert');
     final db = await _db;
     return db.transaction((txn) async {
       final transfertId = await txn.insert('transferts', {

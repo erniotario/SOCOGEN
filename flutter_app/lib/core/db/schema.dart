@@ -9,7 +9,7 @@ import 'package:erp/core/auth/permissions.dart';
 class AppSchema {
   AppSchema._();
 
-  static const int version = 12;
+  static const int version = 13;
 
   static const List<String> createStatements = [
     '''
@@ -250,6 +250,20 @@ class AppSchema {
     )
     ''',
     '''
+    CREATE TABLE cloture_comptable (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      -- Les écritures datées de ce jour **ou avant** sont fermées.
+      ferme_jusquau TEXT NOT NULL,
+      -- Obligatoire pour une réouverture. Rouvrir une période déclarée
+      -- est un acte qui doit se justifier ; fermer n'a pas à s'expliquer.
+      motif TEXT,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT,
+      sync_id TEXT,
+      updated_at TEXT
+    )
+    ''',
+    '''
     CREATE TABLE company_settings (
       id INTEGER PRIMARY KEY,
       name TEXT DEFAULT '',
@@ -463,6 +477,31 @@ class AppSchema {
       montant INTEGER NOT NULL,
       reference TEXT,
       date TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT,
+      sync_id TEXT,
+      updated_at TEXT
+    )
+    ''',
+  ];
+
+  /// La comptabilité peut fermer une période.
+  ///
+  /// C'est le contrôle qui manquait le plus : jusqu'ici un mouvement de
+  /// mars pouvait être corrigé ou supprimé en décembre, ce qui rend
+  /// toute déclaration invalidable après coup. Une déclaration de TVA
+  /// qu'on peut réécrire ne vaut rien.
+  ///
+  /// La table arrive **vide**, donc rien n'est fermé : dater d'office
+  /// une clôture au dernier exercice verrouillerait des corrections
+  /// légitimes qu'aucun comptable n'a demandé d'interdire. Fermer est
+  /// une décision, et elle se prend.
+  static const List<String> migrationV12ToV13 = [
+    '''
+    CREATE TABLE IF NOT EXISTS cloture_comptable (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ferme_jusquau TEXT NOT NULL,
+      motif TEXT,
       created_by INTEGER REFERENCES users(id),
       created_at TEXT,
       sync_id TEXT,

@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'package:erp/core/db/database_service.dart';
 import 'package:erp/core/db/sync_columns.dart';
+import 'package:erp/core/db/verrou_comptable.dart';
 import 'package:erp/core/errors/messages.dart';
 import 'package:erp/core/money/montant.dart';
 import 'package:erp/modules/parametres/services/parametres_service.dart';
@@ -193,6 +194,7 @@ class VenteService {
     );
     final ticket = await prochainTicket();
     final date = _iso(le ?? DateTime.now());
+    VerrouComptable.instance.verifier(date, operation: 'la vente');
     final db = await _db;
 
     await db.transaction((txn) async {

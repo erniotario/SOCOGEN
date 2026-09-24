@@ -9,6 +9,7 @@ import 'package:erp/modules/stock/ui/entries_screen.dart';
 import 'package:erp/modules/stock/ui/inventory_screen.dart';
 import 'package:erp/modules/stock/ui/outputs_screen.dart';
 import 'package:erp/modules/catalogue/ui/products_screen.dart';
+import 'package:erp/modules/comptabilite/ui/comptabilite_screen.dart';
 import 'package:erp/modules/rapports/ui/creances_screen.dart';
 import 'package:erp/modules/rapports/ui/reports_screen.dart';
 import 'package:erp/modules/utilisateurs/ui/security_screen.dart';
@@ -101,13 +102,20 @@ const List<_NavEntry> _navEntries = [
   _NavEntry(Icons.account_balance_wallet_outlined,
       Icons.account_balance_wallet, 'Créances'),
   _NavEntry(Icons.store_outlined, Icons.store, 'Magasins'),
+  _NavEntry(Icons.account_balance_outlined, Icons.account_balance,
+      'Comptabilité', 'Compta'),
   _NavEntry(Icons.security_outlined, Icons.security, 'Sécurité'),
   _NavEntry(Icons.settings_outlined, Icons.settings, 'Paramètres'),
 ];
 
 /// Number of trailing entries/screens reserved for admins only
-/// (Sécurité and Paramètres).
-const int _adminOnlyCount = 2;
+/// (Comptabilité, Sécurité and Paramètres).
+///
+/// Comptabilité joined them rather than getting a permission of its
+/// own: clôturer arrête les livres de l'entreprise, ce qui est une
+/// décision de direction et non un geste de magasinier — et la
+/// mécanique des destinations de fin existait déjà pour ça.
+const int _adminOnlyCount = 3;
 
 /// Indices that start a new visual section in the sidebar
 /// (a divider is drawn above each, except the first).
@@ -139,6 +147,7 @@ const List<Widget> _screens = [
   TiersScreen(),
   CreancesScreen(),
   StoresScreen(),
+  ComptabiliteScreen(),
   SecurityScreen(),
   SettingsScreen(),
 ];

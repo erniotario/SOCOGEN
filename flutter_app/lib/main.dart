@@ -7,6 +7,7 @@ import 'package:erp/core/auth/auth_provider.dart';
 import 'package:erp/core/db/database_service.dart';
 import 'package:erp/shared/ui/theme/app_colors.dart';
 import 'package:erp/shared/ui/theme/app_spacing.dart';
+import 'package:erp/modules/comptabilite/services/comptabilite_service.dart';
 import 'package:erp/modules/parametres/services/parametres_service.dart';
 import 'package:erp/shared/ui/widgets/identite_societe.dart';
 import 'package:erp/shared/ui/theme/app_text_styles.dart';
@@ -90,6 +91,10 @@ class _SplashGateState extends State<_SplashGate> {
     // par image.
     IdentiteSociete.instance
         .definir((await ParametresService().societe()).name);
+    // La période fermée se charge ici, une fois : le verrou est
+    // ambiant et chaque écriture l'interroge, donc le relire à chaque
+    // ligne coûterait une requête par mouvement sur un import.
+    await ComptabiliteService().charger();
   }
 
   @override

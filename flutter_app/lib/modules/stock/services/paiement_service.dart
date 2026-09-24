@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'package:erp/core/db/database_service.dart';
 import 'package:erp/core/db/sync_columns.dart';
+import 'package:erp/core/db/verrou_comptable.dart';
 import 'package:erp/core/errors/messages.dart';
 import 'package:erp/core/money/montant.dart';
 import 'package:erp/modules/parametres/services/parametres_service.dart';
@@ -56,13 +57,18 @@ class PaiementService {
       );
     }
 
+    final date = _iso(le ?? DateTime.now());
+    // Un encaissement entre dans le livre de caisse : le fermer aussi,
+    // sinon la période close continuerait de bouger par l'argent.
+    VerrouComptable.instance.verifier(date, operation: 'le règlement');
+
     final db = await _db;
     await db.insert('paiements', {
       'ticket': ticket,
       'mode': mode.code,
       'montant': montant.unites,
       'reference': reference?.trim(),
-      'date': _iso(le ?? DateTime.now()),
+      'date': date,
       'sync_id': newSyncId(),
       'updated_at': nowIso(),
       ...attribution(),

@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'package:erp/core/db/database_service.dart';
 import 'package:erp/core/db/sync_columns.dart';
+import 'package:erp/core/db/verrou_comptable.dart';
 import 'package:erp/modules/stock/models/stock_output.dart';
 
 typedef StockOutputWithStore = ({StockOutput output, String storeName});
@@ -34,6 +35,7 @@ class StockOutputRepository {
 
   Future<int> create(StockOutput output) async {
     final db = await _db;
+    await _verifierPeriode(db, 'stock_outputs', null, output.date, 'la sortie');
     final values = output.toMap(includeId: false);
     values['sync_id'] = newSyncId();
     values['updated_at'] = nowIso();
@@ -45,6 +47,8 @@ class StockOutputRepository {
 
   Future<void> update(StockOutput output) async {
     final db = await _db;
+    await _verifierPeriode(
+        db, 'stock_outputs', output.id, output.date, 'la correction de la sortie');
     final values = output.toMap(includeId: false);
     values['updated_at'] = nowIso();
     await db.update(
@@ -57,11 +61,35 @@ class StockOutputRepository {
 
   Future<void> delete(int id) async {
     final db = await _db;
+    await _verifierPeriode(
+        db, 'stock_outputs', id, null, 'la suppression de la sortie');
     final rows = await db.query('stock_outputs', columns: ['sync_id'], where: 'id = ?', whereArgs: [id], limit: 1);
     if (rows.isNotEmpty && rows.first['sync_id'] != null) {
       await recordTombstone(db, 'stock_outputs', rows.first['sync_id'] as String);
     }
     await db.delete('stock_outputs', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Refuse de toucher à une période fermée.
+  ///
+  /// Sur une modification, **les deux dates** sont vérifiées : celle
+  /// qui est en base et celle qu'on veut poser. Sans la première, on
+  /// sortirait une ligne d'une période déclarée en la redatant ; sans
+  /// la seconde, on en ferait entrer une.
+  Future<void> _verifierPeriode(
+    Database db,
+    String table,
+    int? id,
+    String? nouvelleDate,
+    String operation,
+  ) async {
+    VerrouComptable.instance.verifier(nouvelleDate, operation: operation);
+    if (id == null) return;
+    final rows = await db.query(table,
+        columns: ['date'], where: 'id = ?', whereArgs: [id], limit: 1);
+    if (rows.isEmpty) return;
+    VerrouComptable.instance
+        .verifier(rows.first['date'] as String?, operation: operation);
   }
 
   /// Sum of `quantity` across ALL outputs (used for the Dashboard KPI).

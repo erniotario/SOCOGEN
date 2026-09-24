@@ -11,6 +11,7 @@ import 'package:erp/modules/stock/ui/entries_screen.dart';
 import 'package:erp/modules/stock/ui/inventory_screen.dart';
 import 'package:erp/modules/stock/ui/outputs_screen.dart';
 import 'package:erp/modules/catalogue/ui/products_screen.dart';
+import 'package:erp/modules/comptabilite/ui/comptabilite_screen.dart';
 import 'package:erp/modules/rapports/ui/creances_screen.dart';
 import 'package:erp/modules/rapports/ui/reports_screen.dart';
 import 'package:erp/modules/utilisateurs/ui/security_screen.dart';
@@ -53,6 +54,7 @@ final _screens = <String, Widget Function()>{
   'Inventaire': () => const InventoryScreen(),
   'Rapports': () => const ReportsScreen(),
   'Créances': () => const CreancesScreen(),
+  'Comptabilité': () => const ComptabiliteScreen(),
   'Tiers': () => const TiersScreen(),
   'Magasins': () => const StoresScreen(),
   'Sécurité': () => const SecurityScreen(),
