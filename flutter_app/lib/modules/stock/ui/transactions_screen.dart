@@ -19,7 +19,9 @@ import 'package:erp/modules/stock/repositories/stock_output_repository.dart';
 import 'package:erp/modules/stock/repositories/store_repository.dart';
 import 'package:erp/modules/stock/repositories/transaction_repository.dart';
 import 'package:erp/core/events/data_refresh_bus.dart';
+import 'package:erp/modules/rapports/services/facture_pdf_service.dart';
 import 'package:erp/modules/rapports/services/transactions_pdf_service.dart';
+import 'package:erp/modules/stock/services/facture_service.dart';
 import 'package:erp/shared/ui/theme/app_breakpoints.dart';
 import 'package:erp/shared/ui/theme/app_colors.dart';
 import 'package:erp/shared/ui/theme/app_spacing.dart';
@@ -60,6 +62,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   final _stock = StockService();
   final _storeRepo = StoreRepository();
   final _settingsRepo = SettingsRepository();
+  final _factures = FactureService();
   final _searchController = TextEditingController();
 
   _TransactionsData? _data;
@@ -519,6 +522,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         ),
       );
 
+  /// Réédite la facture A4 d'une vente passée.
+  ///
+  /// C'est ici qu'on la réclame : un client revient une semaine plus
+  /// tard avec son ticket de caisse et demande une pièce pour sa
+  /// comptabilité. Elle se relit des mouvements, donc elle dit ce que
+  /// le registre tient aujourd'hui — règlements compris.
+  Future<void> _imprimerFacture(String numero) async {
+    try {
+      final (facture, societe) = await (
+        _factures.pour(numero),
+        _settingsRepo.getSettings(),
+      ).wait;
+      final bytes = await FacturePdfService.buildInBackground(
+        FacturePdfRequest(facture: facture, societe: societe),
+      );
+      await Printing.layoutPdf(
+        onLayout: (_) async => bytes,
+        name: 'Facture $numero',
+        format: PdfPageFormat.a4,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(messagePour(e, operation: 'la facture'))),
+      );
+    }
+  }
+
   Widget _balanceCell(TransactionRow row) => Cells.number(
         row.balance,
         strong: true,
@@ -527,6 +558,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   Widget _actionsCell(TransactionRow row, _TransactionsData data) => RowActions(
         actions: [
+          // La facture ne s'offre que sur une sortie numérotée. Sur
+          // une entrée, le numéro est celui de la facture du
+          // **fournisseur** : la réimprimer sous l'en-tête de la
+          // maison ferait passer un achat pour une vente.
+          if (row.type == TransactionType.output &&
+              row.invoiceNumber.isNotEmpty)
+            RowAction(
+              icon: Icons.request_quote_outlined,
+              tooltip: 'Facture ${row.invoiceNumber}',
+              onPressed: () => _imprimerFacture(row.invoiceNumber),
+            ),
           RowAction(
             icon: Icons.edit_outlined,
             tooltip: 'Modifier',

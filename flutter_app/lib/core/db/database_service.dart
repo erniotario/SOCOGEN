@@ -154,6 +154,9 @@ class DatabaseService {
     if (versionActuelle < 11) {
       await _migrateToV11(db);
     }
+    if (versionActuelle < 12) {
+      await _migrateToV12(db);
+    }
     // Les index viennent en dernier, une seule fois, et non dans chaque
     // étape. Une étape qui les réapplique les crée sur le schéma de son
     // époque : `_migrateToV4`, lancée sur une base en v3, tentait un
@@ -182,6 +185,15 @@ class DatabaseService {
   /// Ajoute les règlements.
   static Future<void> _migrateToV11(Database db) async {
     for (final statement in AppSchema.migrationV10ToV11) {
+      await db.execute(statement);
+    }
+  }
+
+  /// Fige le taux de TVA sur la ligne de vente, pour que la facture
+  /// répète ce qui a été facturé et non ce que l'article dit
+  /// aujourd'hui.
+  static Future<void> _migrateToV12(Database db) async {
+    for (final statement in AppSchema.migrationV11ToV12) {
       await db.execute(statement);
     }
   }

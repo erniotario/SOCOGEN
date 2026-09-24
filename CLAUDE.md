@@ -60,7 +60,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~469 tests across 52 files
+flutter test                 # ~502 tests across 56 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -244,6 +244,49 @@ from them at the first correction. What it costs is that a sale has no
 existence of its own — no payment method, no basket-level discount —
 and those arrive with payments, when they will have a reason to live
 somewhere other than on the line.
+
+**A facture is a second reading of a sale, not an operation.** It reads
+back the movements the way the receipt does, on A4 instead of an 80 mm
+roll, because a business customer files it and needs the legal mentions
+(NIU, RCCM) that no till roll carries. What it adds to the receipt is
+the **TVA breakdown**, without which a customer cannot check the tax.
+
+Its number **is the ticket's**. A sale is one event; giving it a second
+number because it is reprinted in another format would create two
+identities for one fact, and « which one is the real one? » becomes
+unavoidable at the first dispute. If the tax authority ever requires a
+distinct invoice series, that is a decision to take with the owner — not
+one to invent here.
+
+The rate is **frozen on the line** at sale time (`tva_pour_dix_mille`,
+schema v12), for the same reason as the price: a facture reissued in
+December must repeat what March charged, even if the article changed
+rate since — or the rate itself did. `VenteService` resolves it from the
+article, falling back to the company's default rate, and never accepts
+one from the caller: the rate is a fact of the article, and a distracted
+form must not be able to invoice at a rate the fiche does not carry.
+Same reasoning as the author read from the session.
+
+Null is not zero. The migration attributes **nothing** to existing
+lines — claiming today's rate applied to them would invent a tax nobody
+ever wrote — so a facture covering them cannot break the TVA down and
+**says so**, naming the count and the amount it could not place. Staying
+silent would present a partial breakdown as a complete one, which reads
+as « the rest is exempt ». The same rule as the priceless lines in
+`ValorisationRepository`.
+
+`FactureService.ventiler` sums each rate's TTC **before** deriving the
+HT, not line by line: rounding every line and then adding drifts a few
+francs from the same sum computed once, and that is the discrepancy a
+customer points at. The HT comes from `horsTaxe` — a division by
+1 + rate, never a subtraction of the rate.
+
+A **transfer cannot be invoiced** — the goods never left the business,
+and the service refuses rather than printing a document asserting a sale
+that did not happen. In Transactions the action shows only on a
+**sortie** with a number: on an entrée that number belongs to the
+*supplier's* invoice, and reprinting it under this company's letterhead
+would turn a purchase into a sale.
 
 Ticket numbers are `TKT…`, deliberately apart from the `FAC…` that the
 Sage import brings: a ticket rung up here and an invoice imported from
@@ -643,6 +686,15 @@ needs. Verified rather than assumed, on an uncompressed document: `é`
 comes out as byte 233 and the `°` in `N°118` as 176. Embedding a font
 would be a real cost (size, load time) for no gain here; a character
 genuinely outside WinAnsi would be another matter.
+
+**The em dash is one of those characters.** `—` (U+2014) is not in
+WinAnsi, and the package drops it *silently* — the only trace is an
+`Unable to find a font to draw` line in the build output, which is not
+an error and does not fail a test. A cell meant to read « — » for
+« unknown » therefore prints empty, which a reader takes for an
+unfilled field. The facture writes `n.c.` instead
+(`FacturePdfService.tauxInconnu`). Nothing catches this but reading the
+output of a PDF test, so keep printed strings inside Latin-1.
 
 `MultiPage` caps how many pages a *single widget* may span at 20, as an
 assert: a debug build throws `TooManyPagesException`, a release build

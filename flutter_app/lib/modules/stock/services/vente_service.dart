@@ -48,6 +48,43 @@ class VenteService {
   /// mélanger rendrait une numérotation impossible à reprendre.
   static const String prefixeTicket = 'TKT';
 
+  /// Le taux de TVA de chaque référence, en dix-millièmes.
+  ///
+  /// Résolu **ici** et non reçu de l'écran : le taux est un fait de
+  /// l'article, et le laisser arriver de l'appelant ferait qu'un
+  /// formulaire distrait puisse facturer à un taux qui n'est pas celui
+  /// de la fiche. Même raisonnement que l'auteur lu dans la session.
+  ///
+  /// Une référence sans taux propre prend celui par défaut de
+  /// l'entreprise — c'est ce que le formulaire d'article propose déjà
+  /// à la création, donc le figer revient à écrire ce qui était
+  /// affiché. S'il n'y a pas non plus de taux par défaut, la ligne
+  /// n'en porte aucun : « on ne sait pas » se dit en ne disant rien,
+  /// et la facture l'annoncera plutôt que de ventiler une TVA de zéro.
+  Future<Map<String, int?>> _tauxParReference(Set<String> references) async {
+    if (references.isEmpty) return const {};
+    final db = await _db;
+    final marques = List.filled(references.length, '?').join(', ');
+    final lignes = await db.rawQuery(
+      'SELECT p.reference AS reference, t.pour_dix_mille AS taux '
+      'FROM products p '
+      'LEFT JOIN taux_tva t ON t.id = p.tva_id '
+      'WHERE p.reference IN ($marques)',
+      references.toList(),
+    );
+    final defaut = await db.rawQuery(
+      'SELECT pour_dix_mille FROM taux_tva WHERE is_defaut = 1 LIMIT 1',
+    );
+    final parDefaut =
+        defaut.isEmpty ? null : defaut.first['pour_dix_mille'] as int?;
+    return {
+      for (final reference in references) reference: parDefaut,
+      for (final ligne in lignes)
+        ligne['reference'] as String:
+            (ligne['taux'] as int?) ?? parDefaut,
+    };
+  }
+
   /// Le point de vente à proposer à l'ouverture de la caisse.
   ///
   /// Un seul magasin : c'est celui-là. Le caissier ne décide rien en
@@ -151,6 +188,9 @@ class VenteService {
     }
 
     final devise = await _parametres.devise();
+    final taux = await _tauxParReference(
+      {for (final ligne in lignes) ligne.reference},
+    );
     final ticket = await prochainTicket();
     final date = _iso(le ?? DateTime.now());
     final db = await _db;
@@ -167,6 +207,7 @@ class VenteService {
           'quantity': ligne.quantite,
           'tiers_id': tiersId,
           'prix_unitaire': ligne.prixUnitaire.unites,
+          'tva_pour_dix_mille': taux[ligne.reference],
           'sync_id': newSyncId(),
           'updated_at': nowIso(),
           ...attribution(),

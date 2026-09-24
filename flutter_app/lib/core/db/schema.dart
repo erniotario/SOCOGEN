@@ -9,7 +9,7 @@ import 'package:erp/core/auth/permissions.dart';
 class AppSchema {
   AppSchema._();
 
-  static const int version = 11;
+  static const int version = 12;
 
   static const List<String> createStatements = [
     '''
@@ -232,6 +232,19 @@ class AppSchema {
       -- Nul est normal : un transfert entre magasins n'a pas de prix,
       -- et les mouvements d'avant cette version n'en ont jamais eu.
       prix_unitaire INTEGER,
+      -- Le taux de TVA appliqué à cette ligne, en dix-millièmes.
+      --
+      -- Figé comme le prix, et pour la même raison : une facture
+      -- rééditée en décembre doit répéter la TVA de mars, même si
+      -- l'article a changé de taux depuis ou si le taux lui-même a
+      -- été modifié. Le relire sur la fiche au moment d'imprimer
+      -- réécrirait ce qui a été facturé.
+      --
+      -- Nul n'est pas zéro : c'est « on ne sait pas ». Les 5 201
+      -- lignes d'avant cette version n'ont pas de taux, et une facture
+      -- établie sur elles doit dire qu'elle ne peut pas ventiler la
+      -- TVA plutôt que d'annoncer une TVA de zéro.
+      tva_pour_dix_mille INTEGER,
       sync_id TEXT,
       updated_at TEXT
     )
@@ -456,6 +469,21 @@ class AppSchema {
       updated_at TEXT
     )
     ''',
+  ];
+
+  /// Le taux de TVA rejoint le prix sur la ligne de vente.
+  ///
+  /// Une facture doit dire HT, TVA et TTC. Le taux ne peut pas être relu
+  /// sur l'article au moment d'imprimer : ce serait réécrire ce qui a
+  /// été facturé, exactement ce que le prix figé empêche déjà.
+  ///
+  /// La migration **n'attribue aucun taux** aux lignes existantes. Leur
+  /// appliquer le taux d'aujourd'hui prétendrait savoir ce qui a été
+  /// facturé alors que personne ne l'a jamais écrit, et une TVA
+  /// inventée sur une facture est pire qu'une facture qui dit ne pas
+  /// pouvoir la ventiler. Même refus que l'attribution d'auteur en v8.
+  static const List<String> migrationV11ToV12 = [
+    'ALTER TABLE stock_outputs ADD COLUMN tva_pour_dix_mille INTEGER',
   ];
 
   /// L'argent arrive sur le mouvement.
