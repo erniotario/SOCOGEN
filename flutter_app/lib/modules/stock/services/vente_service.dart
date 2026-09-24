@@ -48,6 +48,26 @@ class VenteService {
   /// mélanger rendrait une numérotation impossible à reprendre.
   static const String prefixeTicket = 'TKT';
 
+  /// Le point de vente à proposer à l'ouverture de la caisse.
+  ///
+  /// Un seul magasin : c'est celui-là. Le caissier ne décide rien en
+  /// le confirmant, et une frappe de plus à chaque vente se paie cent
+  /// fois dans une journée de comptoir.
+  ///
+  /// Plusieurs : **rien**. Une vente imputée au mauvais magasin fausse
+  /// deux soldes en silence, et une corruption silencieuse est pire
+  /// qu'une question posée — c'est le refus que ce projet tient de
+  /// l'import Sage jusqu'à la reprise des tiers.
+  ///
+  /// Un choix déjà fait est gardé, sauf si le magasin a disparu
+  /// entre-temps : une liste déroulante ouverte sur une valeur qu'elle
+  /// ne propose pas est une valeur que Flutter refuse de construire.
+  static int? pointDeVenteParDefaut(List<int> magasins, {int? choisi}) {
+    if (choisi != null && magasins.contains(choisi)) return choisi;
+    if (magasins.length == 1) return magasins.single;
+    return null;
+  }
+
   /// Le prochain numéro libre, calculé sur le maximum observé.
   ///
   /// Calculé plutôt que stocké dans un compteur : un compteur se

@@ -1,8 +1,26 @@
 #include "flutter_window.h"
 
 #include <optional>
+#include <string>
 
 #include "flutter/generated_plugin_registrant.h"
+
+namespace {
+
+// Dart hands us UTF-8; SetWindowText wants UTF-16.
+std::wstring Utf16FromUtf8(const std::string& utf8) {
+  if (utf8.empty()) {
+    return std::wstring();
+  }
+  int taille = ::MultiByteToWideChar(CP_UTF8, 0, utf8.data(),
+                                     static_cast<int>(utf8.size()), nullptr, 0);
+  std::wstring utf16(static_cast<size_t>(taille), wchar_t());
+  ::MultiByteToWideChar(CP_UTF8, 0, utf8.data(),
+                        static_cast<int>(utf8.size()), utf16.data(), taille);
+  return utf16;
+}
+
+}  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -27,6 +45,25 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
+  fenetre_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "erp/fenetre",
+          &flutter::StandardMethodCodec::GetInstance());
+  fenetre_channel_->SetMethodCallHandler(
+      [this](const auto& call, auto result) {
+        if (call.method_name() != "titre") {
+          result->NotImplemented();
+          return;
+        }
+        const auto* titre = std::get_if<std::string>(call.arguments());
+        if (titre == nullptr) {
+          result->Error("argument", "titre attendu");
+          return;
+        }
+        ::SetWindowText(GetHandle(), Utf16FromUtf8(*titre).c_str());
+        result->Success();
+      });
+
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
   });
@@ -40,6 +77,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  fenetre_channel_ = nullptr;
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }

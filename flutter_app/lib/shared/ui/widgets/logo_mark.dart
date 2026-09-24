@@ -5,10 +5,14 @@ import 'package:erp/shared/ui/widgets/identite_societe.dart';
 import 'package:erp/shared/ui/theme/app_colors.dart';
 import 'package:erp/shared/ui/theme/app_spacing.dart';
 
-/// The app mark: a gradient tile carrying the product initial.
+/// The app mark: a gradient tile carrying the initial of whatever name
+/// the interface is showing.
 ///
-/// Used by the sidebar, the rail, the login card and the splash screen
-/// so the product has one consistent identity everywhere.
+/// Used by the sidebar, the rail, the login card and the splash screen.
+/// The letter follows `IdentiteSociete` rather than being engraved: a
+/// hard-coded initial is how the previous owner's identity survived the
+/// rename, and a tile reading `S` above « Maison Kamdem » would say the
+/// software still belongs to someone else.
 class LogoMark extends StatelessWidget {
   final double size;
 
@@ -30,7 +34,7 @@ class LogoMark extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(
-        'S',
+        IdentiteSociete.instance.initiale,
         style: TextStyle(
           fontSize: size * 0.52,
           fontWeight: FontWeight.w800,

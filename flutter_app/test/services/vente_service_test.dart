@@ -308,6 +308,40 @@ void main() {
     });
   });
 
+  group("le point de vente proposé à l'ouverture", () {
+    test('un seul magasin est déjà choisi', () async {
+      // Le caissier ne décide rien en le confirmant, et la frappe se
+      // paierait cent fois dans une journée de comptoir.
+      expect(VenteService.pointDeVenteParDefaut([7]), 7);
+    });
+
+    test('plusieurs magasins ne sont pas devinés', () async {
+      // Une vente imputée au mauvais magasin fausse deux soldes en
+      // silence : même refus que l'import Sage devant un magasin
+      // inconnu.
+      expect(VenteService.pointDeVenteParDefaut([1, 2]), isNull);
+    });
+
+    test('aucun magasin ne donne rien', () async {
+      expect(VenteService.pointDeVenteParDefaut(const []), isNull);
+    });
+
+    test('un choix déjà fait tient, même s’il y a mieux à proposer',
+        () async {
+      expect(VenteService.pointDeVenteParDefaut([1, 2], choisi: 2), 2);
+      expect(VenteService.pointDeVenteParDefaut([5], choisi: 5), 5);
+    });
+
+    test('un magasin disparu ne reste pas sélectionné', () async {
+      // Fusionné ou supprimé pendant que l'écran vivait : une liste
+      // ouverte sur une valeur qu'elle ne propose pas est une valeur
+      // que Flutter refuse de construire.
+      expect(VenteService.pointDeVenteParDefaut([1, 2], choisi: 9), isNull);
+      expect(VenteService.pointDeVenteParDefaut([4], choisi: 9), 4,
+          reason: 'le magasin unique reprend la main');
+    });
+  });
+
   group('ce que la vente devient dans les chiffres', () {
     test('elle entre dans le chiffre d\'affaires du magasin', () async {
       await article('RIZ25');

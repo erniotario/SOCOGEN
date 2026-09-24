@@ -12,8 +12,11 @@ import 'package:erp/shared/ui/widgets/identite_societe.dart';
 import 'package:erp/shared/ui/theme/app_text_styles.dart';
 import 'package:erp/shared/ui/theme/app_theme.dart';
 import 'package:erp/shared/ui/widgets/logo_mark.dart';
+import 'package:erp/shell/titre_fenetre.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  TitreFenetre.suivre();
   runApp(const StockApp());
 }
 

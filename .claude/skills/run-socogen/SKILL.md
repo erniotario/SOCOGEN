@@ -148,7 +148,7 @@ reload attached. Fine for a person at the keyboard; useless for an agent
 
 ```bash
 cd flutter_app && flutter analyze   # keep at zero
-cd flutter_app && flutter test      # ~315 tests
+cd flutter_app && flutter test      # ~475 tests
 ```
 
 Don't run the suite while a driven app is up: `web_report_test.dart`
@@ -191,6 +191,16 @@ serving its Wi-Fi sync.
   Flutter child view at its old size, which shows up in captures as an
   unpainted black band down the right edge — easily misread as a layout
   bug. It is not one.
+- **Renaming `BINARY_NAME` needs the CMake cache thrown away.**
+  `build/windows/x64/CMakeCache.txt` caches
+  `CMAKE_INSTALL_PREFIX=$<TARGET_FILE_DIR:<old name>>`, so the next build
+  dies at the generate step with `No target "SM"` and no hint that a
+  cache is to blame. `rm -rf build/windows/x64` fixes it — but **copy the
+  database out first**, because it lives in that tree (see below).
+- **The pid `launch` prints can go stale.** If a later call says
+  `no SM window for pid <n>`, run `Get-Process ERP` and use the id it
+  reports rather than relaunching; the window is usually still there.
+  (The message still says `SM`; it means the app's window.)
 - **The Windows database lives beside the executable.**
   `build/windows/x64/runner/Debug/socogen_stock.db` is real working
   data, not build junk, and `flutter clean` destroys it. That is the

@@ -123,6 +123,10 @@ class _CaisseScreenState extends State<CaisseScreen> {
       _tiers.listerClients(),
       _parametres.devise(),
     ).wait;
+    _magasinId = VenteService.pointDeVenteParDefaut(
+      [for (final m in magasins) m.id],
+      choisi: _magasinId,
+    );
     return _DonneesCaisse(
       articles: articles,
       magasins: magasins,
@@ -468,16 +472,22 @@ class _CaisseScreenState extends State<CaisseScreen> {
               ),
             ),
             SizedBox(
-              width: 160,
+              width: 170,
               child: TextField(
                 controller: _prixController,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Prix unitaire *',
                   suffixText: donnees.devise.symbole,
-                  helperText: _article?.product.prixVenteUnites == null
-                      ? 'Aucun tarif au catalogue'
-                      : 'Tarif catalogue, modifiable',
+                  // Rien à dire tant qu'aucun article n'est choisi : la
+                  // phrase précédente annonçait « Aucun tarif au
+                  // catalogue » d'un article qui n'existait pas encore,
+                  // et ne tenait pas dans la largeur du champ.
+                  helperText: _article == null
+                      ? null
+                      : _article!.product.prixVenteUnites == null
+                          ? 'Aucun tarif'
+                          : 'Tarif catalogue',
                 ),
               ),
             ),

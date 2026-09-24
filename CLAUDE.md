@@ -19,6 +19,18 @@ it is `shared/` rather than a module because every screen reads it —
 which is also why it does **not** load itself: `shared/` may not reach a
 module, so the shell reads the settings and hands it the name.
 
+The Windows **title bar** is the one surface Flutter cannot reach:
+`MaterialApp.title` never descends to the native window, and the title
+the runner sets at creation can only name the product — the database is
+not open yet, so the business has no name to give. `TitreFenetre`
+(`shell/`) pushes it over the `erp/fenetre` method channel once the name
+is known, and again whenever it changes. Two things the C++ side must
+keep: the em dash is written `\u2014` and not literally, because MSVC
+reads the runner sources in the system codepage and turns the UTF-8
+bytes into `â€"` in the taskbar; and a runner older than the channel
+answers `MissingPluginException`, which is swallowed — an old window
+title must never stop the app from starting.
+
 `AppBranding` holds the product name, so the next rename is one line.
 **Four identifiers deliberately do not follow it**, because they are
 identity rather than branding and moving them strands an installed
@@ -143,6 +155,12 @@ itself.
 
 - **`flutter build windows` exits 0 when it fails.** Read the output
   text, not the exit code. `ISCC` piped through `tail` does the same.
+- **Renaming the Windows binary needs the CMake cache thrown away.**
+  `build/windows/x64/CMakeCache.txt` caches
+  `CMAKE_INSTALL_PREFIX=$<TARGET_FILE_DIR:<old name>>`, so the next build
+  fails at the generate step with `No target "SM"` and names no cache.
+  `rm -rf build/windows/x64` fixes it — but the working database lives
+  in that tree, so copy it out first.
 - **The Windows installer must be compiled outside the project folder.**
   Output written in place trips real-time antivirus scanning and dies
   with `EndUpdateResource failed (110)`. Compile elsewhere and copy back:
@@ -277,6 +295,16 @@ fact the shop being supplied from the three depots, and the real sales,
 made at the shop, were never recorded anywhere. Each boutique or
 supermarché gets its own magasin, deliveries to it are transfers, and
 the POS sells from that magasin's stock.
+
+The caisse **proposes** that magasin when there is only one, and
+proposes nothing when there are several — `VenteService.pointDeVenteParDefaut`.
+Confirming a single magasin is not a decision, and the keystroke is paid
+a hundred times in a day at the counter; choosing among several would be
+guessing, and a sale filed against the wrong magasin falsifies two
+balances in silence. A choice already made is kept unless that magasin
+has since been merged away, because a dropdown open on a value it no
+longer offers is a value Flutter refuses to build — the same trap as the
+roles list.
 
 The past 4 563 sorties are **left as they are**, by the owner's
 decision. They correctly removed goods from the depots; converting them

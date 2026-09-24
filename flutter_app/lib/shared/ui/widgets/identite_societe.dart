@@ -35,6 +35,12 @@ class IdentiteSociete extends ChangeNotifier {
   /// du produit.
   String get affichable => estConnu ? _nom : AppBranding.productName;
 
+  /// La lettre que porte la pastille du logo.
+  ///
+  /// Elle suit le nom affiché : gravée, elle garderait l'initiale du
+  /// premier client au-dessus du nom de tous les suivants.
+  String get initiale => affichable.substring(0, 1).toUpperCase();
+
   /// Le titre de fenêtre : l'entreprise d'abord, le produit ensuite.
   ///
   /// Dans cet ordre parce qu'une personne qui cherche sa fenêtre parmi

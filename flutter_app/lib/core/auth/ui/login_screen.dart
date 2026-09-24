@@ -97,10 +97,11 @@ class _LoginScreenState extends State<LoginScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Hors configuration, le sous-titre est celui du
+                    // produit : le nommer ici en dur laissait l'ancien
+                    // « Gestion de Stock » sous le nom de l'entreprise.
                     LogoLockup(
-                      subtitle: isSetup
-                          ? 'Configuration initiale'
-                          : 'Gestion de Stock',
+                      subtitle: isSetup ? 'Configuration initiale' : null,
                     ),
                     const SizedBox(height: AppSpacing.xxl),
                     Container(
