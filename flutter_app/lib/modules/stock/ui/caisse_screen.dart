@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:erp/core/auth/session_courante.dart';
 import 'package:erp/modules/rapports/services/ticket_pdf_service.dart';
 import 'package:erp/modules/stock/services/paiement_service.dart';
+import 'package:erp/modules/stock/ui/cloture_dialog.dart';
 import 'package:erp/modules/stock/ui/reglement_dialog.dart';
 import 'package:erp/shared/models/paiement.dart';
 import 'package:erp/core/errors/messages.dart';
@@ -318,6 +319,23 @@ class _CaisseScreenState extends State<CaisseScreen> {
     );
   }
 
+  /// Ouvre la clôture du jour, sur le magasin de la caisse.
+  ///
+  /// Les magasins viennent des données déjà chargées plutôt que d'une
+  /// relecture : l'écran les tient, et une requête de plus à l'ouverture
+  /// d'une boîte de dialogue se sent au comptoir.
+  Future<void> _ouvrirCloture() async {
+    final donnees = await _future;
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => ClotureDialog(
+        magasins: donnees.magasins,
+        magasinId: _magasinId,
+      ),
+    );
+  }
+
   /// Imprime le ticket, en relisant ce qui a été **écrit**.
   ///
   /// Et non le panier qui vient d'être vidé : le ticket que le client
@@ -389,9 +407,20 @@ class _CaisseScreenState extends State<CaisseScreen> {
     final taille = context.windowSize;
     return Column(
       children: [
-        const PageHeader(
+        PageHeader(
           title: 'Caisse',
           subtitle: 'Encaisser au comptoir',
+          actions: [
+            // La clôture est un geste de comptoir : le caissier ferme,
+            // imprime, compte son tiroir. La ranger dans Rapports, c'est
+            // s'assurer qu'à huit heures du soir personne n'ira la
+            // chercher.
+            OutlinedButton.icon(
+              onPressed: _ouvrirCloture,
+              icon: const Icon(Icons.event_available_outlined, size: 18),
+              label: const Text('Clôture'),
+            ),
+          ],
         ),
         Expanded(
           child: FutureBuilder<_DonneesCaisse>(

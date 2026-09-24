@@ -60,7 +60,7 @@ From `flutter_app/`:
 
 ```bash
 flutter analyze              # the project's only typechecker; keep it at zero
-flutter test                 # ~502 tests across 56 files
+flutter test                 # ~523 tests across 59 files
 flutter build windows --release
 flutter build apk --release
 ```
@@ -302,6 +302,36 @@ accepting a sale with no price would make turnover unknowable. So the
 line requires a price and does not require it to come from the article.
 A negotiated price is therefore a fact of the sale rather than an
 anomaly.
+
+**A day's close holds two figures, and confusing them is why a till
+never balances.** What was *sold* today includes what left on credit and
+is therefore not in the drawer; what was *taken in* today includes
+settlements of tickets from three weeks ago and is therefore not
+turnover. `ClotureService` reports both side by side and names the gap
+rather than leaving it to be worked out: how much of the day's takings
+settles the day's own sales, and how much is recovery on older debt.
+
+Cash is totalled on its own. Only notes are counted by hand; Mobile
+Money and transfers are checked with the operator or the bank, and
+folding them into the drawer total makes a discrepancy impossible to
+locate.
+
+Credit granted is measured as **what is still owed when the close is
+read**, not at the moment of sale: a ticket rung up this morning and
+settled tomorrow was credit tonight and is not credit afterwards, and
+the same reading of the same day will say so. That is the consequence
+of the balance being computed rather than stored.
+
+It **closes nothing** in the accounting sense — no period is frozen, no
+correction is barred. It is a reading of the day plus the paper that
+gets signed, and the signature lines are what distinguish it from a
+screen. Freezing a period needs an exercice and a closing entry, which
+belong to the accounting phase.
+
+It lives on the **Caisse** header rather than in Rapports, because it is
+a counter gesture: the cashier closes, prints, counts the drawer.
+Putting it behind a reports screen at eight in the evening is how it
+stops being done.
 
 **Credit is not a payment method; it is the absence of one.** `paiements`
 records what came in — espèces, Mobile Money, virement, chèque — against
@@ -730,6 +760,14 @@ layout on the UI thread is an ANR on Android and a watchdog kill on iOS.
   atteigne l'intérieur d'un autre. Il échoue aussi quand une entrée de
   `_detteConnue` n'a plus de raison d'être, ce qui force à la retirer
   plutôt qu'à la laisser couvrir autre chose.
+- `pdf_winansi_test.dart` reads the source of every `*_pdf_service.dart`
+  and refuses any character above U+00FF outside a comment. The `pdf`
+  package's built-in fonts drop those **silently** — no exception, no red
+  test, just a line in a build log — so the paper comes out with a hole
+  in it and the customer is the one who finds it. The culprits are
+  ordinary French typography: `—`, `…`, `−`, `→`. It also
+  asserts it still finds files to watch, so a rename cannot turn it
+  green by looking at nothing.
 - Anything that can only fail on a device (the sqflite rule above, print
   dialogs) cannot be caught here. Say so rather than implying a green
   suite covers it.
