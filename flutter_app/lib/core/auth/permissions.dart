@@ -127,6 +127,9 @@ class PermissionGate {
   /// Le rôle qui peut tout, par construction et non par données.
   static const String roleAdmin = 'admin';
 
+  /// Le caissier ne voit que la Caisse et peut encaisser.
+  static const String roleCaissier = 'caissier';
+
   /// Vrai si la personne connectée a le droit [permission].
   ///
   /// L'administrateur répond oui à tout **sans consulter la base**, et

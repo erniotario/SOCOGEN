@@ -160,17 +160,25 @@ bool _peutAdministrer(PermissionGate droits) =>
     droits.autorise(Permissions.gererUtilisateurs) &&
     droits.autorise(Permissions.modifierParametres);
 
-List<_NavEntry> _visibleEntries(PermissionGate droits) =>
-    _peutAdministrer(droits)
-        ? _navEntries
-        : _navEntries.sublist(0, _navEntries.length - _adminOnlyCount);
+List<_NavEntry> _visibleEntries(PermissionGate droits) {
+  if (_peutAdministrer(droits)) return _navEntries;
+  if (droits.role == PermissionGate.roleCaissier) {
+    // Caissier ne voit que la Caisse (index 1)
+    return [_navEntries[1]];
+  }
+  return _navEntries.sublist(0, _navEntries.length - _adminOnlyCount);
+}
 
 /// Doit rester aligné sur [_visibleEntries] : les deux listes sont
 /// positionnelles et un décalage ouvrirait le mauvais écran.
-List<Widget> _visibleScreens(PermissionGate droits) =>
-    _peutAdministrer(droits)
-        ? _screens
-        : _screens.sublist(0, _screens.length - _adminOnlyCount);
+List<Widget> _visibleScreens(PermissionGate droits) {
+  if (_peutAdministrer(droits)) return _screens;
+  if (droits.role == PermissionGate.roleCaissier) {
+    // Caissier ne voit que la Caisse (index 1)
+    return [_screens[1]];
+  }
+  return _screens.sublist(0, _screens.length - _adminOnlyCount);
+}
 
 /// Adaptive application shell.
 ///
